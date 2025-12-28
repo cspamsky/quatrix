@@ -86,7 +86,8 @@ class ServerService {
                 maxPlayers: server.maxPlayers,
                 gameMode: server.gameMode,
                 gsltToken: server.gsltToken,
-                workshopCollection: server.workshopCollection || undefined
+                workshopCollection: server.workshopCollection || undefined,
+                workshopMapId: server.workshopMapId || undefined
             });
 
             await prisma.server.update({
@@ -217,14 +218,21 @@ class ServerService {
     /**
      * Update server details
      */
-    public async updateServer(serverId: string, userId: string, data: { name?: string; description?: string }) {
+    public async updateServer(serverId: string, userId: string, data: {
+        name?: string;
+        description?: string;
+        workshopCollection?: string;
+        workshopMapId?: string;
+    }) {
         await this.getServerAndVerifyOwner(serverId, userId);
 
         return prisma.server.update({
             where: { id: serverId },
             data: {
                 name: data.name,
-                description: data.description
+                description: data.description,
+                workshopCollection: data.workshopCollection,
+                workshopMapId: data.workshopMapId
             }
         });
     }

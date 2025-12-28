@@ -43,7 +43,7 @@ export const serverService = {
         return response.data;
     },
 
-    async updateServer(id: string, data: { name?: string; description?: string }) {
+    async updateServer(id: string, data: { name?: string; description?: string; workshopCollection?: string; workshopMapId?: string }) {
         const response = await axios.put(`${API_URL}/${id}`, data, getHeader());
         return response.data;
     },

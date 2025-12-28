@@ -34,12 +34,6 @@
 <details>
 <summary>View More Screenshots</summary>
 
-### Dashboard (Pro - Dark Theme)
-![Dashboard](screenshots/dashboard.png)
-
-### Dashboard (Responsive - Mobile/Tablet)
-![Dashboard Responsive](screenshots/dashboard_responsive.png)
-
 ### Login Page
 ![Login](screenshots/login.png)
 

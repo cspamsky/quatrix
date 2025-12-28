@@ -22,6 +22,7 @@ import { serverService } from '../services/serverService';
 import Console from '../components/Console';
 import ServerResources from '../components/ServerResources';
 import ConfigEditor from '../components/ConfigEditor';
+import WorkshopManager from '../components/WorkshopManager';
 
 const { Title, Text } = Typography;
 
@@ -38,6 +39,7 @@ function Dashboard() {
     const [selectedServerForConfig, setSelectedServerForConfig] = useState<string | null>(null);
     const [isEditModalVisible, setIsEditModalVisible] = useState(false);
     const [editingServer, setEditingServer] = useState<any>(null);
+    const [selectedServerForWorkshop, setSelectedServerForWorkshop] = useState<any | null>(null);
     const [form] = Form.useForm();
     const [editForm] = Form.useForm();
 
@@ -241,6 +243,14 @@ function Dashboard() {
                         title="Verify Server Files"
                     >
                         <span className="button-text">Verify</span>
+                    </Button>
+                    <Button
+                        icon={<GlobalOutlined />}
+                        size="small"
+                        onClick={() => setSelectedServerForWorkshop(record)}
+                        title="Workshop Manager"
+                    >
+                        <span className="button-text">Workshop</span>
                     </Button>
                     <Button
                         icon={<DeleteOutlined />}
@@ -451,6 +461,25 @@ function Dashboard() {
                         </Space>
                     </Form.Item>
                 </Form>
+            </Modal>
+
+            {/* Workshop Manager Modal */}
+            <Modal
+                title={`Workshop Management - ${selectedServerForWorkshop?.name || ''}`}
+                open={!!selectedServerForWorkshop}
+                onCancel={() => setSelectedServerForWorkshop(null)}
+                width={480}
+                footer={null}
+                destroyOnClose
+            >
+                {selectedServerForWorkshop && (
+                    <WorkshopManager
+                        server={selectedServerForWorkshop}
+                        onUpdate={() => {
+                            fetchServers();
+                        }}
+                    />
+                )}
             </Modal>
         </Space>
     );

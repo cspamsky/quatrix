@@ -13,6 +13,7 @@ interface StartServerOptions {
     gameMode: string;
     gsltToken: string;
     workshopCollection?: string;
+    workshopMapId?: string;
 }
 
 class ProcessService {
@@ -50,6 +51,10 @@ class ProcessService {
         // Add Workshop Collection if provided
         if (options.workshopCollection) {
             args.push('+host_workshop_collection', options.workshopCollection);
+        }
+
+        if (options.workshopMapId) {
+            args.push('+host_workshop_map', options.workshopMapId);
         }
 
         if (!fullExePath) {
