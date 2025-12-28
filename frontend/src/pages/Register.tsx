@@ -1,0 +1,109 @@
+import React, { useState } from 'react';
+import { Form, Input, Button, Card, Typography, Space, message, Layout } from 'antd';
+import { UserOutlined, LockOutlined, RocketOutlined, IdcardOutlined } from '@ant-design/icons';
+import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { authService } from '../services/authService';
+import { useAuthStore } from '../store/useAuthStore';
+import { useThemeStore } from '../store/useThemeStore';
+import { BulbOutlined, BulbFilled } from '@ant-design/icons';
+
+const { Title, Text } = Typography;
+const { Content } = Layout;
+
+const Register: React.FC = () => {
+    const { t } = useTranslation();
+    const navigate = useNavigate();
+    const setAuth = useAuthStore((state) => state.setAuth);
+    const { darkMode, toggleDarkMode } = useThemeStore();
+    const [loading, setLoading] = useState(false);
+
+    const onFinish = async (values: any) => {
+        setLoading(true);
+        try {
+            const response = await authService.register(values);
+            if (response.success) {
+                message.success(t('common.success'));
+                setAuth(response.data.user, response.data.token);
+                navigate('/');
+            }
+        } catch (error: any) {
+            message.error(error.response?.data?.message || t('common.error'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Layout style={{ minHeight: '100vh', background: darkMode ? '#000' : '#f0f2f5' }}>
+            <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 10 }}>
+                <Button
+                    type="text"
+                    icon={darkMode ? <BulbFilled style={{ color: '#fadb14' }} /> : <BulbOutlined />}
+                    onClick={toggleDarkMode}
+                    size="large"
+                />
+            </div>
+            <Content style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '0 16px' }}>
+                <Card style={{
+                    width: '100%',
+                    maxWidth: 400,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                    borderRadius: 12
+                }}>
+                    <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                        <RocketOutlined style={{ fontSize: 48, color: '#1890ff' }} />
+                        <Title level={2} style={{ marginTop: 12 }}>Quatrix</Title>
+                        <Text type="secondary">{t('common.create')} Account</Text>
+                    </div>
+
+                    <Form
+                        name="register"
+                        onFinish={onFinish}
+                        layout="vertical"
+                        size="large"
+                    >
+                        <Form.Item
+                            name="name"
+                            rules={[{ required: true, message: 'Please input your name!' }]}
+                        >
+                            <Input prefix={<IdcardOutlined />} placeholder="Full Name" />
+                        </Form.Item>
+
+                        <Form.Item
+                            name="email"
+                            rules={[{ required: true, message: 'Please input your email!', type: 'email' }]}
+                        >
+                            <Input prefix={<UserOutlined />} placeholder="Email" />
+                        </Form.Item>
+
+                        <Form.Item
+                            name="password"
+                            rules={[
+                                { required: true, message: 'Please input your password!' },
+                                { min: 6, message: 'Password must be at least 6 characters!' }
+                            ]}
+                        >
+                            <Input.Password prefix={<LockOutlined />} placeholder="Password" />
+                        </Form.Item>
+
+                        <Form.Item>
+                            <Button type="primary" htmlType="submit" block loading={loading}>
+                                {t('common.create')}
+                            </Button>
+                        </Form.Item>
+                    </Form>
+
+                    <div style={{ textAlign: 'center' }}>
+                        <Space>
+                            <Text type="secondary">Already have an account?</Text>
+                            <Link to="/login">{t('common.login')}</Link>
+                        </Space>
+                    </div>
+                </Card>
+            </Content>
+        </Layout>
+    );
+};
+
+export default Register;

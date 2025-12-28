@@ -1,0 +1,51 @@
+{
+    "common": {
+        "welcome": "Quatrix'e Hoş Geldiniz",
+        "login": "Giriş Yap",
+        "logout": "Çıkış Yap",
+        "save": "Kaydet",
+        "cancel": "İptal",
+        "delete": "Sil",
+        "edit": "Düzenle",
+        "create": "Oluştur",
+        "loading": "Yükleniyor...",
+        "error": "Hata",
+        "success": "Başarılı"
+    },
+    "nav": {
+        "dashboard": "Kontrol Paneli",
+        "servers": "Sunucular",
+        "settings": "Ayarlar"
+    },
+    "dashboard": {
+        "title": "Kontrol Paneli",
+        "welcome": "Quatrix CS2 Sunucu Yönetimine Hoş Geldiniz",
+        "totalServers": "Toplam Sunucu",
+        "runningServers": "Çalışan Sunucular",
+        "stoppedServers": "Durdurulmuş Sunucular",
+        "createServer": "Yeni Sunucu Oluştur"
+    },
+    "server": {
+        "name": "Sunucu Adı",
+        "status": "Durum",
+        "players": "Oyuncular",
+        "map": "Harita",
+        "port": "Port",
+        "actions": "İşlemler",
+        "start": "Başlat",
+        "stop": "Durdur",
+        "restart": "Yeniden Başlat",
+        "terminal": "Terminal",
+        "configuration": "Yapılandırma",
+        "monitoring": "İzleme"
+    },
+    "status": {
+        "creating": "Oluşturuluyor",
+        "stopped": "Durduruldu",
+        "starting": "Başlatılıyor",
+        "running": "Çalışıyor",
+        "stopping": "Durduruluyor",
+        "error": "Hata",
+        "updating": "Güncelleniyor"
+    }
+}

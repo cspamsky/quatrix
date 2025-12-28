@@ -1,0 +1,83 @@
+// This is your Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // bcrypt hashed
+  name      String?
+  role      String   @default("ADMIN") // Role as String for SQLite
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  servers   Server[]
+
+  @@map("users")
+}
+
+model Settings {
+  id              Int      @id @default(1)
+  steamcmdPath    String?
+  serversPath     String?
+  isConfigured    Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+
+  @@map("settings")
+}
+
+model Server {
+  id            String       @id @default(uuid())
+  name          String
+  description   String?
+  
+  // Server configuration
+  map                String       @default("de_dust2")
+  maxPlayers         Int          @default(10)
+  gameMode           String       @default("competitive")
+  workshopCollection String?      // Steam Workshop Collection ID
+  
+  // Network configuration
+  port          Int          @unique
+  rconPort      Int          @unique
+  rconPassword  String       // Generated automatically
+  
+  // Steam configuration
+  gsltToken     String       // Encrypted GSLT token
+  
+  // Process information
+  processId     Int?         // PID of running process
+  installPath   String       // Native path on host
+  
+  // Status
+  status        String       @default("STOPPED") // Status as String for SQLite
+  
+  // Ownership
+  ownerId       String
+  owner         User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  lastStartedAt DateTime?
+  lastStoppedAt DateTime?
+
+  @@map("servers")
+}
+
+// Possible Statuses (Application Level):
+// CREATING     - Being installed
+// STOPPED      - Installed but not running
+// STARTING     - Process starting
+// RUNNING      - Process running
+// STOPPING     - Process stopping
+// ERROR        - Error state
+// UPDATING     - Being updated

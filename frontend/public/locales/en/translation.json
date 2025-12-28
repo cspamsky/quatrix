@@ -1,0 +1,51 @@
+{
+    "common": {
+        "welcome": "Welcome to Quatrix",
+        "login": "Login",
+        "logout": "Logout",
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "edit": "Edit",
+        "create": "Create",
+        "loading": "Loading...",
+        "error": "Error",
+        "success": "Success"
+    },
+    "nav": {
+        "dashboard": "Dashboard",
+        "servers": "Servers",
+        "settings": "Settings"
+    },
+    "dashboard": {
+        "title": "Dashboard",
+        "welcome": "Welcome to Quatrix CS2 Server Management",
+        "totalServers": "Total Servers",
+        "runningServers": "Running Servers",
+        "stoppedServers": "Stopped Servers",
+        "createServer": "Create New Server"
+    },
+    "server": {
+        "name": "Server Name",
+        "status": "Status",
+        "players": "Players",
+        "map": "Map",
+        "port": "Port",
+        "actions": "Actions",
+        "start": "Start",
+        "stop": "Stop",
+        "restart": "Restart",
+        "terminal": "Terminal",
+        "configuration": "Configuration",
+        "monitoring": "Monitoring"
+    },
+    "status": {
+        "creating": "Creating",
+        "stopped": "Stopped",
+        "starting": "Starting",
+        "running": "Running",
+        "stopping": "Stopping",
+        "error": "Error",
+        "updating": "Updating"
+    }
+}

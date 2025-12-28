@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # Backend API (Node.js)
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "file:./prisma/dev.db" # Using local file
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    volumes:
+      - ./backend/prisma:/app/prisma
+      - ./cs2-servers:/app/cs2-servers
+      - ./steamcmd:/app/steamcmd
+
+  # Frontend (React)
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

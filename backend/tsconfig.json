@@ -1,0 +1,62 @@
+{
+    "compilerOptions": {
+        "target": "ES2020",
+        "module": "ESNext",
+        "lib": [
+            "ES2020"
+        ],
+        "moduleResolution": "node",
+        "resolveJsonModule": true,
+        "allowSyntheticDefaultImports": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        /* Strict Type-Checking */
+        "strict": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        /* Module Resolution */
+        "baseUrl": ".",
+        "paths": {
+            "@/*": [
+                "src/*"
+            ],
+            "@/controllers/*": [
+                "src/controllers/*"
+            ],
+            "@/services/*": [
+                "src/services/*"
+            ],
+            "@/middleware/*": [
+                "src/middleware/*"
+            ],
+            "@/routes/*": [
+                "src/routes/*"
+            ],
+            "@/types/*": [
+                "src/types/*"
+            ],
+            "@/utils/*": [
+                "src/utils/*"
+            ],
+            "@/sockets/*": [
+                "src/sockets/*"
+            ]
+        },
+        /* Emit */
+        "outDir": "./dist",
+        "rootDir": "./src",
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true
+    },
+    "include": [
+        "src/**/*"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist"
+    ]
+}
