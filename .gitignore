@@ -45,3 +45,7 @@ backend/node_modules/
 # Manual Setup Guides
 NODEJS_KURULUM.md
 PROJECT_SETUP_COMPLETE.md
+
+# AI/Agent Documentation
+memory-bank/
+AGENTS.md
