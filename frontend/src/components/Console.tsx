@@ -4,6 +4,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { io, Socket } from 'socket.io-client';
+import { useTranslation } from 'react-i18next';
 
 interface ConsoleProps {
     serverId: string;
@@ -13,6 +14,7 @@ const Console: React.FC<ConsoleProps> = ({ serverId }) => {
     const terminalRef = useRef<HTMLDivElement>(null);
     const xtermRef = useRef<Terminal | null>(null);
     const socketRef = useRef<Socket | null>(null);
+    const { t } = useTranslation();
 
     useEffect(() => {
         if (!terminalRef.current) return;
@@ -41,14 +43,14 @@ const Console: React.FC<ConsoleProps> = ({ serverId }) => {
 
         xtermRef.current = term;
 
-        term.writeln('\x1b[34m[System] Connecting to server terminal...\x1b[0m');
+        term.writeln(`\x1b[34m${t('common.system')} ${t('terminal.connecting')}\x1b[0m`);
 
         // Initialize Socket.io
         const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:3000');
         socketRef.current = socket;
 
         socket.on('connect', () => {
-            term.writeln('\x1b[32m[System] Connected to terminal service.\x1b[0m');
+            term.writeln(`\x1b[32m${t('common.system')} ${t('terminal.connected')}\x1b[0m`);
             socket.emit('terminal:join', { serverId });
         });
 
@@ -57,7 +59,7 @@ const Console: React.FC<ConsoleProps> = ({ serverId }) => {
         });
 
         socket.on('terminal:status', (data: any) => {
-            term.writeln(`\x1b[34m[System] Server status: ${data.status}\x1b[0m`);
+            term.writeln(`\x1b[34m${t('common.system')} ${t('terminal.serverStatus')}: ${data.status}\x1b[0m`);
         });
 
         socket.on('terminal:error', (data: any) => {
@@ -65,7 +67,7 @@ const Console: React.FC<ConsoleProps> = ({ serverId }) => {
         });
 
         socket.on('disconnect', () => {
-            term.writeln('\x1b[31m[System] Disconnected from terminal service.\x1b[0m');
+            term.writeln(`\x1b[31m${t('common.system')} ${t('terminal.disconnected')}\x1b[0m`);
         });
 
         // Handle input

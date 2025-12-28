@@ -71,53 +71,52 @@ function Dashboard() {
         try {
             const response = await serverService.createServer(values);
             if (response.success) {
-                message.success('Server creation started!');
+                message.success(t('common.success'));
                 setIsModalVisible(false);
                 form.resetFields();
                 fetchServers();
-                // Open console automatically to show progress
                 setSelectedServerForConsole(response.data.id);
             }
         } catch (error: any) {
-            message.error(error.response?.data?.message || 'Failed to create server');
+            message.error(error.response?.data?.message || t('common.error'));
         }
     };
 
     const handleStart = async (id: string) => {
         try {
             await serverService.startServer(id);
-            message.success('Start command sent');
+            message.success(t('common.success'));
             fetchServers();
         } catch (error: any) {
-            message.error(error.response?.data?.message || 'Failed to start');
+            message.error(error.response?.data?.message || t('common.error'));
         }
     };
 
     const handleStop = async (id: string) => {
         try {
             await serverService.stopServer(id);
-            message.success('Stop command sent');
+            message.success(t('common.success'));
             fetchServers();
         } catch (error: any) {
-            message.error(error.response?.data?.message || 'Failed to stop');
+            message.error(error.response?.data?.message || t('common.error'));
         }
     };
 
     const handleDelete = (id: string) => {
         modal.confirm({
-            title: 'Delete Server?',
+            title: t('server.delete_confirm_title'),
             icon: <ExclamationCircleOutlined />,
-            content: 'This will stop the server (or installation) and delete all files. This action cannot be undone.',
-            okText: 'Delete',
+            content: t('server.delete_confirm_content'),
+            okText: t('common.delete'),
             okType: 'danger',
-            cancelText: 'Cancel',
+            cancelText: t('common.cancel'),
             onOk: async () => {
                 try {
                     await serverService.deleteServer(id);
-                    message.success('Server deleted successfully');
+                    message.success(t('common.success'));
                     fetchServers();
                 } catch (error: any) {
-                    message.error(error.response?.data?.message || 'Failed to delete server');
+                    message.error(error.response?.data?.message || t('common.error'));
                 }
             },
         });
@@ -127,13 +126,12 @@ function Dashboard() {
         try {
             const response = await serverService.validateServer(id);
             if (response.success) {
-                message.success('Validation process started. check console for details.');
-                // Open console automatically
+                message.success(t('common.success'));
                 setSelectedServerForConsole(id);
                 fetchServers();
             }
         } catch (error: any) {
-            message.error(error.response?.data?.message || 'Failed to start validation');
+            message.error(error.response?.data?.message || t('common.error'));
         }
     };
 
@@ -142,13 +140,13 @@ function Dashboard() {
         try {
             const response = await serverService.updateServer(editingServer.id, values);
             if (response.success) {
-                message.success('Server updated successfully');
+                message.success(t('common.success'));
                 setIsEditModalVisible(false);
                 setEditingServer(null);
                 fetchServers();
             }
         } catch (error: any) {
-            message.error(error.response?.data?.message || 'Failed to update server');
+            message.error(error.response?.data?.message || t('common.error'));
         }
     };
 
@@ -163,12 +161,12 @@ function Dashboard() {
 
     const columns = [
         {
-            title: 'Name',
+            title: t('server.name'),
             dataIndex: 'name',
             key: 'name',
         },
         {
-            title: 'Status',
+            title: t('server.status'),
             dataIndex: 'status',
             key: 'status',
             responsive: ['md' as const, 'lg' as const, 'xl' as const, 'xxl' as const],
@@ -178,17 +176,17 @@ function Dashboard() {
                 if (status === 'CREATING' || status === 'STARTING') color = 'processing';
                 if (status === 'STOPPED') color = 'error';
                 if (status === 'ERROR') color = 'warning';
-                return <Tag color={color}>{status}</Tag>;
+                return <Tag color={color}>{t(`status.${status}`)}</Tag>;
             }
         },
         {
-            title: 'Port',
+            title: t('server.port'),
             dataIndex: 'port',
             key: 'port',
             responsive: ['xl' as const, 'xxl' as const],
         },
         {
-            title: 'Actions',
+            title: t('common.actions'),
             key: 'actions',
             render: (_: any, record: any) => (
                 <Space wrap>
@@ -205,7 +203,7 @@ function Dashboard() {
                             type="primary"
                             size="small"
                         >
-                            <span className="button-text">Start</span>
+                            <span className="button-text">{t('server.start')}</span>
                         </Button>
                     ) : (
                         <Button
@@ -215,51 +213,51 @@ function Dashboard() {
                             size="small"
                             disabled={record.status === 'CREATING'}
                         >
-                            <span className="button-text">Stop</span>
+                            <span className="button-text">{t('server.stop')}</span>
                         </Button>
                     )}
                     <Button
                         icon={<SettingOutlined />}
                         size="small"
                         onClick={() => setSelectedServerForConsole(record.id)}
-                        title="Console"
+                        title={t('server.console')}
                     >
-                        <span className="button-text">Console</span>
+                        <span className="button-text">{t('server.console')}</span>
                     </Button>
                     <Button
                         icon={<FileTextOutlined />}
                         size="small"
                         onClick={() => setSelectedServerForConfig(record.id)}
                         disabled={record.status === 'CREATING'}
-                        title="Config"
+                        title={t('server.config')}
                     >
-                        <span className="button-text">Config</span>
+                        <span className="button-text">{t('server.config')}</span>
                     </Button>
                     <Button
                         icon={<SafetyCertificateOutlined />}
                         size="small"
                         onClick={() => handleValidate(record.id)}
                         disabled={record.status !== 'STOPPED' && record.status !== 'ERROR'}
-                        title="Verify Server Files"
+                        title={t('server.verify_files')}
                     >
-                        <span className="button-text">Verify</span>
+                        <span className="button-text">{t('server.verify')}</span>
                     </Button>
                     <Button
                         icon={<GlobalOutlined />}
                         size="small"
                         onClick={() => setSelectedServerForWorkshop(record)}
-                        title="Workshop Manager"
+                        title={t('server.workshop')}
                     >
-                        <span className="button-text">Workshop</span>
+                        <span className="button-text">{t('server.workshop')}</span>
                     </Button>
                     <Button
                         icon={<DeleteOutlined />}
                         size="small"
                         danger
                         onClick={() => handleDelete(record.id)}
-                        title="Delete"
+                        title={t('common.delete')}
                     >
-                        <span className="button-text">{record.status === 'CREATING' ? 'Cancel' : 'Delete'}</span>
+                        <span className="button-text">{record.status === 'CREATING' ? t('common.cancel') : t('common.delete')}</span>
                     </Button>
                 </Space>
             )
@@ -270,9 +268,9 @@ function Dashboard() {
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
             {/* Header Actions */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Title level={2} style={{ margin: 0 }}>Dashboard</Title>
+                <Title level={2} style={{ margin: 0 }}>{t('dashboard.title')}</Title>
                 <Space>
-                    <Button icon={<ReloadOutlined />} onClick={fetchServers}>Refresh</Button>
+                    <Button icon={<ReloadOutlined />} onClick={fetchServers}>{t('common.refresh')}</Button>
                     <Button
                         type="primary"
                         icon={<PlusOutlined />}
@@ -321,13 +319,13 @@ function Dashboard() {
             {/* Main Content Area */}
             <Row gutter={[16, 16]}>
                 <Col xs={24} xl={16}>
-                    <Card title="Your Servers" style={{ height: '100%', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                    <Card title={t('dashboard.yourServers')} style={{ height: '100%', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
                         <Table
                             dataSource={servers}
                             columns={columns}
                             rowKey="id"
                             loading={loading}
-                            locale={{ emptyText: 'No servers found. Create your first one!' }}
+                            locale={{ emptyText: t('dashboard.noServers') }}
                             pagination={{ pageSize: 5 }}
                             className="responsive-table"
                         />
@@ -343,14 +341,14 @@ function Dashboard() {
                 <Card style={{ background: '#fff2f0', border: '1px solid #ffccc7' }}>
                     <Space>
                         <GlobalOutlined style={{ color: '#ff4d4f' }} />
-                        <Text type="danger">Backend is currently offline. Server management features are disabled.</Text>
+                        <Text type="danger">{t('dashboard.backendOffline')}</Text>
                     </Space>
                 </Card>
             )}
 
             {/* Create Server Modal */}
             <Modal
-                title="Create New CS2 Server"
+                title={t('dashboard.createServer')}
                 open={isModalVisible}
                 onCancel={() => setIsModalVisible(false)}
                 footer={null}
@@ -362,33 +360,33 @@ function Dashboard() {
                 >
                     <Form.Item
                         name="name"
-                        label="Server Name"
-                        rules={[{ required: true, message: 'Please input server name!' }]}
+                        label={t('dashboard.serverName')}
+                        rules={[{ required: true, message: t('common.error') }]}
                     >
                         <Input placeholder="My Awesome CS2 Server" />
                     </Form.Item>
 
                     <Form.Item
                         name="description"
-                        label="Description (Optional)"
+                        label={t('dashboard.description')}
                     >
-                        <Input.TextArea placeholder="A short description for your server" />
+                        <Input.TextArea placeholder="A short description" />
                     </Form.Item>
 
                     <Form.Item
                         name="gsltToken"
-                        label="GSLT Token"
-                        help={<a href="https://steamcommunity.com/dev/managegameservers" target="_blank" rel="noreferrer">Get your token here</a>}
-                        rules={[{ required: true, message: 'GSLT Token is required for public visibility!' }]}
+                        label={t('dashboard.gsltToken')}
+                        help={<a href="https://steamcommunity.com/dev/managegameservers" target="_blank" rel="noreferrer">Steam Dev Portal</a>}
+                        rules={[{ required: true, message: t('common.error') }]}
                     >
                         <Input placeholder="Example: 5F0B..." />
                     </Form.Item>
 
                     <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
                         <Space>
-                            <Button onClick={() => setIsModalVisible(false)}>Cancel</Button>
+                            <Button onClick={() => setIsModalVisible(false)}>{t('common.cancel')}</Button>
                             <Button type="primary" htmlType="submit" icon={<RocketOutlined />}>
-                                Create & Install
+                                {t('dashboard.createAndInstall')}
                             </Button>
                         </Space>
                     </Form.Item>
@@ -426,7 +424,7 @@ function Dashboard() {
 
             {/* Edit Server Modal */}
             <Modal
-                title="Edit Server Details"
+                title={t('dashboard.editDetails')}
                 open={isEditModalVisible}
                 onCancel={() => setIsEditModalVisible(false)}
                 footer={null}
@@ -439,24 +437,24 @@ function Dashboard() {
                 >
                     <Form.Item
                         name="name"
-                        label="Server Name"
-                        rules={[{ required: true, message: 'Please input server name!' }]}
+                        label={t('dashboard.serverName')}
+                        rules={[{ required: true, message: t('common.error') }]}
                     >
                         <Input />
                     </Form.Item>
 
                     <Form.Item
                         name="description"
-                        label="Description (Optional)"
+                        label={t('dashboard.description')}
                     >
                         <Input.TextArea />
                     </Form.Item>
 
                     <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
                         <Space>
-                            <Button onClick={() => setIsEditModalVisible(false)}>Cancel</Button>
+                            <Button onClick={() => setIsEditModalVisible(false)}>{t('common.cancel')}</Button>
                             <Button type="primary" htmlType="submit">
-                                Update
+                                {t('common.update')}
                             </Button>
                         </Space>
                     </Form.Item>

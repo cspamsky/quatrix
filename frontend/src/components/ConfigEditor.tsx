@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Input, Button, App, Empty, Spin, Typography, Space } from 'antd';
-import {
-    FileTextOutlined,
-    SaveOutlined,
-    ReloadOutlined,
-    UnorderedListOutlined
-} from '@ant-design/icons';
+import { FileTextOutlined, SaveOutlined, ReloadOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { fileService, ConfigFile } from '../services/fileService';
+import { useTranslation } from 'react-i18next';
 
 const { Sider, Content } = Layout;
 const { TextArea } = Input;
@@ -17,6 +13,7 @@ interface ConfigEditorProps {
 }
 
 const ConfigEditor: React.FC<ConfigEditorProps> = ({ serverId }) => {
+    const { t } = useTranslation();
     const { message } = App.useApp();
     const [files, setFiles] = useState<ConfigFile[]>([]);
     const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -38,7 +35,7 @@ const ConfigEditor: React.FC<ConfigEditorProps> = ({ serverId }) => {
                 handleFileSelect(response.data[0].name);
             }
         } catch (error) {
-            message.error('Failed to load config files');
+            message.error(t('common.error'));
         } finally {
             setLoading(false);
         }
@@ -46,7 +43,7 @@ const ConfigEditor: React.FC<ConfigEditorProps> = ({ serverId }) => {
 
     const handleFileSelect = async (filename: string) => {
         if (content !== originalContent) {
-            if (!window.confirm('You have unsaved changes. Discard them?')) {
+            if (!window.confirm(t('common.unsaved_changes'))) {
                 return;
             }
         }
@@ -58,7 +55,7 @@ const ConfigEditor: React.FC<ConfigEditorProps> = ({ serverId }) => {
             setContent(response.data);
             setOriginalContent(response.data);
         } catch (error) {
-            message.error('Failed to load file content');
+            message.error(t('common.error'));
         } finally {
             setLoading(false);
         }
@@ -70,9 +67,9 @@ const ConfigEditor: React.FC<ConfigEditorProps> = ({ serverId }) => {
         try {
             await fileService.saveFileContent(serverId, selectedFile, content);
             setOriginalContent(content);
-            message.success('File saved successfully');
+            message.success(t('config.saveSuccess'));
         } catch (error) {
-            message.error('Failed to save file');
+            message.error(t('common.error'));
         } finally {
             setSaving(false);
         }
@@ -86,7 +83,7 @@ const ConfigEditor: React.FC<ConfigEditorProps> = ({ serverId }) => {
                 <div style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
                     <Space>
                         <UnorderedListOutlined />
-                        <Text strong>Config Files</Text>
+                        <Text strong>{t('config.files')}</Text>
                     </Space>
                 </div>
                 <Menu
@@ -104,7 +101,7 @@ const ConfigEditor: React.FC<ConfigEditorProps> = ({ serverId }) => {
             <Content style={{ padding: '16px', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Title level={5} style={{ margin: 0 }}>
-                        {selectedFile ? `Editing: ${selectedFile}` : 'Select a file'}
+                        {selectedFile ? `${t('config.editing')}: ${selectedFile}` : t('config.selectFile')}
                     </Title>
                     <Space>
                         <Button
@@ -112,7 +109,7 @@ const ConfigEditor: React.FC<ConfigEditorProps> = ({ serverId }) => {
                             onClick={fetchFiles}
                             size="small"
                         >
-                            Refresh
+                            {t('common.refresh')}
                         </Button>
                         <Button
                             type="primary"
@@ -121,7 +118,7 @@ const ConfigEditor: React.FC<ConfigEditorProps> = ({ serverId }) => {
                             loading={saving}
                             disabled={!selectedFile || !hasChanges}
                         >
-                            Save Changes
+                            {t('common.save')}
                         </Button>
                     </Space>
                 </div>
@@ -145,7 +142,7 @@ const ConfigEditor: React.FC<ConfigEditorProps> = ({ serverId }) => {
                         }}
                     />
                 ) : (
-                    <Empty description="Select a file to edit" style={{ marginTop: '100px' }} />
+                    <Empty description={t('config.selectFileDesc')} style={{ marginTop: '100px' }} />
                 )}
             </Content>
         </Layout>

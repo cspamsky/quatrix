@@ -13,9 +13,12 @@ import {
 import { settingsService } from '../services/settingsService';
 import { authService } from '../services/authService';
 
+import { useTranslation } from 'react-i18next';
+
 const { Title, Text } = Typography;
 
 const Settings = () => {
+    const { t } = useTranslation();
     const { message, modal } = App.useApp();
     const [configForm] = Form.useForm();
     const [passwordForm] = Form.useForm();
@@ -31,7 +34,7 @@ const Settings = () => {
                 configForm.setFieldsValue(response.data);
             }
         } catch (error) {
-            message.error('Failed to load settings');
+            message.error(t('common.error'));
         } finally {
             setInitialLoading(false);
         }
@@ -46,10 +49,10 @@ const Settings = () => {
         try {
             const response = await settingsService.updateSettings(values);
             if (response.success) {
-                message.success('Settings updated successfully!');
+                message.success(t('common.success'));
             }
         } catch (error: any) {
-            message.error(error.response?.data?.message || 'Failed to update settings');
+            message.error(error.response?.data?.message || t('common.error'));
         } finally {
             setLoading(false);
         }
@@ -60,11 +63,11 @@ const Settings = () => {
         try {
             const response = await authService.changePassword(values);
             if (response.success) {
-                message.success('Password updated successfully!');
+                message.success(t('common.success'));
                 passwordForm.resetFields();
             }
         } catch (error: any) {
-            message.error(error.response?.data?.message || 'Failed to update password');
+            message.error(error.response?.data?.message || t('common.error'));
         } finally {
             setPasswordLoading(false);
         }
@@ -72,16 +75,16 @@ const Settings = () => {
 
     const handleInstallSteamCMD = async () => {
         modal.confirm({
-            title: 'Install SteamCMD?',
+            title: t('settings.installSteamCMD'),
             icon: <ExclamationCircleOutlined />,
-            content: 'This will download and extract SteamCMD to the configured directory. Make sure the path is correct.',
+            content: t('settings.installSteamCMD_confirm'),
             onOk: async () => {
                 setInstalling(true);
                 try {
                     const res = await settingsService.installSteamCMD();
-                    if (res.success) message.success('SteamCMD installed successfully!');
+                    if (res.success) message.success(t('common.success'));
                 } catch (error: any) {
-                    message.error(error.response?.data?.message || 'Installation failed');
+                    message.error(error.response?.data?.message || t('common.error'));
                 } finally {
                     setInstalling(false);
                 }
@@ -91,17 +94,17 @@ const Settings = () => {
 
     const handleResetWizard = async () => {
         modal.confirm({
-            title: 'Reset Setup Wizard?',
+            title: t('settings.resetWizard'),
             icon: <ExclamationCircleOutlined />,
-            content: 'This will reset the "isConfigured" flag. The setup wizard will appear again on your next dashboard visit.',
+            content: t('settings.resetWizard_confirm'),
             okType: 'danger',
             onOk: async () => {
                 try {
                     const res = await settingsService.resetSetup();
-                    if (res.success) message.success('Setup wizard reset. Refreshing...');
+                    if (res.success) message.success(t('common.success'));
                     window.location.href = '/';
                 } catch (error: any) {
-                    message.error('Failed to reset setup wizard');
+                    message.error(t('common.error'));
                 }
             },
         });
@@ -111,16 +114,16 @@ const Settings = () => {
         <div style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '40px' }}>
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Title level={2} style={{ margin: 0 }}>Quatrix Settings</Title>
+                    <Title level={2} style={{ margin: 0 }}>{t('settings.title')}</Title>
                     <Button icon={<ReloadOutlined />} onClick={fetchSettings} loading={initialLoading}>
-                        Refresh
+                        {t('common.refresh')}
                     </Button>
                 </div>
 
                 {/* Global Configuration */}
                 <Card
                     loading={initialLoading}
-                    title={<span><SettingOutlined /> Global Configuration</span>}
+                    title={<span><SettingOutlined /> {t('settings.save')}</span>}
                 >
                     <Form
                         form={configForm}
@@ -132,9 +135,9 @@ const Settings = () => {
                             <Col span={24}>
                                 <Form.Item
                                     name="steamcmdPath"
-                                    label="SteamCMD Directory"
-                                    rules={[{ required: true, message: 'Please enter SteamCMD path' }]}
-                                    extra="Directory where steamcmd.exe (Windows) or steamcmd.sh (Linux) is located."
+                                    label={t('settings.steamcmd')}
+                                    rules={[{ required: true, message: t('common.required') }]}
+                                    extra={t('settings.steamcmd_desc')}
                                 >
                                     <Input
                                         prefix={<FolderOpenOutlined />}
@@ -146,9 +149,9 @@ const Settings = () => {
                             <Col span={24}>
                                 <Form.Item
                                     name="serversPath"
-                                    label="Servers Root Directory"
-                                    rules={[{ required: true, message: 'Please enter servers root path' }]}
-                                    extra="Common root folder where all CS2 server instances will be stored."
+                                    label={t('settings.serversPath')}
+                                    rules={[{ required: true, message: t('common.required') }]}
+                                    extra={t('settings.serversPath_desc')}
                                 >
                                     <Input
                                         prefix={<FolderOpenOutlined />}
@@ -168,7 +171,7 @@ const Settings = () => {
                                 loading={loading}
                                 size="large"
                             >
-                                Save Configuration
+                                {t('settings.save')}
                             </Button>
                         </Form.Item>
                     </Form>
@@ -177,7 +180,7 @@ const Settings = () => {
                 <Row gutter={24}>
                     <Col xs={24} lg={12}>
                         {/* Password Reset */}
-                        <Card title={<span><LockOutlined /> Security & Password</span>}>
+                        <Card title={<span><LockOutlined /> {t('settings.security')}</span>}>
                             <Form
                                 form={passwordForm}
                                 layout="vertical"
@@ -185,17 +188,17 @@ const Settings = () => {
                             >
                                 <Form.Item
                                     name="currentPassword"
-                                    label="Current Password"
-                                    rules={[{ required: true, message: 'Required' }]}
+                                    label={t('settings.currentPassword')}
+                                    rules={[{ required: true, message: t('common.required') }]}
                                 >
                                     <Input.Password prefix={<LockOutlined />} />
                                 </Form.Item>
                                 <Form.Item
                                     name="newPassword"
-                                    label="New Password"
+                                    label={t('settings.newPassword')}
                                     rules={[
-                                        { required: true, message: 'Required' },
-                                        { min: 6, message: 'Min 6 characters' }
+                                        { required: true, message: t('common.required') },
+                                        { min: 6, message: t('common.min_chars') }
                                     ]}
                                 >
                                     <Input.Password prefix={<LockOutlined />} />
@@ -206,7 +209,7 @@ const Settings = () => {
                                     loading={passwordLoading}
                                     block
                                 >
-                                    Update Password
+                                    {t('settings.updatePassword')}
                                 </Button>
                             </Form>
                         </Card>
@@ -214,7 +217,7 @@ const Settings = () => {
 
                     <Col xs={24} lg={12}>
                         {/* Management Tools */}
-                        <Card title={<span><RocketOutlined /> Management Tools</span>}>
+                        <Card title={<span><RocketOutlined /> {t('settings.management')}</span>}>
                             <Space direction="vertical" style={{ width: '100%' }}>
                                 <Button
                                     icon={<CloudDownloadOutlined />}
@@ -222,36 +225,33 @@ const Settings = () => {
                                     onClick={handleInstallSteamCMD}
                                     loading={installing}
                                 >
-                                    Install/Update SteamCMD Online
+                                    {t('settings.installSteamCMD')}
                                 </Button>
                                 <Button
                                     icon={<ReloadOutlined />}
                                     block
                                     onClick={handleResetWizard}
                                 >
-                                    Re-run Setup Wizard
+                                    {t('settings.resetWizard')}
                                 </Button>
                                 <Divider style={{ margin: '12px 0' }} />
-                                <Text type="secondary" style={{ fontSize: '12px' }}>
-                                    Note: Installing SteamCMD will download approximately 3MB.
-                                </Text>
                             </Space>
                         </Card>
                     </Col>
                 </Row>
 
-                <Card title="Application Info">
+                <Card title={t('settings.appInfo')}>
                     <Row gutter={24}>
                         <Col span={8}>
-                            <Text type="secondary">Product Name</Text>
+                            <Text type="secondary">{t('settings.productName')}</Text>
                             <Title level={5} style={{ marginTop: 4 }}>Quatrix</Title>
                         </Col>
                         <Col span={8}>
-                            <Text type="secondary">Version</Text>
-                            <Title level={5} style={{ marginTop: 4 }}>v0.1.0-alpha</Title>
+                            <Text type="secondary">{t('settings.version')}</Text>
+                            <Title level={5} style={{ marginTop: 4 }}>v1.0.0</Title>
                         </Col>
                         <Col span={8}>
-                            <Text type="secondary">Environment</Text>
+                            <Text type="secondary">{t('settings.environment')}</Text>
                             <Title level={5} style={{ marginTop: 4 }}>Development (Native)</Title>
                         </Col>
                     </Row>

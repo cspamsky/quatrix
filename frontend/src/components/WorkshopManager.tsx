@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Form, Input, Button, Typography, Space, Divider, message } from 'antd';
 import { GlobalOutlined, SaveOutlined, RocketOutlined, DeleteOutlined } from '@ant-design/icons';
 import { serverService } from '../services/serverService';
+import { useTranslation } from 'react-i18next';
 
 const { Title, Text } = Typography;
 
@@ -11,6 +12,7 @@ interface WorkshopManagerProps {
 }
 
 const WorkshopManager: React.FC<WorkshopManagerProps> = ({ server, onUpdate }) => {
+    const { t } = useTranslation();
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
 
@@ -22,11 +24,11 @@ const WorkshopManager: React.FC<WorkshopManagerProps> = ({ server, onUpdate }) =
                 workshopMapId: values.workshopMapId || null
             });
             if (response.success) {
-                message.success('Workshop settings updated successfully');
+                message.success(t('workshop.success'));
                 onUpdate();
             }
         } catch (error: any) {
-            message.error(error.response?.data?.message || 'Failed to update workshop settings');
+            message.error(error.response?.data?.message || t('common.error'));
         } finally {
             setLoading(false);
         }
@@ -36,9 +38,9 @@ const WorkshopManager: React.FC<WorkshopManagerProps> = ({ server, onUpdate }) =
         <div style={{ padding: '0' }}>
             <div style={{ textAlign: 'center', marginBottom: 12 }}>
                 <GlobalOutlined style={{ fontSize: 24, color: '#1890ff' }} />
-                <Title level={5} style={{ marginTop: 4, marginBottom: 2 }}>Workshop Settings</Title>
+                <Title level={5} style={{ marginTop: 4, marginBottom: 2 }}>{t('workshop.title')}</Title>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                    Manage maps and collections.
+                    {t('workshop.description')}
                 </Text>
             </div>
 
@@ -55,7 +57,7 @@ const WorkshopManager: React.FC<WorkshopManagerProps> = ({ server, onUpdate }) =
                 <Space direction="vertical" style={{ width: '100%' }} size={4}>
                     <Form.Item
                         name="workshopCollection"
-                        label={<Space size={4}><GlobalOutlined /><span style={{ fontSize: 12 }}>Collection ID</span></Space>}
+                        label={<Space size={4}><GlobalOutlined /><span style={{ fontSize: 12 }}>{t('workshop.collectionId')}</span></Space>}
                         style={{ marginBottom: 4 }}
                     >
                         <Input placeholder="e.g. 3012345678" />
@@ -63,7 +65,7 @@ const WorkshopManager: React.FC<WorkshopManagerProps> = ({ server, onUpdate }) =
 
                     <Form.Item
                         name="workshopMapId"
-                        label={<Space size={4}><RocketOutlined /><span style={{ fontSize: 12 }}>Start Map ID</span></Space>}
+                        label={<Space size={4}><RocketOutlined /><span style={{ fontSize: 12 }}>{t('workshop.mapId')}</span></Space>}
                         style={{ marginBottom: 0 }}
                     >
                         <Input placeholder="e.g. 3087654321" />
@@ -79,7 +81,7 @@ const WorkshopManager: React.FC<WorkshopManagerProps> = ({ server, onUpdate }) =
                             onClick={() => form.resetFields()}
                             size="small"
                         >
-                            Reset
+                            {t('workshop.reset')}
                         </Button>
                         <Button
                             type="primary"
@@ -88,7 +90,7 @@ const WorkshopManager: React.FC<WorkshopManagerProps> = ({ server, onUpdate }) =
                             loading={loading}
                             size="small"
                         >
-                            Save Settings
+                            {t('workshop.saveSettings')}
                         </Button>
                     </div>
                 </Space>

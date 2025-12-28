@@ -65,16 +65,16 @@ const Login: React.FC = () => {
                     >
                         <Form.Item
                             name="email"
-                            rules={[{ required: true, message: 'Please input your email!', type: 'email' }]}
+                            rules={[{ required: true, message: t('common.error'), type: 'email' }]}
                         >
-                            <Input prefix={<UserOutlined />} placeholder="Email" />
+                            <Input prefix={<UserOutlined />} placeholder={t('common.email')} />
                         </Form.Item>
 
                         <Form.Item
                             name="password"
-                            rules={[{ required: true, message: 'Please input your password!' }]}
+                            rules={[{ required: true, message: t('common.error') }]}
                         >
-                            <Input.Password prefix={<LockOutlined />} placeholder="Password" />
+                            <Input.Password prefix={<LockOutlined />} placeholder={t('common.password')} />
                         </Form.Item>
 
                         <Form.Item>
@@ -86,8 +86,8 @@ const Login: React.FC = () => {
 
                     <div style={{ textAlign: 'center' }}>
                         <Space>
-                            <Text type="secondary">Don't have an account?</Text>
-                            <Link to="/register">{t('common.create')}</Link>
+                            <Text type="secondary">{t('common.no_account')}</Text>
+                            <Link to="/register">{t('common.create_account')}</Link>
                         </Space>
                     </div>
                 </Card>

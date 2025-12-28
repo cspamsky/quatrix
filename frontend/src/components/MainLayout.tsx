@@ -80,7 +80,7 @@ const MainLayout = () => {
                     />
                     <Text className="header-email" style={{ color: 'white', opacity: 0.85 }}>{user?.email}</Text>
                     <Select
-                        value={i18n.language}
+                        value={i18n.resolvedLanguage}
                         onChange={changeLanguage}
                         size={'small'}
                         style={{ width: 100 }}
@@ -112,19 +112,19 @@ const MainLayout = () => {
                             {
                                 key: '/',
                                 icon: <DashboardOutlined />,
-                                label: 'Dashboard',
+                                label: t('nav.dashboard'),
                                 onClick: () => navigate('/')
                             },
                             {
                                 key: '/servers',
                                 icon: <CloudServerOutlined />,
-                                label: 'My Servers',
+                                label: t('nav.servers'),
                                 onClick: () => navigate('/servers')
                             },
                             {
                                 key: '/terminal',
                                 icon: <ControlOutlined />,
-                                label: 'Global Terminal',
+                                label: t('nav.terminal'),
                                 onClick: () => navigate('/terminal')
                             },
                             {
@@ -133,7 +133,7 @@ const MainLayout = () => {
                             {
                                 key: '/settings',
                                 icon: <SettingOutlined />,
-                                label: 'Settings',
+                                label: t('nav.settings'),
                                 onClick: () => navigate('/settings')
                             }
                         ]}
