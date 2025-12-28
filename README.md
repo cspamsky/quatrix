@@ -9,7 +9,7 @@
 **Quatrix** is a premium, high-performance web-based management platform designed for **Counter-Strike 2** dedicated servers. Built with a focus on **native performance**, Quatrix allows you to deploy, manage, and monitor your servers directly on your host machine with an industry-leading user interface.
 
 > [!WARNING]
-> **Work in Progress:** Bu proje henüz geliştirme aşamasındadır. Bazı özellikler tamamlanmamış olabilir veya kararlılık sorunları içerebilir.
+> **Work in Progress:** This project is currently under active development. Some features may be incomplete or contain stability issues.
 
 ![Quatrix Dashboard](screenshots/dashboard.png)
 

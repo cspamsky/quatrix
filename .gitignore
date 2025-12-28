@@ -41,3 +41,7 @@ backend/logs/
 backend/prisma/*.db*
 frontend/node_modules/
 backend/node_modules/
+
+# Manual Setup Guides
+NODEJS_KURULUM.md
+PROJECT_SETUP_COMPLETE.md
