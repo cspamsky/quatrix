@@ -169,7 +169,7 @@ function Dashboard() {
             title: 'Status',
             dataIndex: 'status',
             key: 'status',
-            responsive: ['md' as const],
+            responsive: ['md' as const, 'lg' as const, 'xl' as const, 'xxl' as const],
             render: (status: string) => {
                 let color = 'default';
                 if (status === 'RUNNING') color = 'success';
@@ -183,13 +183,13 @@ function Dashboard() {
             title: 'Port',
             dataIndex: 'port',
             key: 'port',
-            responsive: ['lg' as const],
+            responsive: ['xl' as const, 'xxl' as const],
         },
         {
             title: 'Actions',
             key: 'actions',
             render: (_: any, record: any) => (
-                <Space>
+                <Space wrap>
                     <Button
                         icon={<EditOutlined />}
                         size="small"
@@ -203,7 +203,7 @@ function Dashboard() {
                             type="primary"
                             size="small"
                         >
-                            Start
+                            <span className="button-text">Start</span>
                         </Button>
                     ) : (
                         <Button
@@ -213,23 +213,25 @@ function Dashboard() {
                             size="small"
                             disabled={record.status === 'CREATING'}
                         >
-                            Stop
+                            <span className="button-text">Stop</span>
                         </Button>
                     )}
                     <Button
                         icon={<SettingOutlined />}
                         size="small"
                         onClick={() => setSelectedServerForConsole(record.id)}
+                        title="Console"
                     >
-                        Console
+                        <span className="button-text">Console</span>
                     </Button>
                     <Button
                         icon={<FileTextOutlined />}
                         size="small"
                         onClick={() => setSelectedServerForConfig(record.id)}
                         disabled={record.status === 'CREATING'}
+                        title="Config"
                     >
-                        Config
+                        <span className="button-text">Config</span>
                     </Button>
                     <Button
                         icon={<SafetyCertificateOutlined />}
@@ -238,15 +240,16 @@ function Dashboard() {
                         disabled={record.status !== 'STOPPED' && record.status !== 'ERROR'}
                         title="Verify Server Files"
                     >
-                        Verify
+                        <span className="button-text">Verify</span>
                     </Button>
                     <Button
                         icon={<DeleteOutlined />}
                         size="small"
                         danger
                         onClick={() => handleDelete(record.id)}
+                        title="Delete"
                     >
-                        {record.status === 'CREATING' ? 'Cancel' : 'Delete'}
+                        <span className="button-text">{record.status === 'CREATING' ? 'Cancel' : 'Delete'}</span>
                     </Button>
                 </Space>
             )
@@ -306,8 +309,8 @@ function Dashboard() {
             </Row>
 
             {/* Main Content Area */}
-            <Row gutter={16}>
-                <Col xs={24} lg={16}>
+            <Row gutter={[16, 16]}>
+                <Col xs={24} xl={16}>
                     <Card title="Your Servers" style={{ height: '100%', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
                         <Table
                             dataSource={servers}
@@ -316,10 +319,11 @@ function Dashboard() {
                             loading={loading}
                             locale={{ emptyText: 'No servers found. Create your first one!' }}
                             pagination={{ pageSize: 5 }}
+                            className="responsive-table"
                         />
                     </Card>
                 </Col>
-                <Col xs={24} lg={8}>
+                <Col xs={24} xl={8}>
                     <ServerResources />
                 </Col>
             </Row>

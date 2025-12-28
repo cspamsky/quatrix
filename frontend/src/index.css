@@ -26,7 +26,7 @@ code {
 }
 
 /* Responsiveness Utilities */
-@media (max-width: 768px) {
+@media (max-width: 992px) {
   .header-email {
     display: none !important;
   }
@@ -34,9 +34,27 @@ code {
   .logout-text {
     display: none !important;
   }
+
+  .button-text {
+    display: none !important;
+  }
 }
 
 /* Ant Design Table Responsiveness Fix - Stack approach */
 .ant-table-wrapper {
   width: 100%;
+}
+
+.ant-table-content {
+  overflow-x: hidden !important;
+}
+
+/* Ensure cards stack well on mobile */
+.ant-row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.ant-col {
+  margin-bottom: 16px;
 }
