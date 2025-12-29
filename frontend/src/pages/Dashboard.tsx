@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-    Card, Statistic, Row, Col, Button, Typography, Space, Modal, Form, Input, Table, Tag, App
+    Card, Statistic, Row, Col, Button, Typography, Space, Modal, Form, Input, Table, Tag, App, Select
 } from 'antd';
 import {
     DashboardOutlined,
@@ -13,7 +13,6 @@ import {
     SettingOutlined,
     DeleteOutlined,
     ExclamationCircleOutlined,
-    FileTextOutlined,
     SafetyCertificateOutlined,
     EditOutlined
 } from '@ant-design/icons';
@@ -21,7 +20,6 @@ import { useTranslation } from 'react-i18next';
 import { serverService } from '../services/serverService';
 import Console from '../components/Console';
 import ServerResources from '../components/ServerResources';
-import ConfigEditor from '../components/ConfigEditor';
 import WorkshopManager from '../components/WorkshopManager';
 
 const { Title, Text } = Typography;
@@ -36,7 +34,6 @@ function Dashboard() {
     const [loading, setLoading] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selectedServerForConsole, setSelectedServerForConsole] = useState<string | null>(null);
-    const [selectedServerForConfig, setSelectedServerForConfig] = useState<string | null>(null);
     const [isEditModalVisible, setIsEditModalVisible] = useState(false);
     const [editingServer, setEditingServer] = useState<any>(null);
     const [selectedServerForWorkshop, setSelectedServerForWorkshop] = useState<any | null>(null);
@@ -59,7 +56,8 @@ function Dashboard() {
 
     useEffect(() => {
         // Check backend health
-        fetch('http://localhost:3000/health')
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        fetch(`${API_URL}/health`)
             .then(res => res.json())
             .then(() => setApiStatus('online'))
             .catch(() => setApiStatus('offline'));
@@ -69,7 +67,13 @@ function Dashboard() {
 
     const handleCreateServer = async (values: any) => {
         try {
-            const response = await serverService.createServer(values);
+            // Trim critical tokens
+            const finalValues = {
+                ...values,
+                gsltToken: values.gsltToken?.trim(),
+                steamAuthKey: values.steamAuthKey?.trim()
+            };
+            const response = await serverService.createServer(finalValues);
             if (response.success) {
                 message.success(t('common.success'));
                 setIsModalVisible(false);
@@ -83,22 +87,41 @@ function Dashboard() {
     };
 
     const handleStart = async (id: string) => {
+        setLoading(true);
         try {
             await serverService.startServer(id);
             message.success(t('common.success'));
             fetchServers();
         } catch (error: any) {
             message.error(error.response?.data?.message || t('common.error'));
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleStop = async (id: string) => {
+        setLoading(true);
         try {
             await serverService.stopServer(id);
             message.success(t('common.success'));
             fetchServers();
         } catch (error: any) {
             message.error(error.response?.data?.message || t('common.error'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleRestart = async (id: string) => {
+        setLoading(true);
+        try {
+            await serverService.restartServer(id);
+            message.success(t('common.success'));
+            fetchServers();
+        } catch (error: any) {
+            message.error(error.response?.data?.message || t('common.error'));
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -138,7 +161,13 @@ function Dashboard() {
     const handleUpdateServer = async (values: any) => {
         if (!editingServer) return;
         try {
-            const response = await serverService.updateServer(editingServer.id, values);
+            // Trim critical tokens
+            const finalValues = {
+                ...values,
+                gsltToken: values.gsltToken?.trim(),
+                steamAuthKey: values.steamAuthKey?.trim()
+            };
+            const response = await serverService.updateServer(editingServer.id, finalValues);
             if (response.success) {
                 message.success(t('common.success'));
                 setIsEditModalVisible(false);
@@ -152,12 +181,23 @@ function Dashboard() {
 
     const handleEdit = (record: any) => {
         setEditingServer(record);
-        editForm.setFieldsValue({
-            name: record.name,
-            description: record.description
-        });
         setIsEditModalVisible(true);
     };
+
+    // Populate edit form when modal opens
+    useEffect(() => {
+        if (isEditModalVisible && editingServer) {
+            editForm.setFieldsValue({
+                name: editingServer.name,
+                description: editingServer.description,
+                gsltToken: editingServer.gsltToken,
+                steamAuthKey: editingServer.steamAuthKey,
+                rconPassword: '', // Don't populate password for security
+                maxPlayers: editingServer.maxPlayers || 10,
+                map: editingServer.map || 'de_dust2',
+            });
+        }
+    }, [isEditModalVisible, editingServer, editForm]);
 
     const columns = [
         {
@@ -194,7 +234,7 @@ function Dashboard() {
                         icon={<EditOutlined />}
                         size="small"
                         onClick={() => handleEdit(record)}
-                        title="Rename Server"
+                        title="Edit Server"
                     />
                     {record.status === 'STOPPED' || record.status === 'ERROR' ? (
                         <Button
@@ -216,6 +256,16 @@ function Dashboard() {
                             <span className="button-text">{t('server.stop')}</span>
                         </Button>
                     )}
+                    {record.status === 'RUNNING' && (
+                        <Button
+                            icon={<ReloadOutlined />}
+                            onClick={() => handleRestart(record.id)}
+                            size="small"
+                            title="Restart Server"
+                        >
+                            <span className="button-text">{t('server.restart') || 'Restart'}</span>
+                        </Button>
+                    )}
                     <Button
                         icon={<SettingOutlined />}
                         size="small"
@@ -223,15 +273,6 @@ function Dashboard() {
                         title={t('server.console')}
                     >
                         <span className="button-text">{t('server.console')}</span>
-                    </Button>
-                    <Button
-                        icon={<FileTextOutlined />}
-                        size="small"
-                        onClick={() => setSelectedServerForConfig(record.id)}
-                        disabled={record.status === 'CREATING'}
-                        title={t('server.config')}
-                    >
-                        <span className="button-text">{t('server.config')}</span>
                     </Button>
                     <Button
                         icon={<SafetyCertificateOutlined />}
@@ -357,6 +398,10 @@ function Dashboard() {
                     form={form}
                     onFinish={handleCreateServer}
                     layout="vertical"
+                    initialValues={{
+                        maxPlayers: 10,
+                        map: 'de_dust2',
+                    }}
                 >
                     <Form.Item
                         name="name"
@@ -373,14 +418,78 @@ function Dashboard() {
                         <Input.TextArea placeholder="A short description" />
                     </Form.Item>
 
-                    <Form.Item
-                        name="gsltToken"
-                        label={t('dashboard.gsltToken')}
-                        help={<a href="https://steamcommunity.com/dev/managegameservers" target="_blank" rel="noreferrer">Steam Dev Portal</a>}
-                        rules={[{ required: true, message: t('common.error') }]}
-                    >
-                        <Input placeholder="Example: 5F0B..." />
-                    </Form.Item>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item
+                                name="gsltToken"
+                                label="GSLT Token (API Key)"
+                                help={<a href="https://steamcommunity.com/dev/managegameservers" target="_blank" rel="noreferrer">Steam Dev Portal</a>}
+                                rules={[{ required: true, message: 'GSLT Token gerekli' }]}
+                            >
+                                <Input placeholder="5F0B..." />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item
+                                name="steamAuthKey"
+                                label="Steam Web API Key (-authkey)"
+                                help={<a href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noreferrer">Get API Key</a>}
+                            >
+                                <Input placeholder="Örn: 1234..." />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item
+                                name="rconPassword"
+                                label="RCON Şifresi"
+                                rules={[
+                                    { required: true, message: 'RCON şifresi gerekli' },
+                                    { min: 6, message: 'En az 6 karakter olmalı' }
+                                ]}
+                            >
+                                <Input.Password placeholder="Güvenli bir şifre" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item
+                                name="maxPlayers"
+                                label="Maksimum Oyuncu"
+                                rules={[{ required: true, message: 'Oyuncu sayısı gerekli' }]}
+                            >
+                                <Input type="number" min={2} max={64} placeholder="10" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item
+                                name="map"
+                                label="Başlangıç Haritası"
+                                rules={[{ required: true, message: 'Harita seçimi gerekli' }]}
+                            >
+                                <Select placeholder="Harita seçin">
+                                    <Select.OptGroup label="Competitive Maps">
+                                        <Select.Option value="de_dust2">Dust 2</Select.Option>
+                                        <Select.Option value="de_mirage">Mirage</Select.Option>
+                                        <Select.Option value="de_inferno">Inferno</Select.Option>
+                                        <Select.Option value="de_nuke">Nuke</Select.Option>
+                                        <Select.Option value="de_overpass">Overpass</Select.Option>
+                                        <Select.Option value="de_vertigo">Vertigo</Select.Option>
+                                        <Select.Option value="de_ancient">Ancient</Select.Option>
+                                        <Select.Option value="de_anubis">Anubis</Select.Option>
+                                    </Select.OptGroup>
+                                    <Select.OptGroup label="Other Maps">
+                                        <Select.Option value="cs_office">Office</Select.Option>
+                                        <Select.Option value="cs_italy">Italy</Select.Option>
+                                    </Select.OptGroup>
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                    </Row>
 
                     <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
                         <Space>
@@ -400,25 +509,10 @@ function Dashboard() {
                 onCancel={() => setSelectedServerForConsole(null)}
                 width={800}
                 footer={null}
-                destroyOnClose
+                destroyOnHidden
             >
                 {selectedServerForConsole && (
                     <Console serverId={selectedServerForConsole} />
-                )}
-            </Modal>
-
-            {/* Config Editor Modal */}
-            <Modal
-                title={`File Editor - ${servers.find(s => s.id === selectedServerForConfig)?.name || ''}`}
-                open={!!selectedServerForConfig}
-                onCancel={() => setSelectedServerForConfig(null)}
-                width={900}
-                footer={null}
-                destroyOnClose
-                style={{ top: 20 }}
-            >
-                {selectedServerForConfig && (
-                    <ConfigEditor serverId={selectedServerForConfig} />
                 )}
             </Modal>
 
@@ -428,7 +522,7 @@ function Dashboard() {
                 open={isEditModalVisible}
                 onCancel={() => setIsEditModalVisible(false)}
                 footer={null}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Form
                     form={editForm}
@@ -450,6 +544,78 @@ function Dashboard() {
                         <Input.TextArea />
                     </Form.Item>
 
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item
+                                name="gsltToken"
+                                label="GSLT Token (API Key)"
+                                help={<a href="https://steamcommunity.com/dev/managegameservers" target="_blank" rel="noreferrer">Steam Dev Portal</a>}
+                                rules={[{ required: true, message: 'GSLT Token gerekli' }]}
+                            >
+                                <Input placeholder="5F0B..." />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item
+                                name="steamAuthKey"
+                                label="Steam Web API Key (-authkey)"
+                                help={<a href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noreferrer">Get API Key</a>}
+                            >
+                                <Input placeholder="Boş bırakılabilir" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item
+                                name="rconPassword"
+                                label="RCON Şifresi (Değiştirmek için girin)"
+                                rules={[
+                                    { min: 6, message: 'En az 6 karakter olmalı' }
+                                ]}
+                            >
+                                <Input.Password placeholder="Boş bırakılırsa değişmez" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item
+                                name="maxPlayers"
+                                label="Maksimum Oyuncu"
+                                rules={[{ required: true, message: 'Oyuncu sayısı gerekli' }]}
+                            >
+                                <Input type="number" min={2} max={64} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item
+                                name="map"
+                                label="Varsayılan Harita"
+                                rules={[{ required: true, message: 'Harita seçimi gerekli' }]}
+                            >
+                                <Select>
+                                    <Select.OptGroup label="Competitive Maps">
+                                        <Select.Option value="de_dust2">Dust 2</Select.Option>
+                                        <Select.Option value="de_mirage">Mirage</Select.Option>
+                                        <Select.Option value="de_inferno">Inferno</Select.Option>
+                                        <Select.Option value="de_nuke">Nuke</Select.Option>
+                                        <Select.Option value="de_overpass">Overpass</Select.Option>
+                                        <Select.Option value="de_vertigo">Vertigo</Select.Option>
+                                        <Select.Option value="de_ancient">Ancient</Select.Option>
+                                        <Select.Option value="de_anubis">Anubis</Select.Option>
+                                    </Select.OptGroup>
+                                    <Select.OptGroup label="Other Maps">
+                                        <Select.Option value="cs_office">Office</Select.Option>
+                                        <Select.Option value="cs_italy">Italy</Select.Option>
+                                    </Select.OptGroup>
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
                     <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
                         <Space>
                             <Button onClick={() => setIsEditModalVisible(false)}>{t('common.cancel')}</Button>
@@ -468,13 +634,15 @@ function Dashboard() {
                 onCancel={() => setSelectedServerForWorkshop(null)}
                 width={480}
                 footer={null}
-                destroyOnClose
+                destroyOnHidden
             >
                 {selectedServerForWorkshop && (
                     <WorkshopManager
+                        key={selectedServerForWorkshop.id}
                         server={selectedServerForWorkshop}
                         onUpdate={() => {
                             fetchServers();
+                            setSelectedServerForWorkshop(null); // Close modal on success
                         }}
                     />
                 )}

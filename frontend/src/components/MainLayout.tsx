@@ -5,7 +5,8 @@ import {
     CloudServerOutlined,
     SettingOutlined,
     LogoutOutlined,
-    ControlOutlined
+    ControlOutlined,
+    FolderOpenOutlined
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
@@ -122,10 +123,16 @@ const MainLayout = () => {
                                 onClick: () => navigate('/servers')
                             },
                             {
-                                key: '/terminal',
+                                key: '/files',
+                                icon: <FolderOpenOutlined />,
+                                label: 'Dosya Yöneticisi',
+                                onClick: () => navigate('/files')
+                            },
+                            {
+                                key: '/rcon',
                                 icon: <ControlOutlined />,
-                                label: t('nav.terminal'),
-                                onClick: () => navigate('/terminal')
+                                label: 'RCON Konsol',
+                                onClick: () => navigate('/rcon')
                             },
                             {
                                 type: 'divider'

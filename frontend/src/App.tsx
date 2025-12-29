@@ -3,6 +3,8 @@ import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Settings from './pages/Settings';
+import Files from './pages/Files';
+import Rcon from './pages/Rcon';
 import ProtectedRoute from './components/ProtectedRoute';
 import MainLayout from './components/MainLayout';
 import { useAuthStore } from './store/useAuthStore';
@@ -28,9 +30,10 @@ function App() {
                     <Route element={<MainLayout />}>
                         <Route path="/" element={<Dashboard />} />
                         <Route path="/settings" element={<Settings />} />
+                        <Route path="/files" element={<Files />} />
                         {/* More routes can be added here */}
                         <Route path="/servers" element={<Dashboard />} />
-                        <Route path="/terminal" element={<div>Coming Soon</div>} />
+                        <Route path="/rcon" element={<Rcon />} />
                     </Route>
                 </Route>
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Card, Typography, Space, message, Layout } from 'antd';
+import { Form, Input, Button, Card, Typography, Space, App, Layout } from 'antd';
 import { UserOutlined, LockOutlined, RocketOutlined, IdcardOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +12,7 @@ const { Title, Text } = Typography;
 const { Content } = Layout;
 
 const Register: React.FC = () => {
+    const { message } = App.useApp();
     const { t } = useTranslation();
     const navigate = useNavigate();
     const setAuth = useAuthStore((state) => state.setAuth);

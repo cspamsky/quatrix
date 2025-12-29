@@ -76,16 +76,19 @@ class TerminalService {
         const process = processService.getProcess(serverId);
         if (!process) return;
 
-        // Use a flag or check if we already attached to avoid multiple listeners
-        // For now, simple approach:
+        // Clear existing listeners to prevent duplication
+        process.stdout?.removeAllListeners('data');
+        process.stderr?.removeAllListeners('data');
+
         process.stdout?.on('data', (data) => {
-            const output = data.toString();
+            // Ensure compatibility with xterm.js by adding \r to \n
+            const output = data.toString().replace(/\n/g, '\r\n');
             this.addToBuffer(serverId, output);
             this.io?.to(`terminal:${serverId}`).emit('terminal:output', output);
         });
 
         process.stderr?.on('data', (data) => {
-            const output = `\x1b[31m${data.toString()}\x1b[0m`;
+            const output = `\x1b[31m${data.toString().replace(/\n/g, '\r\n')}\x1b[0m`;
             this.addToBuffer(serverId, output);
             this.io?.to(`terminal:${serverId}`).emit('terminal:output', output);
         });
@@ -108,8 +111,13 @@ class TerminalService {
      * Public method to stream arbitrary data to a server's terminal
      */
     public streamOutput(serverId: string, data: string) {
+        // Data is already formatted in process.service.ts
         this.addToBuffer(serverId, data);
         this.io?.to(`terminal:${serverId}`).emit('terminal:output', data);
+    }
+
+    public sendProgress(serverId: string, percent: number) {
+        this.io?.to(`terminal:${serverId}`).emit('terminal:progress', { percent });
     }
 
     /**
@@ -133,15 +141,17 @@ class TerminalService {
         try {
             let rcon = this.rconConnections.get(serverId);
             if (!rcon || !rcon.isConnected()) {
-                rcon = new Rcon({
+                const RconConstructor: any = (Rcon as any).default || Rcon;
+                const newRcon = new RconConstructor({
                     host: '127.0.0.1',
                     port: server.port,
                 });
-                await rcon.authenticate(server.rconPassword);
-                this.rconConnections.set(serverId, rcon);
+                await newRcon.authenticate(server.rconPassword);
+                this.rconConnections.set(serverId, newRcon);
+                rcon = newRcon;
             }
-            const result = await rcon.execute(command);
-            return typeof result === 'string' ? result : '> Command executed';
+            const result = await (rcon as any).execute(command);
+            return typeof result === 'string' ? result : String(result);
         } catch (error) {
             // Fallback to stdin if RCON fails
             logger.warn(`RCON failed for ${serverId}, falling back to stdin: ${error}`);

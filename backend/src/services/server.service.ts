@@ -23,13 +23,21 @@ class ServerService {
     /**
      * Create a new server record and start installation
      */
-    public async createServer(userId: string, data: { name: string; description?: string; gsltToken: string }) {
+    public async createServer(userId: string, data: {
+        name: string;
+        description?: string;
+        gsltToken: string;
+        steamAuthKey?: string;
+        rconPassword?: string;
+        maxPlayers?: number;
+        map?: string;
+    }) {
         // 1. Allocate ports
         const port = await this.allocatePort();
         const rconPort = port + 1000; // Common convention
 
-        // 2. Generate random RCON password
-        const rconPassword = Math.random().toString(36).slice(-10);
+        // 2. RCON password
+        const rconPassword = data.rconPassword || Math.random().toString(36).slice(-10);
 
         // 3. Create DB record
         const server = await prisma.server.create({
@@ -41,6 +49,9 @@ class ServerService {
                 rconPort,
                 rconPassword,
                 gsltToken: data.gsltToken,
+                steamAuthKey: data.steamAuthKey,
+                maxPlayers: data.maxPlayers || 10,
+                map: data.map || 'de_dust2',
                 status: 'CREATING',
                 installPath: steamcmdService.getServerPath('pending') // Temporary
             }
@@ -86,6 +97,8 @@ class ServerService {
                 maxPlayers: server.maxPlayers,
                 gameMode: server.gameMode,
                 gsltToken: server.gsltToken,
+                steamAuthKey: server.steamAuthKey || undefined,
+                rconPassword: server.rconPassword,
                 workshopCollection: server.workshopCollection || undefined,
                 workshopMapId: server.workshopMapId || undefined
             });
@@ -134,6 +147,24 @@ class ServerService {
     }
 
     /**
+     * Restart a CS2 server
+     */
+    public async restartServer(serverId: string, userId: string) {
+        try {
+            logger.info(`Restarting server ${serverId}...`);
+            await this.stopServer(serverId, userId);
+
+            // Wait for 1.5s to ensure OS ports are released
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            await this.startServer(serverId, userId);
+            logger.info(`Server ${serverId} restarted successfully.`);
+        } catch (error: any) {
+            throw new ApiError(500, `Restart failed: ${error.message}`);
+        }
+    }
+
+    /**
      * Delete a server and cleanup all resources
      */
     public async deleteServer(serverId: string, userId: string) {
@@ -153,7 +184,6 @@ class ServerService {
         // 3. Wait a bit for file handles to release (especially on Windows)
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        // 4. Delete files from disk
         // 4. Delete files from disk with retry logic
         const installPath = server.installPath;
         if (installPath && fs.existsSync(installPath)) {
@@ -199,17 +229,15 @@ class ServerService {
             throw new ApiError(400, 'Cannot validate files while server is running. Stop it first.');
         }
 
-        if (server.status === 'CREATING' || server.status === 'INSTALLING') { // INSTALLING added for future
+        if (server.status === 'CREATING' || server.status === 'INSTALLING') {
             throw new ApiError(400, 'Server is currently installing');
         }
 
-        // Set status to INSTALLING (we reuse this for validation as it's the same process)
         await prisma.server.update({
             where: { id: serverId },
-            data: { status: 'CREATING' } // Reusing CREATING status for now to block actions
+            data: { status: 'CREATING' }
         });
 
-        // Start validation in background
         this.installServerBackground(server.id);
 
         return { success: true, message: 'Server verification started' };
@@ -221,19 +249,35 @@ class ServerService {
     public async updateServer(serverId: string, userId: string, data: {
         name?: string;
         description?: string;
+        gsltToken?: string;
+        steamAuthKey?: string;
+        rconPassword?: string;
+        maxPlayers?: number;
+        map?: string;
         workshopCollection?: string;
         workshopMapId?: string;
     }) {
         await this.getServerAndVerifyOwner(serverId, userId);
 
+        const updateData: any = {};
+        if (data.name !== undefined) updateData.name = data.name;
+        if (data.description !== undefined) updateData.description = data.description;
+        if (data.workshopCollection !== undefined) updateData.workshopCollection = data.workshopCollection;
+        if (data.workshopMapId !== undefined) updateData.workshopMapId = data.workshopMapId;
+        if (data.gsltToken !== undefined) updateData.gsltToken = data.gsltToken;
+        if (data.steamAuthKey !== undefined) updateData.steamAuthKey = data.steamAuthKey;
+        if (data.map !== undefined) updateData.map = data.map;
+        if (data.maxPlayers !== undefined) {
+            updateData.maxPlayers = data.maxPlayers ? parseInt(data.maxPlayers as any) : undefined;
+        }
+
+        if (data.rconPassword) {
+            updateData.rconPassword = data.rconPassword;
+        }
+
         return prisma.server.update({
             where: { id: serverId },
-            data: {
-                name: data.name,
-                description: data.description,
-                workshopCollection: data.workshopCollection,
-                workshopMapId: data.workshopMapId
-            }
+            data: updateData
         });
     }
 
@@ -255,9 +299,15 @@ class ServerService {
 
             await steamcmdService.installOrUpdateServer(serverId, (data) => {
                 terminalService.streamOutput(serverId, data);
+
+                // Parse progress from SteamCMD output
+                const match = data.match(/progress:\s*(\d+(\.\d+)?)/);
+                if (match) {
+                    const percent = parseFloat(match[1]);
+                    terminalService.sendProgress(serverId, percent);
+                }
             });
 
-            // Check if server still exists before updating
             const exists = await prisma.server.findUnique({ where: { id: serverId } });
             if (exists) {
                 terminalService.streamOutput(serverId, '\n\x1b[32m[Quatrix] Validation/Update completed successfully!\x1b[0m\n');

@@ -12,6 +12,8 @@ import { monitorService } from './services/monitor.service.js';
 import authRoutes from './routes/auth.routes.js';
 import serverRoutes from './routes/server.routes.js';
 import settingsRoutes from './routes/settings.routes.js';
+import filesRoutes from './routes/files.routes.js';
+import rconRoutes from './routes/rcon.routes.js';
 
 // Load environment variables
 dotenv.config();
@@ -56,6 +58,8 @@ app.get('/health', (_req: Request, res: Response) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/servers', serverRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/files', filesRoutes);
+app.use('/api/rcon', rconRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {

@@ -53,6 +53,7 @@ model Server {
   
   // Steam configuration
   gsltToken     String       // Encrypted GSLT token
+  steamAuthKey  String?      // Steam Web API Key (-authkey)
   
   // Process information
   processId     Int?         // PID of running process

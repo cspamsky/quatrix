@@ -9,7 +9,7 @@
 **Quatrix** is a premium, high-performance web-based management platform designed for **Counter-Strike 2** dedicated servers. Built with a focus on **native performance**, Quatrix allows you to deploy, manage, and monitor your servers directly on your host machine with an industry-leading user interface.
 
 > [!WARNING]
-> **Work in Progress:** This project is currently under active development. Some features may be incomplete or contain stability issues.
+> **Development Stage:** This project is built with **Vibecoding** and is currently in the active development phase. Some features may be incomplete or contains stability issues.
 
 ![Quatrix Dashboard](screenshots/dashboard.png)
 
@@ -18,14 +18,15 @@
 ## ✨ Key Features
 
 - 🚀 **One-Click Deployment**: Deploy CS2 servers instantly using integrated SteamCMD automation.
+- 📁 **Advanced File Manager**: High-performance filesystem management with bulk operations, Recycle Bin (`.quatrix_trash`), bi-directional Zip support, and clipboard (Cut/Paste) functionality.
+- 🌍 **Steam Workshop Support**: Seamlessly manage Workshop collections and maps with database persistence and visual configuration.
 - 📊 **Real-Time Monitoring**: Live tracking of System Resources (CPU, RAM, Storage) via WebSockets.
 - 💻 **Pro Terminal**: Robust Xterm.js console integration for live logs and bi-directional RCON commands.
-- 📝 **Visual Config Editor**: Manage `.cfg` and `.ini` files through a secure, web-based editor.
+- 📝 **Visual Config Editor**: Manage `.cfg`, `.json`, and `.txt` files through a secure, full-screen web-based editor.
 - 🌓 **Dynamic Themes**: Seamless switching between **Dark** and **Light** modes across all pages.
 - 🌍 **Bilingual Support**: Full support for **English** and **Turkish** languages.
-- 📱 **Responsive Design**: Fully optimized for Desktop, Tablet, and Mobile devices.
+- 📱 **Responsive UI 2.0**: Fully adaptive dashboard optimized for Desktop, Tablet, and Mobile devices without horizontal overflow.
 - 👤 **User Management**: Secure authentication system (JWT + Bcrypt) with individualized server ownership.
-- 🛠️ **Server Operations**: Rename, Start, Stop, Delete, and Validate game files directly from the dashboard.
 
 ---
 
@@ -52,9 +53,9 @@
 | Component | Technology |
 | :--- | :--- |
 | **Frontend** | React 18, Vite, Ant Design 5, Socket.io-client, Xterm.js |
-| **Backend** | Node.js, TypeScript, Express, Socket.io, Systeminformation |
+| **Backend** | Node.js (ESM), TypeScript, Express, Socket.io, Multer, Systeminformation |
 | **Database** | SQLite, Prisma ORM |
-| **Automation** | SteamCMD (Valve Corporation) |
+| **Automation** | SteamCMD (Native Integration) |
 
 ---
 
@@ -62,8 +63,8 @@
 
 ### 1. Prerequisites
 - **Node.js**: v18.0 or higher
-- **SteamCMD**: Installed on the host system
-- **OS**: Windows or Linux
+- **SteamCMD**: Installed on the host system (Windows recommended for Native performance)
+- **OS**: Windows (Full Native Support)
 
 ### 2. Backend Setup
 ```bash
@@ -82,11 +83,9 @@ npm run dev
 ```
 
 ### 4. Initial Configuration
-1. Open `http://localhost:5173` (or your local dev port).
-2. Register/Login.
-3. Use the **Setup Wizard** or go to **Settings** to configure:
-   - **SteamCMD Path**: Path to your `steamcmd.exe` directory.
-   - **Servers Root Path**: Directory where game files will be stored.
+1. Open `http://localhost:5173`.
+2. Register and Login.
+3. Configure your **SteamCMD Path** and **Servers Root Path** in the settings.
 
 ---
 
@@ -94,12 +93,12 @@ npm run dev
 
 ```text
 quatrix/
-├── backend/            # Express API & Server Management Logic
-│   ├── src/services/   # SteamCMD, Process, and Terminal services
+├── backend/            # Node.js ESM API & Process Management
+│   ├── src/services/   # SteamCMD, RCON, and Terminal logic
 │   └── prisma/         # SQLite Schema and Migrations
-├── frontend/           # React Dashboard
-│   ├── src/components/ # Reusable UI Components
-│   └── src/pages/      # Dashboard, Auth, and Settings views
+├── frontend/           # React 18 Dashboard
+│   ├── src/components/ # Advanced UI Components (FileManager, Console)
+│   └── src/pages/      # Dashboard and Auth views
 ├── screenshots/        # Visual documentation
 └── README.md           # Project Overview
 ```
@@ -108,10 +107,13 @@ quatrix/
 
 ## 🛣️ Roadmap
 
-- [ ] **Phase 6**: Steam Workshop Integration (Workshop Map Manager).
+- [x] **Phase 6**: Steam Workshop Integration (Workshop Map Manager).
+- [x] **Phase 6**: Advanced File Manager (Search, Archive, Trash).
 - [ ] **Phase 6**: RCON-based Player Management (Kick/Ban UI).
 - [ ] **Phase 7**: Plugin Manager (Metamod/Sourcemod auto-installer).
 - [ ] **Phase 8**: Detailed Server Backups & Automatic Updates.
+
+---
 
 ## 📄 License
 
@@ -119,5 +121,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Developed with ❤️ by the Quatrix Team.**  
+**Developed with ❤️ with Vibecoding.**  
 *Disclaimer: This project is not affiliated with Valve Corporation.*

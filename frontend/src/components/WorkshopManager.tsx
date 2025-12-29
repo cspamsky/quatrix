@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Typography, Space, Divider, message } from 'antd';
+import { Form, Input, Button, Typography, Space, Divider, App } from 'antd';
 import { GlobalOutlined, SaveOutlined, RocketOutlined, DeleteOutlined } from '@ant-design/icons';
 import { serverService } from '../services/serverService';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +12,7 @@ interface WorkshopManagerProps {
 }
 
 const WorkshopManager: React.FC<WorkshopManagerProps> = ({ server, onUpdate }) => {
+    const { message } = App.useApp();
     const { t } = useTranslation();
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
@@ -20,8 +21,8 @@ const WorkshopManager: React.FC<WorkshopManagerProps> = ({ server, onUpdate }) =
         setLoading(true);
         try {
             const response = await serverService.updateServer(server.id, {
-                workshopCollection: values.workshopCollection || null,
-                workshopMapId: values.workshopMapId || null
+                workshopCollection: values.workshopCollection?.trim() || null,
+                workshopMapId: values.workshopMapId?.trim() || null
             });
             if (response.success) {
                 message.success(t('workshop.success'));

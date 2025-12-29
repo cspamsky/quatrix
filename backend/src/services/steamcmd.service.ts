@@ -96,10 +96,18 @@ class SteamCMDService {
 
             this.activeInstalls.set(serverId, child);
 
-            child.stdout.on('data', (data) => {
-                const output = data.toString();
+            // Track output to detect successful update completion
+            let updateComplete = false;
+
+            child.stdout.on('data', (data: Buffer) => {
+                const output = data.toString('utf8');
                 if (onProgress) onProgress(output);
                 logger.debug(`SteamCMD [${serverId}]: ${output.trim()}`);
+
+                // Check if update completed successfully
+                if (output.includes('Update complete') || output.includes('Success! App \'730\' fully installed')) {
+                    updateComplete = true;
+                }
             });
 
             child.stderr.on('data', (data) => {
@@ -108,8 +116,8 @@ class SteamCMDService {
 
             child.on('close', (code) => {
                 this.activeInstalls.delete(serverId);
-                if (code === 0) {
-                    logger.info(`CS2 server ${serverId} installed/updated successfully.`);
+                if (code === 0 || code === 7) {
+                    logger.info(`CS2 server ${serverId} installed/updated successfully (code ${code}).`);
                     resolve();
                 } else if (code === null) {
                     logger.info(`SteamCMD for ${serverId} was terminated.`);

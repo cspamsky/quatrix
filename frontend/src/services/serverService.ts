@@ -18,7 +18,15 @@ export const serverService = {
         return response.data;
     },
 
-    async createServer(data: { name: string; description?: string; gsltToken: string }) {
+    async createServer(data: {
+        name: string;
+        description?: string;
+        gsltToken: string;
+        steamAuthKey?: string;
+        rconPassword?: string;
+        maxPlayers?: number;
+        map?: string;
+    }) {
         const response = await axios.post(`${API_URL}/`, data, getHeader());
         return response.data;
     },
@@ -33,6 +41,11 @@ export const serverService = {
         return response.data;
     },
 
+    async restartServer(id: string) {
+        const response = await axios.post(`${API_URL}/${id}/restart`, {}, getHeader());
+        return response.data;
+    },
+
     async deleteServer(id: string) {
         const response = await axios.delete(`${API_URL}/${id}`, getHeader());
         return response.data;
@@ -43,7 +56,17 @@ export const serverService = {
         return response.data;
     },
 
-    async updateServer(id: string, data: { name?: string; description?: string; workshopCollection?: string; workshopMapId?: string }) {
+    async updateServer(id: string, data: {
+        name?: string;
+        description?: string;
+        gsltToken?: string;
+        steamAuthKey?: string;
+        rconPassword?: string;
+        maxPlayers?: number;
+        map?: string;
+        workshopCollection?: string;
+        workshopMapId?: string
+    }) {
         const response = await axios.put(`${API_URL}/${id}`, data, getHeader());
         return response.data;
     },
