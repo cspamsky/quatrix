@@ -99,7 +99,7 @@ const Console: React.FC<ConsoleProps> = ({ serverId }) => {
             }
         };
 
-        term.writeln(`\x1b[34m[Sistem] Terminal başlatılıyor...\x1b[0m`);
+        term.writeln(`\x1b[34m${t('common.system')} ${t('terminal.connecting')}\x1b[0m`);
 
         // Initialize Socket.io
         const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:3000', {
@@ -111,7 +111,7 @@ const Console: React.FC<ConsoleProps> = ({ serverId }) => {
         socketRef.current = socket;
 
         socket.on('connect', () => {
-            term.writeln(`\x1b[32m[Sistem] Terminal servisine bağlanıldı.\x1b[0m`);
+            term.writeln(`\x1b[32m${t('common.system')} ${t('terminal.connected')}\x1b[0m`);
             socket.emit('terminal:join', { serverId });
         });
 
@@ -120,11 +120,11 @@ const Console: React.FC<ConsoleProps> = ({ serverId }) => {
         });
 
         socket.on('terminal:status', (data: any) => {
-            term.writeln(`\x1b[34m[Sistem] Sunucu durumu: ${data.status}\x1b[0m`);
+            term.writeln(`\x1b[34m${t('common.system')} ${t('terminal.serverStatus')}: ${data.status}\x1b[0m`);
         });
 
         socket.on('terminal:error', (data: any) => {
-            term.writeln(`\x1b[31m[Hata] ${data.message}\x1b[0m`);
+            term.writeln(`\x1b[31m[${t('common.error')}] ${data.message}\x1b[0m`);
         });
 
         socket.on('terminal:progress', (data: any) => {
@@ -132,11 +132,11 @@ const Console: React.FC<ConsoleProps> = ({ serverId }) => {
         });
 
         socket.on('disconnect', () => {
-            term.writeln(`\x1b[31m[Sistem] Terminal servisi bağlantısı kesildi.\x1b[0m`);
+            term.writeln(`\x1b[31m${t('common.system')} ${t('terminal.disconnected')}\x1b[0m`);
         });
 
         socket.on('connect_error', (error) => {
-            term.writeln(`\x1b[31m[Hata] Bağlantı hatası: ${error.message}\x1b[0m`);
+            term.writeln(`\x1b[31m[${t('common.error')}] ${t('common.disconnected')}: ${error.message}\x1b[0m`);
         });
 
         // Handle input
@@ -194,7 +194,7 @@ const Console: React.FC<ConsoleProps> = ({ serverId }) => {
                         percent={progress}
                         status="active"
                         strokeColor={{ from: '#108ee9', to: '#87d068' }}
-                        format={percent => `Yükleniyor: %${percent?.toFixed(1)}`}
+                        format={percent => `${t('common.loading')}: %${percent?.toFixed(1)}`}
                         trailColor="#444"
                     />
                 </div>

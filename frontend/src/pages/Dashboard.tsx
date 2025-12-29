@@ -234,7 +234,7 @@ function Dashboard() {
                         icon={<EditOutlined />}
                         size="small"
                         onClick={() => handleEdit(record)}
-                        title="Edit Server"
+                        title={t('common.edit')}
                     />
                     {record.status === 'STOPPED' || record.status === 'ERROR' ? (
                         <Button
@@ -261,9 +261,9 @@ function Dashboard() {
                             icon={<ReloadOutlined />}
                             onClick={() => handleRestart(record.id)}
                             size="small"
-                            title="Restart Server"
+                            title={t('server.restart')}
                         >
-                            <span className="button-text">{t('server.restart') || 'Restart'}</span>
+                            <span className="button-text">{t('server.restart')}</span>
                         </Button>
                     )}
                     <Button
@@ -406,25 +406,25 @@ function Dashboard() {
                     <Form.Item
                         name="name"
                         label={t('dashboard.serverName')}
-                        rules={[{ required: true, message: t('common.error') }]}
+                        rules={[{ required: true, message: t('dashboard.gslt_required') }]}
                     >
-                        <Input placeholder="My Awesome CS2 Server" />
+                        <Input placeholder={t('dashboard.serverName_placeholder')} />
                     </Form.Item>
 
                     <Form.Item
                         name="description"
                         label={t('dashboard.description')}
                     >
-                        <Input.TextArea placeholder="A short description" />
+                        <Input.TextArea placeholder={t('dashboard.description_placeholder')} />
                     </Form.Item>
 
                     <Row gutter={16}>
                         <Col span={12}>
                             <Form.Item
                                 name="gsltToken"
-                                label="GSLT Token (API Key)"
+                                label={t('dashboard.gsltToken')}
                                 help={<a href="https://steamcommunity.com/dev/managegameservers" target="_blank" rel="noreferrer">Steam Dev Portal</a>}
-                                rules={[{ required: true, message: 'GSLT Token gerekli' }]}
+                                rules={[{ required: true, message: t('dashboard.gslt_required') }]}
                             >
                                 <Input placeholder="5F0B..." />
                             </Form.Item>
@@ -435,7 +435,7 @@ function Dashboard() {
                                 label="Steam Web API Key (-authkey)"
                                 help={<a href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noreferrer">Get API Key</a>}
                             >
-                                <Input placeholder="Örn: 1234..." />
+                                <Input placeholder={t('dashboard.description_placeholder')} />
                             </Form.Item>
                         </Col>
                     </Row>
@@ -444,20 +444,20 @@ function Dashboard() {
                         <Col span={12}>
                             <Form.Item
                                 name="rconPassword"
-                                label="RCON Şifresi"
+                                label="RCON Password"
                                 rules={[
-                                    { required: true, message: 'RCON şifresi gerekli' },
-                                    { min: 6, message: 'En az 6 karakter olmalı' }
+                                    { required: true, message: t('dashboard.rcon_required') },
+                                    { min: 6, message: t('common.min_chars') }
                                 ]}
                             >
-                                <Input.Password placeholder="Güvenli bir şifre" />
+                                <Input.Password placeholder={t('dashboard.description_placeholder')} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
                             <Form.Item
                                 name="maxPlayers"
-                                label="Maksimum Oyuncu"
-                                rules={[{ required: true, message: 'Oyuncu sayısı gerekli' }]}
+                                label={t('dashboard.players_required')}
+                                rules={[{ required: true, message: t('dashboard.players_required') }]}
                             >
                                 <Input type="number" min={2} max={64} placeholder="10" />
                             </Form.Item>
@@ -468,11 +468,11 @@ function Dashboard() {
                         <Col span={12}>
                             <Form.Item
                                 name="map"
-                                label="Başlangıç Haritası"
-                                rules={[{ required: true, message: 'Harita seçimi gerekli' }]}
+                                label={t('dashboard.default_map')}
+                                rules={[{ required: true, message: t('dashboard.map_required') }]}
                             >
-                                <Select placeholder="Harita seçin">
-                                    <Select.OptGroup label="Competitive Maps">
+                                <Select placeholder={t('dashboard.map_placeholder')}>
+                                    <Select.OptGroup label={t('dashboard.competitive_maps')}>
                                         <Select.Option value="de_dust2">Dust 2</Select.Option>
                                         <Select.Option value="de_mirage">Mirage</Select.Option>
                                         <Select.Option value="de_inferno">Inferno</Select.Option>
@@ -482,7 +482,7 @@ function Dashboard() {
                                         <Select.Option value="de_ancient">Ancient</Select.Option>
                                         <Select.Option value="de_anubis">Anubis</Select.Option>
                                     </Select.OptGroup>
-                                    <Select.OptGroup label="Other Maps">
+                                    <Select.OptGroup label={t('dashboard.other_maps')}>
                                         <Select.Option value="cs_office">Office</Select.Option>
                                         <Select.Option value="cs_italy">Italy</Select.Option>
                                     </Select.OptGroup>
@@ -504,7 +504,7 @@ function Dashboard() {
 
             {/* Console Modal */}
             <Modal
-                title={`Server Console - ${servers.find(s => s.id === selectedServerForConsole)?.name || ''}`}
+                title={`${t('dashboard.server_console')} - ${servers.find(s => s.id === selectedServerForConsole)?.name || ''}`}
                 open={!!selectedServerForConsole}
                 onCancel={() => setSelectedServerForConsole(null)}
                 width={800}
@@ -532,7 +532,7 @@ function Dashboard() {
                     <Form.Item
                         name="name"
                         label={t('dashboard.serverName')}
-                        rules={[{ required: true, message: t('common.error') }]}
+                        rules={[{ required: true, message: t('dashboard.gslt_required') }]}
                     >
                         <Input />
                     </Form.Item>
@@ -548,9 +548,9 @@ function Dashboard() {
                         <Col span={12}>
                             <Form.Item
                                 name="gsltToken"
-                                label="GSLT Token (API Key)"
+                                label={t('dashboard.gsltToken')}
                                 help={<a href="https://steamcommunity.com/dev/managegameservers" target="_blank" rel="noreferrer">Steam Dev Portal</a>}
-                                rules={[{ required: true, message: 'GSLT Token gerekli' }]}
+                                rules={[{ required: true, message: t('dashboard.gslt_required') }]}
                             >
                                 <Input placeholder="5F0B..." />
                             </Form.Item>
@@ -561,7 +561,7 @@ function Dashboard() {
                                 label="Steam Web API Key (-authkey)"
                                 help={<a href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noreferrer">Get API Key</a>}
                             >
-                                <Input placeholder="Boş bırakılabilir" />
+                                <Input placeholder={t('dashboard.empty_no_change')} />
                             </Form.Item>
                         </Col>
                     </Row>
@@ -570,19 +570,19 @@ function Dashboard() {
                         <Col span={12}>
                             <Form.Item
                                 name="rconPassword"
-                                label="RCON Şifresi (Değiştirmek için girin)"
+                                label={t('dashboard.rcon_password_edit')}
                                 rules={[
-                                    { min: 6, message: 'En az 6 karakter olmalı' }
+                                    { min: 6, message: t('common.min_chars') }
                                 ]}
                             >
-                                <Input.Password placeholder="Boş bırakılırsa değişmez" />
+                                <Input.Password placeholder={t('dashboard.empty_no_change')} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
                             <Form.Item
                                 name="maxPlayers"
-                                label="Maksimum Oyuncu"
-                                rules={[{ required: true, message: 'Oyuncu sayısı gerekli' }]}
+                                label={t('dashboard.players_required')}
+                                rules={[{ required: true, message: t('dashboard.players_required') }]}
                             >
                                 <Input type="number" min={2} max={64} />
                             </Form.Item>
@@ -593,11 +593,11 @@ function Dashboard() {
                         <Col span={12}>
                             <Form.Item
                                 name="map"
-                                label="Varsayılan Harita"
-                                rules={[{ required: true, message: 'Harita seçimi gerekli' }]}
+                                label={t('dashboard.default_map')}
+                                rules={[{ required: true, message: t('dashboard.map_required') }]}
                             >
                                 <Select>
-                                    <Select.OptGroup label="Competitive Maps">
+                                    <Select.OptGroup label={t('dashboard.competitive_maps')}>
                                         <Select.Option value="de_dust2">Dust 2</Select.Option>
                                         <Select.Option value="de_mirage">Mirage</Select.Option>
                                         <Select.Option value="de_inferno">Inferno</Select.Option>
@@ -607,7 +607,7 @@ function Dashboard() {
                                         <Select.Option value="de_ancient">Ancient</Select.Option>
                                         <Select.Option value="de_anubis">Anubis</Select.Option>
                                     </Select.OptGroup>
-                                    <Select.OptGroup label="Other Maps">
+                                    <Select.OptGroup label={t('dashboard.other_maps')}>
                                         <Select.Option value="cs_office">Office</Select.Option>
                                         <Select.Option value="cs_italy">Italy</Select.Option>
                                     </Select.OptGroup>
@@ -629,7 +629,7 @@ function Dashboard() {
 
             {/* Workshop Manager Modal */}
             <Modal
-                title={`Workshop Management - ${selectedServerForWorkshop?.name || ''}`}
+                title={`${t('dashboard.workshop_management')} - ${selectedServerForWorkshop?.name || ''}`}
                 open={!!selectedServerForWorkshop}
                 onCancel={() => setSelectedServerForWorkshop(null)}
                 width={480}

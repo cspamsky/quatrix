@@ -125,13 +125,13 @@ const MainLayout = () => {
                             {
                                 key: '/files',
                                 icon: <FolderOpenOutlined />,
-                                label: 'Dosya Yöneticisi',
+                                label: t('nav.files'),
                                 onClick: () => navigate('/files')
                             },
                             {
                                 key: '/rcon',
                                 icon: <ControlOutlined />,
-                                label: 'RCON Konsol',
+                                label: t('nav.rcon'),
                                 onClick: () => navigate('/rcon')
                             },
                             {
