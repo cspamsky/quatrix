@@ -313,7 +313,7 @@ const Settings = () => {
                                 <Col xs={24} sm={8}>
                                     <div style={{ textAlign: 'center' }}>
                                         <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', display: 'block', marginBottom: 4 }}>{t('settings.version')}</Text>
-                                        <Title level={4} style={{ margin: 0, color: '#fff' }}>v1.0.0</Title>
+                                        <Title level={4} style={{ margin: 0, color: '#fff' }}>v0.1.0-beta</Title>
                                     </div>
                                 </Col>
                                 <Col xs={24} sm={8}>
