@@ -49,14 +49,16 @@ tmp/
 cs2-servers/
 steamcmd/
 logs/
-backend/cs2-servers/
-backend/steamcmd/
-backend/logs/
-backend/prisma/*.db*
-backend/upload_debug.log
-backend/db-out.txt
+.quatrix_trash/
+**/cs2-servers/
+**/steamcmd/
+**/logs/
+**/prisma/*.db*
+**/upload_debug.log
+**/db-out.txt
 
 # AI/Agent Documentation
 memory-bank/
 AGENTS.md
+.agent/
 
