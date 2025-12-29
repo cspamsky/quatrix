@@ -38,11 +38,12 @@ class MonitorService {
      */
     async getSystemStats() {
         try {
-            const [cpu, mem, disk, network] = await Promise.all([
+            const [cpu, mem, disk, network, time] = await Promise.all([
                 systeminformation.currentLoad(),
                 systeminformation.mem(),
                 systeminformation.fsSize(),
-                systeminformation.networkConnections()
+                systeminformation.networkConnections(),
+                systeminformation.time()
             ]);
 
             // Filter for the main disk (usually C: or /)
@@ -78,7 +79,7 @@ class MonitorService {
                 network: {
                     usedPorts
                 },
-                uptime: process.uptime()
+                uptime: time.uptime
             };
         } catch (error) {
             logger.error('Failed to get system stats', error);

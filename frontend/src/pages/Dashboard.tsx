@@ -61,7 +61,7 @@ function Dashboard() {
         const d = Math.floor(seconds / (3600 * 24));
         const h = Math.floor((seconds % (3600 * 24)) / 3600);
         const m = Math.floor((seconds % 3600) / 60);
-        return `${d}d ${h}h ${m}m`;
+        return `${d}${t('resources.days')} ${h}${t('resources.hours')} ${m}${t('resources.minutes')}`;
     };
 
     return (
@@ -122,7 +122,7 @@ function Dashboard() {
                         <Card
                             title={<Space size="small"><DashboardOutlined /> {t('resources.title')}</Space>}
                             style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', width: '100%' }}
-                            bodyStyle={{ padding: '16px 20px' }}
+                            styles={{ body: { padding: '16px 20px' } }}
                             loading={!stats}
                         >
                             {stats && (
@@ -217,7 +217,7 @@ function Dashboard() {
                         <Card
                             title={<Space size="small"><GlobalOutlined /> {t('resources.usedPorts')}</Space>}
                             style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', width: '100%', display: 'flex', flexDirection: 'column' }}
-                            bodyStyle={{ flex: 1, overflow: 'hidden', padding: '16px 20px', display: 'flex', flexDirection: 'column' }}
+                            styles={{ body: { flex: 1, overflow: 'hidden', padding: '16px 20px', display: 'flex', flexDirection: 'column' } }}
                             loading={!stats}
                         >
                             <style>{`
@@ -258,7 +258,7 @@ function Dashboard() {
                                                     <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#1890ff' }} />
                                                     <Text strong style={{ fontSize: '14px' }}>{port}</Text>
                                                 </Space>
-                                                <Tag color="blue" style={{ borderRadius: '4px', margin: 0, fontSize: '11px' }}>Active</Tag>
+                                                <Tag color="blue" style={{ borderRadius: '4px', margin: 0, fontSize: '11px' }}>{t('common.active')}</Tag>
                                             </div>
                                         )}
                                         locale={{ emptyText: t('resources.noPorts') }}

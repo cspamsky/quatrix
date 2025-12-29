@@ -60,7 +60,11 @@ function Rcon() {
             if (response.success) {
                 const runningServers = response.data.filter((s: any) => s.status === 'RUNNING');
                 setServers(runningServers);
-                if (runningServers.length > 0 && !selectedServer) {
+
+                const savedServerId = localStorage.getItem('lastRconServerId');
+                if (savedServerId && runningServers.some((s: any) => s.id === savedServerId)) {
+                    setSelectedServer(savedServerId);
+                } else if (runningServers.length > 0 && !selectedServer) {
                     setSelectedServer(runningServers[0].id);
                 }
             }
@@ -100,8 +104,8 @@ function Rcon() {
     }, [connected, activeTab, fetchPlayers]);
 
     const handleConnect = async () => {
-        if (!selectedServer || !rconPassword) {
-            setError(t('common.required'));
+        if (!selectedServer) {
+            setError(t('dashboard.map_placeholder'));
             return;
         }
 
@@ -109,20 +113,17 @@ function Rcon() {
         setError(null);
 
         try {
-            const server = servers.find(s => s.id === selectedServer);
             await axios.post(`${API_URL}/api/rcon/${selectedServer}/connect`, {
-                host: '127.0.0.1',
-                port: server.port,
-                password: rconPassword,
+                password: rconPassword || undefined, // Send only if manually entered
             });
             setConnected(true);
             setHistory([{
                 command: '[SYSTEM]',
-                response: 'RCON bağlantısı başarılı',
+                response: t('rcon.connect_success'),
                 timestamp: new Date(),
             }]);
         } catch (error: any) {
-            setError(error.response?.data?.error || 'Bağlantı başarısız');
+            setError(error.response?.data?.error || t('rcon.connect_failed'));
             setConnected(false);
         } finally {
             setConnecting(false);
@@ -137,11 +138,11 @@ function Rcon() {
             setConnected(false);
             setHistory([...history, {
                 command: '[SYSTEM]',
-                response: 'RCON bağlantısı kesildi',
+                response: t('rcon.disconnected'),
                 timestamp: new Date(),
             }]);
         } catch (error: any) {
-            setError(error.response?.data?.error || 'Bağlantı kesme başarısız');
+            setError(error.response?.data?.error || t('rcon.disconnect_failed'));
         }
     };
 
@@ -157,12 +158,12 @@ function Rcon() {
             message.success(t('rcon.command_sent'));
             setHistory(prev => [...prev, {
                 command: cmdToRun,
-                response: response.data.response || 'Komut çalıştırıldı',
+                response: response.data.response || t('rcon.command_executed'),
                 timestamp: new Date(),
             }]);
             if (!cmdOverride) setCommand('');
         } catch (error: any) {
-            message.error(error.response?.data?.error || 'Komut çalıştırılamadı');
+            message.error(error.response?.data?.error || t('rcon.command_failed'));
         }
     };
 
@@ -170,9 +171,9 @@ function Rcon() {
         try {
             await axios.post(`${API_URL}/api/rcon/${selectedServer}/kick`, {
                 userId: id,
-                reason: 'Kicked by Admin'
+                reason: t('rcon.kicked_by_admin')
             });
-            Modal.success({ title: t('common.success'), content: `${name} kicked.` });
+            Modal.success({ title: t('common.success'), content: t('rcon.player_kicked', { name }) });
             fetchPlayers();
         } catch (error: any) {
             Modal.error({ title: t('common.error'), content: error.message });
@@ -184,7 +185,7 @@ function Rcon() {
             title: t('rcon.confirm_ban'),
             content: (
                 <div style={{ marginTop: 16 }}>
-                    <Text>{name} (ID: {id}) için yasaklama süresi:</Text>
+                    <Text>{t('rcon.ban_duration_text', { name, id })}</Text>
                     <Form layout="vertical" style={{ marginTop: 16 }}>
                         <Form.Item label={t('rcon.ban_minutes')}>
                             <InputNumber defaultValue={0} min={0} style={{ width: '100%' }} id="ban-minutes-input" />
@@ -199,9 +200,9 @@ function Rcon() {
                     await axios.post(`${API_URL}/api/rcon/${selectedServer}/ban`, {
                         userId: id,
                         minutes: parseInt(minutes),
-                        reason: 'Banned by Admin'
+                        reason: t('rcon.banned_by_admin')
                     });
-                    Modal.success({ title: t('common.success'), content: `${name} banned.` });
+                    Modal.success({ title: t('common.success'), content: t('rcon.player_banned', { name }) });
                     fetchPlayers();
                 } catch (error: any) {
                     Modal.error({ title: t('common.error'), content: error.message });
@@ -266,17 +267,18 @@ function Rcon() {
                 <div style={{ display: 'flex', gap: 16 }}>
                     <Select
                         style={{ width: 300 }}
-                        placeholder={t('dashboard.map_placeholder')}
+                        placeholder={t('server.select_server')}
                         value={selectedServer}
                         onChange={(value) => {
                             setSelectedServer(value);
+                            localStorage.setItem('lastRconServerId', value);
                             setConnected(false);
                             setHistory([]);
                         }}
                         loading={loading}
                         options={servers.map(server => ({
                             value: server.id,
-                            label: `${server.name} - ${server.port}`,
+                            label: `${server.name} - ${server.port} (${t(`status.${server.status}`)})`,
                         }))}
                     />
                     {connected && (
@@ -305,9 +307,9 @@ function Rcon() {
                 <Card bordered={false} className="glass-card">
                     <Space direction="vertical" style={{ width: '100%' }} size="large">
                         <div>
-                            <Text strong>{t('common.password')}</Text>
+                            <Text strong>{t('common.password')} ({t('common.optional')})</Text>
                             <Input.Password
-                                placeholder={t('common.password')}
+                                placeholder={t('rcon.password_hint')}
                                 value={rconPassword}
                                 onChange={(e) => setRconPassword(e.target.value)}
                                 onPressEnter={handleConnect}
@@ -320,7 +322,7 @@ function Rcon() {
                             icon={<LinkOutlined />}
                             onClick={handleConnect}
                             loading={connecting}
-                            disabled={!selectedServer || !rconPassword}
+                            disabled={!selectedServer}
                             block
                             size="large"
                         >

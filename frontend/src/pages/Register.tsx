@@ -66,14 +66,14 @@ const Register: React.FC = () => {
                     >
                         <Form.Item
                             name="name"
-                            rules={[{ required: true, message: t('common.error') }]}
+                            rules={[{ required: true, message: t('common.required') }]}
                         >
-                            <Input prefix={<IdcardOutlined />} placeholder={t('server.name')} />
+                            <Input prefix={<IdcardOutlined />} placeholder={t('common.name')} />
                         </Form.Item>
 
                         <Form.Item
                             name="email"
-                            rules={[{ required: true, message: t('common.error'), type: 'email' }]}
+                            rules={[{ required: true, message: t('common.required'), type: 'email' }]}
                         >
                             <Input prefix={<UserOutlined />} placeholder={t('common.email')} />
                         </Form.Item>
@@ -81,8 +81,8 @@ const Register: React.FC = () => {
                         <Form.Item
                             name="password"
                             rules={[
-                                { required: true, message: t('common.error') },
-                                { min: 6, message: t('common.error') }
+                                { required: true, message: t('common.required') },
+                                { min: 6, message: t('common.min_chars') }
                             ]}
                         >
                             <Input.Password prefix={<LockOutlined />} placeholder={t('common.password')} />

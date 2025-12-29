@@ -43,7 +43,7 @@ const Console: React.FC<ConsoleProps> = ({ serverId }) => {
             fontFamily: '"Cascadia Code", Consolas, "Courier New", monospace',
             lineHeight: 1.2,
             scrollback: 1000,
-            convertEol: true, // Automatically convert \n to \r\n
+            convertEol: true,
         });
 
         const fitAddon = new FitAddon();
@@ -99,7 +99,7 @@ const Console: React.FC<ConsoleProps> = ({ serverId }) => {
             }
         };
 
-        term.writeln(`\x1b[34m${t('common.system')} ${t('terminal.connecting')}\x1b[0m`);
+        term.writeln(`\x1b[34m${t('common.system')} ${t('terminal.connecting')}...\x1b[0m`);
 
         // Initialize Socket.io
         const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:3000', {
@@ -120,7 +120,7 @@ const Console: React.FC<ConsoleProps> = ({ serverId }) => {
         });
 
         socket.on('terminal:status', (data: any) => {
-            term.writeln(`\x1b[34m${t('common.system')} ${t('terminal.serverStatus')}: ${data.status}\x1b[0m`);
+            term.writeln(`\x1b[34m${t('common.system')} ${t('terminal.serverStatus')}: ${t(`status.${data.status}`)}\x1b[0m`);
         });
 
         socket.on('terminal:error', (data: any) => {
@@ -194,7 +194,7 @@ const Console: React.FC<ConsoleProps> = ({ serverId }) => {
                         percent={progress}
                         status="active"
                         strokeColor={{ from: '#108ee9', to: '#87d068' }}
-                        format={percent => `${t('common.loading')}: %${percent?.toFixed(1)}`}
+                        format={percent => `${t('common.loading')}: ${percent?.toFixed(1)}%`}
                         trailColor="#444"
                     />
                 </div>

@@ -1,20 +1,10 @@
-import axios from 'axios';
+import api from './api';
 
 const API_URL = '/api/servers';
 
-// Common header helper
-const getHeader = () => {
-    const token = JSON.parse(localStorage.getItem('quatrix-auth') || '{}')?.state?.token;
-    return {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    };
-};
-
 export const serverService = {
     async getMyServers() {
-        const response = await axios.get(`${API_URL}/`, getHeader());
+        const response = await api.get(`${API_URL}/`);
         return response.data;
     },
 
@@ -26,33 +16,41 @@ export const serverService = {
         rconPassword?: string;
         maxPlayers?: number;
         map?: string;
+        port?: number;
+        vacEnabled?: boolean;
+        installPath?: string;
     }) {
-        const response = await axios.post(`${API_URL}/`, data, getHeader());
+        const response = await api.post(`${API_URL}/`, data);
         return response.data;
     },
 
     async startServer(id: string) {
-        const response = await axios.post(`${API_URL}/${id}/start`, {}, getHeader());
+        const response = await api.post(`${API_URL}/${id}/start`, {});
         return response.data;
     },
 
     async stopServer(id: string) {
-        const response = await axios.post(`${API_URL}/${id}/stop`, {}, getHeader());
+        const response = await api.post(`${API_URL}/${id}/stop`, {});
+        return response.data;
+    },
+
+    async forceStopServer(id: string) {
+        const response = await api.post(`${API_URL}/${id}/force-stop`, {});
         return response.data;
     },
 
     async restartServer(id: string) {
-        const response = await axios.post(`${API_URL}/${id}/restart`, {}, getHeader());
+        const response = await api.post(`${API_URL}/${id}/restart`, {});
         return response.data;
     },
 
     async deleteServer(id: string) {
-        const response = await axios.delete(`${API_URL}/${id}`, getHeader());
+        const response = await api.delete(`${API_URL}/${id}`);
         return response.data;
     },
 
     async validateServer(id: string) {
-        const response = await axios.post(`${API_URL}/${id}/validate`, {}, getHeader());
+        const response = await api.post(`${API_URL}/${id}/validate`, {});
         return response.data;
     },
 
@@ -65,9 +63,11 @@ export const serverService = {
         maxPlayers?: number;
         map?: string;
         workshopCollection?: string;
-        workshopMapId?: string
+        workshopMapId?: string;
+        vacEnabled?: boolean;
+        port?: number;
     }) {
-        const response = await axios.put(`${API_URL}/${id}`, data, getHeader());
+        const response = await api.put(`${API_URL}/${id}`, data);
         return response.data;
     },
 };

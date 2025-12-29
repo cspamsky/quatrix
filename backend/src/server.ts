@@ -14,6 +14,7 @@ import serverRoutes from './routes/server.routes.js';
 import settingsRoutes from './routes/settings.routes.js';
 import filesRoutes from './routes/files.routes.js';
 import rconRoutes from './routes/rcon.routes.js';
+import { processService } from './services/process.service.js';
 
 // Load environment variables
 dotenv.config();
@@ -84,10 +85,17 @@ app.set('io', io);
 // Start server
 const PORT = process.env.PORT || 3000;
 
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, async () => {
     logger.info(`🚀 Server running on port ${PORT}`);
     logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
     logger.info(`🔗 CORS origin: ${process.env.CORS_ORIGIN || 'http://localhost:5173'}`);
+
+    // Sync zombie server processes
+    try {
+        await processService.syncStatuses();
+    } catch (err) {
+        logger.error('Failed to sync server statuses on startup:', err);
+    }
 });
 
 // Graceful shutdown
@@ -97,6 +105,20 @@ process.on('SIGTERM', () => {
         logger.info('HTTP server closed');
         process.exit(0);
     });
+});
+
+// Handle uncaught errors (prevents crash on ECONNRESET)
+process.on('uncaughtException', (error: Error) => {
+    if (error.message.includes('ECONNRESET') || error.message.includes('EPIPE')) {
+        logger.warn(`Caught stream error: ${error.message}`);
+    } else {
+        logger.error('Uncaught Exception:', error);
+        process.exit(1);
+    }
+});
+
+process.on('unhandledRejection', (reason: any) => {
+    logger.error('Unhandled Rejection:', reason);
 });
 
 export { app, io };

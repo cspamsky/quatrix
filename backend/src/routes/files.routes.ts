@@ -4,9 +4,26 @@ import fs from 'fs/promises';
 import { existsSync, appendFileSync } from 'fs';
 import { steamcmdService } from '../services/steamcmd.service';
 import { logger } from '../utils/logger';
+import { prisma } from '../utils/prisma';
 import multer from 'multer';
 
 const router = Router();
+
+/**
+ * Gets the server path from database
+ */
+const getServerPath = async (serverId: string): Promise<string> => {
+    const server = await prisma.server.findUnique({
+        where: { id: serverId },
+        select: { installPath: true }
+    });
+
+    if (!server || !server.installPath) {
+        throw new Error('Server not found or path not configured');
+    }
+
+    return server.installPath;
+};
 
 // Multer setup for file uploads
 const storage = multer.diskStorage({
@@ -31,7 +48,7 @@ const storage = multer.diskStorage({
             }
 
             const relativePath = req.query.path as string || '';
-            const serverPath = steamcmdService.getServerPath(serverId);
+            const serverPath = await getServerPath(serverId);
             const targetPath = path.join(serverPath, relativePath);
 
             // Logging for debug
@@ -76,7 +93,7 @@ router.get('/:serverId/list', async (req: Request, res: Response) => {
         const { serverId } = req.params;
         const { path: relativePath = '' } = req.query;
 
-        const serverPath = steamcmdService.getServerPath(serverId);
+        const serverPath = await getServerPath(serverId);
         const targetPath = path.join(serverPath, relativePath as string);
 
         // Security: Ensure path is within server directory
@@ -142,7 +159,7 @@ router.get('/:serverId/read', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Path is required' });
         }
 
-        const serverPath = steamcmdService.getServerPath(serverId);
+        const serverPath = await getServerPath(serverId);
         const targetPath = path.join(serverPath, relativePath as string);
 
         const resolvedPath = path.resolve(targetPath);
@@ -171,7 +188,7 @@ router.post('/:serverId/write', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Path and content are required' });
         }
 
-        const serverPath = steamcmdService.getServerPath(serverId);
+        const serverPath = await getServerPath(serverId);
         const targetPath = path.join(serverPath, relativePath);
 
         const resolvedPath = path.resolve(targetPath);
@@ -201,7 +218,7 @@ router.post('/:serverId/delete', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Paths array is required' });
         }
 
-        const serverPath = steamcmdService.getServerPath(serverId);
+        const serverPath = await getServerPath(serverId);
         const resolvedServerPath = path.resolve(serverPath);
 
         for (const relativePath of paths) {
@@ -242,7 +259,7 @@ router.post('/:serverId/mkdir', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Path is required' });
         }
 
-        const serverPath = steamcmdService.getServerPath(serverId);
+        const serverPath = await getServerPath(serverId);
         const targetPath = path.join(serverPath, relativePath);
 
         const resolvedPath = path.resolve(targetPath);
@@ -271,7 +288,7 @@ router.post('/:serverId/rename', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Old and new paths are required' });
         }
 
-        const serverPath = steamcmdService.getServerPath(serverId);
+        const serverPath = await getServerPath(serverId);
         const resolvedServerPath = path.resolve(serverPath);
 
         const resolvedOld = path.resolve(path.join(serverPath, oldPath));
@@ -302,7 +319,7 @@ router.get('/:serverId/download', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Path is required' });
         }
 
-        const serverPath = steamcmdService.getServerPath(serverId);
+        const serverPath = await getServerPath(serverId);
         const resolvedPath = path.resolve(path.join(serverPath, relativePath as string));
         const resolvedServerPath = path.resolve(serverPath);
 
@@ -344,7 +361,7 @@ router.post('/:serverId/archive', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Paths array and outputName are required' });
         }
 
-        const serverPath = steamcmdService.getServerPath(serverId);
+        const serverPath = await getServerPath(serverId);
         const resolvedServerPath = path.resolve(serverPath);
 
         const { createRequire } = await import('module');
@@ -387,7 +404,7 @@ router.post('/:serverId/unzip', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Path is required' });
         }
 
-        const serverPath = steamcmdService.getServerPath(serverId);
+        const serverPath = await getServerPath(serverId);
         const fullPath = path.join(serverPath, relativePath);
         const resolvedPath = path.resolve(fullPath);
         const resolvedServerPath = path.resolve(serverPath);
@@ -423,7 +440,7 @@ router.post('/:serverId/recycle', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Paths array is required' });
         }
 
-        const serverPath = steamcmdService.getServerPath(serverId);
+        const serverPath = await getServerPath(serverId);
         const trashPath = path.join(serverPath, '.quatrix_trash');
         const resolvedServerPath = path.resolve(serverPath);
 
@@ -479,7 +496,7 @@ router.post('/:serverId/restore', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Paths array is required' });
         }
 
-        const serverPath = steamcmdService.getServerPath(serverId);
+        const serverPath = await getServerPath(serverId);
         const trashPath = path.join(serverPath, '.quatrix_trash');
         const targetDir = destination ? path.join(serverPath, destination) : serverPath;
 
@@ -515,7 +532,7 @@ router.post('/:serverId/restore', async (req: Request, res: Response) => {
 router.post('/:serverId/empty-trash', async (req: Request, res: Response) => {
     try {
         const { serverId } = req.params;
-        const serverPath = steamcmdService.getServerPath(serverId);
+        const serverPath = await getServerPath(serverId);
         const trashPath = path.join(serverPath, '.quatrix_trash');
 
         if (existsSync(trashPath)) {

@@ -17,6 +17,8 @@ interface StartServerOptions {
     rconPassword?: string;
     workshopCollection?: string;
     workshopMapId?: string;
+    vacEnabled: boolean;
+    installPath: string;
 }
 
 class ProcessService {
@@ -30,7 +32,7 @@ class ProcessService {
             throw new Error(`Server ${options.id} is already running.`);
         }
 
-        const serverPath = steamcmdService.getServerPath(options.id);
+        const serverPath = options.installPath;
 
         // Determine the executable path based on OS
         // CS2 structure: game/bin/win64/cs2.exe or game/bin/linuxsteamrt64/cs2
@@ -48,11 +50,15 @@ class ProcessService {
             '-ip', '0.0.0.0',
             '-port', options.port.toString(),
             '-maxplayers', options.maxPlayers.toString(),
-            '-insecure',
             '-allow_third_party_software',
-            '-nobreakpad',
+            '-condebug', // Enable console logging
+            '-conclearlog', // Clear log on start
             '-nomessagebox'
         ];
+
+        if (!options.vacEnabled) {
+            engineArgs.push('-insecure');
+        }
 
         if (options.steamAuthKey) {
             engineArgs.push('-authkey', options.steamAuthKey);
@@ -62,9 +68,12 @@ class ProcessService {
 
         // Console Variables (+)
         const conVars = [
+            '+sv_lan', '0', // Ensure internet mode (not LAN)
             '+sv_visiblemaxplayers', options.maxPlayers.toString(),
             '+sv_setsteamaccount', options.gsltToken,
-            '+rcon_password', options.rconPassword || ''
+            '+rcon_password', options.rconPassword || '',
+            '+game_type', '0', // Classic
+            '+game_mode', '1'  // Competitive
         ];
 
         // Add Workshop Collection if provided
@@ -85,22 +94,38 @@ class ProcessService {
             throw new Error(`Executable not found at ${fullExePath}`);
         }
 
-        const workDir = path.dirname(fullExePath); // Run from bin directory
+        const workDir = serverPath; // Run from server root, not bin directory
 
         // FIX: Start - Ensure Steam environment is correct
         try {
-            // 1. Create steam_appid.txt
-            const appIdPath = path.join(workDir, 'steam_appid.txt');
+            // 1. Create steam_appid.txt in server root
+            const appIdPath = path.join(serverPath, 'steam_appid.txt');
             if (!fs.existsSync(appIdPath)) {
                 fs.writeFileSync(appIdPath, '730');
                 logger.info(`Created steam_appid.txt at ${appIdPath}`);
             }
 
-            // 2. Create userdata folder to prevent USRLOCAL error
-            const userDataPath = path.join(workDir, 'userdata');
+            // 2. Create userdata folder in server root to prevent USRLOCAL error
+            const userDataPath = path.join(serverPath, 'userdata');
             if (!fs.existsSync(userDataPath)) {
                 fs.mkdirSync(userDataPath, { recursive: true });
                 logger.info(`Created userdata folder at ${userDataPath}`);
+            }
+
+            // 3. Copy steamclient.dll from SteamCMD to server bin folder (CRITICAL FIX)
+            const steamcmdPath = steamcmdService.getSteamCMDPath();
+            const serverBinPath = path.join(serverPath, 'game', 'bin', 'win64');
+
+            const requiredDlls = ['steamclient64.dll', 'tier0_s64.dll', 'vstdlib_s64.dll'];
+
+            for (const dllName of requiredDlls) {
+                const sourceDll = path.join(steamcmdPath, dllName);
+                const targetDll = path.join(serverBinPath, dllName);
+
+                if (fs.existsSync(sourceDll) && !fs.existsSync(targetDll)) {
+                    fs.copyFileSync(sourceDll, targetDll);
+                    logger.info(`Copied ${dllName} from SteamCMD to server bin folder`);
+                }
             }
         } catch (error: any) {
             logger.warn(`Steam setup warning: ${error.message}`);
@@ -115,16 +140,24 @@ class ProcessService {
         const serverProcess = spawn(fullExePath, args, {
             cwd: workDir,
             shell: false,
-            windowsHide: true, // Reverting to true for cleaner background operation
+            windowsHide: true,
             stdio: ['pipe', 'pipe', 'pipe'],
             env: {
-                ...process.env, // Pass full environment to avoid missing critical Windows vars
+                ...process.env,
                 // Steam specific overrides
                 SteamAppId: '730',
-                SteamGameId: '730',
-                SteamClientLaunch: '1'
+                SteamGameId: '730'
             }
         });
+
+        // Store PID in database
+        if (serverProcess.pid) {
+            await prisma.server.update({
+                where: { id: options.id },
+                data: { processId: serverProcess.pid }
+            });
+            logger.debug(`Stored PID ${serverProcess.pid} for server ${options.id}`);
+        }
 
         this.activeProcesses.set(options.id, serverProcess);
 
@@ -137,7 +170,9 @@ class ProcessService {
             const filtered = lines
                 .filter(l => l.trim().length > 0)
                 .filter(l => !l.includes('CTextConsoleWin::GetLine: !GetNumberOfConsoleInputEvents'))
-                .filter(l => !l.includes('Could not PreloadLibrary')); // Also filter these confusing warnings
+                .filter(l => !l.includes('Could not PreloadLibrary'))
+                .filter(l => !l.toLowerCase().includes('breakpad'))
+                .filter(l => !l.toLowerCase().includes('minidump'));
 
             return filtered.length > 0 ? filtered.join('\r\n') + '\r\n' : null;
         };
@@ -150,12 +185,22 @@ class ProcessService {
             }
         });
 
+        serverProcess.stdout?.on('error', (err) => {
+            logger.warn(`[Server ${options.id}] stdout error: ${err.message}`);
+        });
+
         serverProcess.stderr?.on('data', (data: Buffer) => {
             const filtered = filterSpam(data);
             if (filtered) {
-                logger.error(`[Server ${options.id} Error]: ${filtered.trim()}`);
+                // Note: Steam/CS2 sends many normal info messages to stderr.
+                // We keep them as debug in backend but stream to console.
+                logger.debug(`[Server ${options.id} Stderr]: ${filtered.trim()}`);
                 terminalService.streamOutput(options.id, `\x1b[31m${filtered}\x1b[0m`);
             }
+        });
+
+        serverProcess.stderr?.on('error', (err) => {
+            logger.warn(`[Server ${options.id}] stderr error: ${err.message}`);
         });
 
         serverProcess.on('close', async (code) => {
@@ -193,21 +238,134 @@ class ProcessService {
         }
 
         return new Promise((resolve) => {
+            let resolved = false;
+
+            const cleanup = () => {
+                if (!resolved) {
+                    resolved = true;
+                    this.activeProcesses.delete(serverId);
+                    resolve();
+                }
+            };
+
             const forceKillTimeout = setTimeout(() => {
                 if (this.activeProcesses.has(serverId)) {
-                    logger.warn(`Server ${serverId} didn't stop gracefully, force killing...`);
-                    serverProcess.kill('SIGKILL');
+                    logger.warn(`Server ${serverId} force killing...`);
+                    try {
+                        serverProcess.kill('SIGKILL');
+                    } catch (err) {
+                        logger.error(`Force kill failed: ${err}`);
+                    }
+                    cleanup();
                 }
-            }, 10000);
+            }, 3000);
+
+            serverProcess.once('exit', () => {
+                clearTimeout(forceKillTimeout);
+                cleanup();
+            });
 
             serverProcess.once('close', () => {
                 clearTimeout(forceKillTimeout);
-                resolve();
+                cleanup();
+            });
+
+            serverProcess.once('error', (err) => {
+                logger.error(`Process error during stop: ${err.message}`);
+                clearTimeout(forceKillTimeout);
+                cleanup();
             });
 
             logger.info(`Stopping server ${serverId}...`);
-            serverProcess.kill('SIGTERM');
+
+            // Clean up streams to prevent ECONNRESET
+            try {
+                if (serverProcess.stdout) {
+                    serverProcess.stdout.removeAllListeners('data');
+                    serverProcess.stdout.on('error', () => { });
+                }
+                if (serverProcess.stderr) {
+                    serverProcess.stderr.removeAllListeners('data');
+                    serverProcess.stderr.on('error', () => { });
+                }
+                if (serverProcess.stdin) {
+                    serverProcess.stdin.on('error', () => { });
+                }
+            } catch (err) {
+                logger.warn(`Stream cleanup warning: ${err}`);
+            }
+
+            // Windows: use SIGKILL directly, SIGTERM doesn't work well with CS2
+            try {
+                if (process.platform === 'win32') {
+                    serverProcess.kill('SIGKILL');
+                } else {
+                    serverProcess.kill('SIGTERM');
+                }
+            } catch (err) {
+                logger.error(`Kill failed: ${err}`);
+                cleanup();
+            }
         });
+    }
+
+    /**
+     * Synchronize server statuses by checking if stored PIDs are still running.
+     * Called on backend startup.
+     */
+    public async syncStatuses(): Promise<void> {
+        logger.info('🔍 Syncing server statuses with OS processes...');
+        const servers = await prisma.server.findMany({
+            where: {
+                OR: [
+                    { status: 'RUNNING' },
+                    { status: 'STARTING' },
+                    { status: 'STOPPING' },
+                    { processId: { not: null } }
+                ]
+            }
+        });
+
+        for (const server of servers) {
+            if (!server.processId) {
+                // No PID stored, but DB says running? Mark as stopped.
+                if (server.status !== 'STOPPED' && server.status !== 'ERROR' && server.status !== 'CREATING') {
+                    await prisma.server.update({
+                        where: { id: server.id },
+                        data: { status: 'STOPPED' }
+                    });
+                }
+                continue;
+            }
+
+            let isAlive = false;
+            try {
+                // signal 0 checks for existence without killing
+                process.kill(server.processId, 0);
+                isAlive = true;
+            } catch (e) {
+                isAlive = false;
+            }
+
+            if (isAlive) {
+                if (server.status !== 'RUNNING') {
+                    await prisma.server.update({
+                        where: { id: server.id },
+                        data: { status: 'RUNNING' }
+                    });
+                }
+                logger.info(`  > Server ${server.name} (${server.id}) is alive at PID ${server.processId}`);
+            } else {
+                if (server.status !== 'STOPPED' && server.status !== 'ERROR' && server.status !== 'CREATING') {
+                    await prisma.server.update({
+                        where: { id: server.id },
+                        data: { status: 'STOPPED', processId: null }
+                    });
+                }
+                logger.debug(`  > Server ${server.name} (${server.id}) process ${server.processId} no longer exists.`);
+            }
+        }
+        logger.info('✅ Server status sync completed.');
     }
 
     /**

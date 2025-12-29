@@ -1,4 +1,4 @@
-import axios from 'axios';
+import api from './api';
 
 interface Settings {
     id: number;
@@ -9,33 +9,24 @@ interface Settings {
 
 const API_URL = '/api/settings';
 
-const getHeader = () => {
-    const token = JSON.parse(localStorage.getItem('quatrix-auth') || '{}')?.state?.token;
-    return {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    };
-};
-
 export const settingsService = {
     async getSettings(): Promise<{ success: boolean; data: Settings }> {
-        const response = await axios.get(`${API_URL}/`, getHeader());
+        const response = await api.get(`${API_URL}/`);
         return response.data;
     },
 
     async updateSettings(data: { steamcmdPath: string; serversPath: string }): Promise<{ success: boolean; data: Settings }> {
-        const response = await axios.post(`${API_URL}/`, data, getHeader());
+        const response = await api.post(`${API_URL}/`, data);
         return response.data;
     },
 
     async installSteamCMD(): Promise<{ success: boolean; message: string }> {
-        const response = await axios.post(`${API_URL}/install`, {}, getHeader());
+        const response = await api.post(`${API_URL}/install`, {});
         return response.data;
     },
 
     async resetSetup(): Promise<{ success: boolean; message: string }> {
-        const response = await axios.post(`${API_URL}/reset`, {}, getHeader());
+        const response = await api.post(`${API_URL}/reset`, {});
         return response.data;
     },
 };

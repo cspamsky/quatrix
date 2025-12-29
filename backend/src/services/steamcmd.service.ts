@@ -60,11 +60,12 @@ class SteamCMDService {
      */
     public async installOrUpdateServer(
         serverId: string,
-        onProgress?: (data: string) => void
+        onProgress?: (data: string) => void,
+        specificPath?: string
     ): Promise<void> {
         await this.loadSettings(); // Always refresh before use
 
-        const installDir = path.join(this.serversRoot, serverId);
+        const installDir = specificPath || path.join(this.serversRoot, serverId);
         if (!fs.existsSync(installDir)) {
             fs.mkdirSync(installDir, { recursive: true });
         }

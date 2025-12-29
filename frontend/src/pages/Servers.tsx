@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-    Card, Row, Col, Button, Typography, Space, Modal, Form, Input, Table, Tag, App, Select
+    Card, Row, Col, Button, Typography, Space, Modal, Form, Input, Table, Tag, App, Select, Switch, Radio
 } from 'antd';
 import {
     PlayCircleOutlined,
@@ -35,8 +35,9 @@ function Servers() {
     const [isEditModalVisible, setIsEditModalVisible] = useState(false);
     const [editingServer, setEditingServer] = useState<any>(null);
     const [selectedServerForWorkshop, setSelectedServerForWorkshop] = useState<any | null>(null);
-    const [form] = Form.useForm();
+    const [createForm] = Form.useForm();
     const [editForm] = Form.useForm();
+    const [installType, setInstallType] = useState<'new' | 'existing'>('new');
 
     const fetchServers = async () => {
         setLoading(true);
@@ -70,11 +71,18 @@ function Servers() {
                 gsltToken: values.gsltToken?.trim(),
                 steamAuthKey: values.steamAuthKey?.trim()
             };
+
+            // If it's a new install, don't send installPath
+            if (installType === 'new') {
+                delete finalValues.installPath;
+            }
+
             const response = await serverService.createServer(finalValues);
             if (response.success) {
                 message.success(t('common.success'));
                 setIsModalVisible(false);
-                form.resetFields();
+                createForm.resetFields();
+                setInstallType('new');
                 fetchServers();
                 setSelectedServerForConsole(response.data.id);
             }
@@ -99,11 +107,11 @@ function Servers() {
         }
     };
 
-    const handleStop = async (id: string) => {
+    const handleRestart = async (id: string) => {
         setLoading(true);
-        const hide = message.loading(t('server.processing_stopping'), 0);
+        const hide = message.loading(t('server.processing_restarting'), 0);
         try {
-            await serverService.stopServer(id);
+            await serverService.restartServer(id);
             hide();
             message.success(t('common.success'));
             fetchServers();
@@ -115,11 +123,11 @@ function Servers() {
         }
     };
 
-    const handleRestart = async (id: string) => {
+    const handleForceStop = async (id: string) => {
         setLoading(true);
-        const hide = message.loading(t('server.processing_restarting'), 0);
+        const hide = message.loading(t('server.processing_stopping'), 0);
         try {
-            await serverService.restartServer(id);
+            await serverService.forceStopServer(id);
             hide();
             message.success(t('common.success'));
             fetchServers();
@@ -202,6 +210,8 @@ function Servers() {
                 rconPassword: '',
                 maxPlayers: editingServer.maxPlayers || 10,
                 map: editingServer.map || 'de_dust2',
+                port: editingServer.port,
+                vacEnabled: editingServer.vacEnabled
             });
         }
     }, [isEditModalVisible, editingServer, editForm]);
@@ -250,17 +260,22 @@ function Servers() {
                         >
                             <span className="button-text">{t('server.start')}</span>
                         </Button>
-                    ) : (
+                    ) : null}
+
+
+                    {(record.status === 'RUNNING' || record.status === 'STARTING' || record.status === 'STOPPING' || record.status === 'CREATING') && (
                         <Button
                             icon={<StopOutlined />}
-                            onClick={() => handleStop(record.id)}
+                            onClick={() => handleForceStop(record.id)}
                             danger
                             size="small"
-                            disabled={record.status === 'CREATING'}
+                            type={record.status === 'CREATING' ? 'primary' : 'default'}
                         >
                             <span className="button-text">{t('server.stop')}</span>
                         </Button>
                     )}
+
+
                     {record.status === 'RUNNING' && (
                         <Button
                             icon={<ReloadOutlined />}
@@ -303,7 +318,7 @@ function Servers() {
                         onClick={() => handleDelete(record.id)}
                         title={t('common.delete')}
                     >
-                        <span className="button-text">{record.status === 'CREATING' ? t('common.cancel') : t('common.delete')}</span>
+                        <span className="button-text">{t('common.delete')}</span>
                     </Button>
                 </Space>
             )
@@ -342,30 +357,81 @@ function Servers() {
             <Modal
                 title={t('dashboard.createServer')}
                 open={isModalVisible}
-                onCancel={() => setIsModalVisible(false)}
+                onCancel={() => {
+                    setIsModalVisible(false);
+                    setInstallType('new');
+                    createForm.resetFields();
+                }}
                 footer={null}
+                width={600}
             >
                 <Form
-                    form={form}
+                    form={createForm}
                     onFinish={handleCreateServer}
                     layout="vertical"
                     initialValues={{
                         maxPlayers: 10,
                         map: 'de_dust2',
+                        vacEnabled: true,
+                        installType: 'new'
                     }}
                 >
-                    <Form.Item name="name" label={t('dashboard.serverName')} rules={[{ required: true, message: t('dashboard.gslt_required') }]}><Input /></Form.Item>
-                    <Form.Item name="description" label={t('dashboard.description')}><Input.TextArea /></Form.Item>
+                    <Form.Item label={t('dashboard.installType')} name="installType">
+                        <Radio.Group
+                            optionType="button"
+                            buttonStyle="solid"
+                            onChange={(e) => setInstallType(e.target.value)}
+                            value={installType}
+                        >
+                            <Radio value="new">{t('dashboard.newInstall')}</Radio>
+                            <Radio value="existing">{t('dashboard.existingPath')}</Radio>
+                        </Radio.Group>
+                    </Form.Item>
+
+                    {installType === 'existing' && (
+                        <Card
+                            size="small"
+                            style={{ marginBottom: 20, background: 'rgba(0,0,0,0.02)', border: '1px dashed #d9d9d9' }}
+                        >
+                            <Typography.Text type="secondary" size="small" style={{ display: 'block', marginBottom: 10 }}>
+                                <ExclamationCircleOutlined style={{ marginRight: 8 }} />
+                                {t('dashboard.existing_desc')}
+                            </Typography.Text>
+                            <Form.Item
+                                name="installPath"
+                                label={t('dashboard.path_label')}
+                                rules={[{ required: true }]}
+                                extra={t('dashboard.example_path')}
+                            >
+                                <Input placeholder={t('dashboard.path_placeholder')} />
+                            </Form.Item>
+                        </Card>
+                    )}
+
+                    <Form.Item name="name" label={t('dashboard.serverName')} rules={[{ required: true }]}><Input placeholder={t('dashboard.serverName_placeholder')} /></Form.Item>
+                    <Form.Item name="description" label={t('dashboard.description')}><Input.TextArea placeholder={t('dashboard.description_placeholder')} /></Form.Item>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="port" label={t('server.port')}>
+                                <Input type="number" placeholder={t('dashboard.auto_allocate')} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="vacEnabled" label={t('server.vac_secure')} valuePropName="checked">
+                                <Switch checkedChildren={t('common.enabled')} unCheckedChildren={t('common.disabled')} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
                     <Row gutter={16}>
                         <Col span={12}><Form.Item name="gsltToken" label={t('dashboard.gsltToken')} rules={[{ required: true }]}><Input /></Form.Item></Col>
-                        <Col span={12}><Form.Item name="steamAuthKey" label="Steam Web API Key"><Input /></Form.Item></Col>
+                        <Col span={12}><Form.Item name="steamAuthKey" label={t('server.steam_web_api_key')}><Input /></Form.Item></Col>
                     </Row>
                     <Row gutter={16}>
-                        <Col span={12}><Form.Item name="rconPassword" label="RCON Password" rules={[{ required: true }]}><Input.Password /></Form.Item></Col>
-                        <Col span={12}><Form.Item name="maxPlayers" label={t('dashboard.players_required')} rules={[{ required: true }]}><Input type="number" /></Form.Item></Col>
+                        <Col span={12}><Form.Item name="rconPassword" label={t('server.rcon_password')} rules={[{ required: true, message: t('common.required') }]}><Input.Password /></Form.Item></Col>
+                        <Col span={12}><Form.Item name="maxPlayers" label={t('dashboard.max_players')} rules={[{ required: true, message: t('common.required') }]}><Input type="number" /></Form.Item></Col>
                     </Row>
                     <Form.Item name="map" label={t('dashboard.default_map')} rules={[{ required: true }]}>
-                        <Select>
+                        <Select placeholder={t('dashboard.map_placeholder')}>
                             <Select.OptGroup label={t('dashboard.competitive_maps')}>
                                 <Select.Option value="de_dust2">Dust 2</Select.Option>
                                 <Select.Option value="de_mirage">Mirage</Select.Option>
@@ -381,7 +447,9 @@ function Servers() {
                     <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>
                         <Space>
                             <Button onClick={() => setIsModalVisible(false)}>{t('common.cancel')}</Button>
-                            <Button type="primary" htmlType="submit" icon={<RocketOutlined />}>{t('dashboard.createAndInstall')}</Button>
+                            <Button type="primary" htmlType="submit" icon={installType === 'new' ? <RocketOutlined /> : <PlusOutlined />}>
+                                {installType === 'new' ? t('dashboard.createAndInstall') : t('common.create')}
+                            </Button>
                         </Space>
                     </Form.Item>
                 </Form>
@@ -403,12 +471,24 @@ function Servers() {
                     <Form.Item name="name" label={t('dashboard.serverName')} rules={[{ required: true }]}><Input /></Form.Item>
                     <Form.Item name="description" label={t('dashboard.description')}><Input.TextArea /></Form.Item>
                     <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="port" label={t('server.port')}>
+                                <Input type="number" placeholder={t('dashboard.auto_allocate')} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="vacEnabled" label={t('server.vac_secure')} valuePropName="checked">
+                                <Switch checkedChildren={t('common.enabled')} unCheckedChildren={t('common.disabled')} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={16}>
                         <Col span={12}><Form.Item name="gsltToken" label={t('dashboard.gsltToken')} rules={[{ required: true }]}><Input /></Form.Item></Col>
-                        <Col span={12}><Form.Item name="steamAuthKey" label="Steam Web API Key"><Input /></Form.Item></Col>
+                        <Col span={12}><Form.Item name="steamAuthKey" label={t('server.steam_web_api_key')}><Input /></Form.Item></Col>
                     </Row>
                     <Row gutter={16}>
                         <Col span={12}><Form.Item name="rconPassword" label={t('dashboard.rcon_password_edit')}><Input.Password placeholder={t('dashboard.empty_no_change')} /></Form.Item></Col>
-                        <Col span={12}><Form.Item name="maxPlayers" label={t('dashboard.players_required')} rules={[{ required: true }]}><Input type="number" /></Form.Item></Col>
+                        <Col span={12}><Form.Item name="maxPlayers" label={t('dashboard.max_players')} rules={[{ required: true, message: t('common.required') }]}><Input type="number" /></Form.Item></Col>
                     </Row>
                     <Form.Item name="map" label={t('dashboard.default_map')} rules={[{ required: true }]}>
                         <Select>

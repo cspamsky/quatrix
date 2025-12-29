@@ -15,7 +15,7 @@ export const getMyServers = async (req: Request, res: Response, next: NextFuncti
 export const createServer = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = (req as any).user.userId;
-        const { name, description, gsltToken, steamAuthKey, rconPassword, maxPlayers, map } = req.body;
+        const { name, description, gsltToken, steamAuthKey, rconPassword, maxPlayers, map, installPath } = req.body;
 
         if (!name || !gsltToken) {
             throw new ApiError(400, 'Name and GSLT Token are required');
@@ -28,7 +28,8 @@ export const createServer = async (req: Request, res: Response, next: NextFuncti
             steamAuthKey,
             rconPassword,
             maxPlayers: maxPlayers ? parseInt(maxPlayers) : undefined,
-            map
+            map,
+            installPath
         });
         res.status(201).json({ success: true, data: server });
     } catch (error) {
@@ -53,6 +54,17 @@ export const stopServer = async (req: Request, res: Response, next: NextFunction
         const { id } = req.params;
         await serverService.stopServer(id, userId);
         res.json({ success: true, message: 'Server stopping...' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const forceStopServer = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = (req as any).user.userId;
+        const { id } = req.params;
+        await serverService.forceStopServer(id, userId);
+        res.json({ success: true, message: 'Server force stopped' });
     } catch (error) {
         next(error);
     }

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Input, Button, App, Empty, Spin, Typography, Space } from 'antd';
+import { Layout, Menu, Button, App, Empty, Spin, Typography, Space } from 'antd';
 import { FileTextOutlined, SaveOutlined, ReloadOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import Editor from '@monaco-editor/react';
 import { fileService, FileEntry } from '../services/fileService';
 import { useTranslation } from 'react-i18next';
+import { useThemeStore } from '../store/useThemeStore';
 
 const { Sider, Content } = Layout;
-const { TextArea } = Input;
 const { Title, Text } = Typography;
 
 interface ConfigEditorProps {
@@ -15,6 +16,7 @@ interface ConfigEditorProps {
 const ConfigEditor: React.FC<ConfigEditorProps> = ({ serverId }) => {
     const { t } = useTranslation();
     const { message } = App.useApp();
+    const { darkMode } = useThemeStore();
     const [files, setFiles] = useState<FileEntry[]>([]);
     const [selectedFile, setSelectedFile] = useState<string | null>(null);
     const [content, setContent] = useState('');
@@ -76,21 +78,42 @@ const ConfigEditor: React.FC<ConfigEditorProps> = ({ serverId }) => {
         }
     };
 
+    const getLanguage = (filename: string | null) => {
+        if (!filename) return 'plaintext';
+        const ext = filename.split('.').pop()?.toLowerCase();
+        switch (ext) {
+            case 'cfg':
+            case 'ini':
+                return 'ini';
+            case 'json':
+                return 'json';
+            case 'sh':
+            case 'bash':
+                return 'shell';
+            case 'txt':
+            case 'log':
+                return 'plaintext';
+            default:
+                return 'plaintext';
+        }
+    };
+
     const hasChanges = content !== originalContent;
 
     return (
-        <Layout style={{ height: '500px', background: '#fff', border: '1px solid #f0f0f0', borderRadius: '8px' }}>
-            <Sider width={200} theme="light" style={{ borderRight: '1px solid #f0f0f0' }}>
-                <div style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+        <Layout style={{ height: '600px', background: darkMode ? '#141414' : '#fff', border: `1px solid ${darkMode ? '#303030' : '#f0f0f0'}`, borderRadius: '8px', overflow: 'hidden' }}>
+            <Sider width={200} theme={darkMode ? 'dark' : 'light'} style={{ borderRight: `1px solid ${darkMode ? '#303030' : '#f0f0f0'}`, background: darkMode ? '#141414' : '#fff' }}>
+                <div style={{ padding: '12px', borderBottom: `1px solid ${darkMode ? '#303030' : '#f0f0f0'}` }}>
                     <Space>
                         <UnorderedListOutlined />
-                        <Text strong>{t('config.files')}</Text>
+                        <Text strong style={{ color: darkMode ? 'rgba(255,255,255,0.85)' : 'initial' }}>{t('config.files')}</Text>
                     </Space>
                 </div>
                 <Menu
                     mode="inline"
+                    theme={darkMode ? 'dark' : 'light'}
                     selectedKeys={selectedFile ? [selectedFile] : []}
-                    style={{ border: 'none', height: 'calc(100% - 46px)', overflowY: 'auto' }}
+                    style={{ border: 'none', height: 'calc(100% - 46px)', overflowY: 'auto', background: darkMode ? '#141414' : '#fff' }}
                     onClick={({ key }) => handleFileSelect(key)}
                     items={files.map(file => ({
                         key: file.name,
@@ -99,9 +122,9 @@ const ConfigEditor: React.FC<ConfigEditorProps> = ({ serverId }) => {
                     }))}
                 />
             </Sider>
-            <Content style={{ padding: '16px', display: 'flex', flexDirection: 'column' }}>
+            <Content style={{ padding: '16px', display: 'flex', flexDirection: 'column', background: darkMode ? '#1d1d1d' : '#fcfcfc' }}>
                 <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Title level={5} style={{ margin: 0 }}>
+                    <Title level={5} style={{ margin: 0, color: darkMode ? 'rgba(255,255,255,0.85)' : 'initial' }}>
                         {selectedFile ? `${t('config.editing')}: ${selectedFile}` : t('config.selectFile')}
                     </Title>
                     <Space>
@@ -124,30 +147,37 @@ const ConfigEditor: React.FC<ConfigEditorProps> = ({ serverId }) => {
                     </Space>
                 </div>
 
-                {loading && !content ? (
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                        <Spin>
-                            <div style={{ padding: 20 }} />
-                        </Spin>
-                    </div>
-                ) : selectedFile ? (
-                    <TextArea
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        style={{
-                            flex: 1,
-                            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-                            fontSize: '13px',
-                            resize: 'none',
-                            whiteSpace: 'pre'
-                        }}
-                    />
-                ) : (
-                    <Empty description={t('config.selectFileDesc')} style={{ marginTop: '100px' }} />
-                )}
+                <div style={{ flex: 1, borderRadius: '4px', overflow: 'hidden', border: `1px solid ${darkMode ? '#303030' : '#f0f0f0'}` }}>
+                    {loading && !content ? (
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                            <Spin>
+                                <div style={{ padding: 20 }} />
+                            </Spin>
+                        </div>
+                    ) : selectedFile ? (
+                        <Editor
+                            height="100%"
+                            language={getLanguage(selectedFile)}
+                            theme={darkMode ? 'vs-dark' : 'light'}
+                            value={content}
+                            onChange={(value) => setContent(value || '')}
+                            options={{
+                                minimap: { enabled: false },
+                                fontSize: 13,
+                                fontFamily: "'Cascadia Code', Consolas, 'Courier New', monospace",
+                                scrollBeyondLastLine: false,
+                                automaticLayout: true,
+                                padding: { top: 10, bottom: 10 }
+                            }}
+                        />
+                    ) : (
+                        <Empty description={t('config.selectFileDesc')} style={{ marginTop: '100px' }} />
+                    )}
+                </div>
             </Content>
         </Layout>
     );
 };
 
 export default ConfigEditor;
+

@@ -61,7 +61,7 @@ const WorkshopManager: React.FC<WorkshopManagerProps> = ({ server, onUpdate }) =
                         label={<Space size={4}><GlobalOutlined /><span style={{ fontSize: 12 }}>{t('workshop.collectionId')}</span></Space>}
                         style={{ marginBottom: 4 }}
                     >
-                        <Input placeholder="e.g. 3012345678" />
+                        <Input placeholder={`${t('common.optional')} 3012345678`} />
                     </Form.Item>
 
                     <Form.Item
@@ -69,7 +69,7 @@ const WorkshopManager: React.FC<WorkshopManagerProps> = ({ server, onUpdate }) =
                         label={<Space size={4}><RocketOutlined /><span style={{ fontSize: 12 }}>{t('workshop.mapId')}</span></Space>}
                         style={{ marginBottom: 0 }}
                     >
-                        <Input placeholder="e.g. 3087654321" />
+                        <Input placeholder={`${t('common.optional')} 3087654321`} />
                     </Form.Item>
 
                     <Divider style={{ margin: '8px 0' }} />

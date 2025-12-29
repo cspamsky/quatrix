@@ -66,14 +66,14 @@ const Login: React.FC = () => {
                     >
                         <Form.Item
                             name="email"
-                            rules={[{ required: true, message: t('common.error'), type: 'email' }]}
+                            rules={[{ required: true, message: t('common.required'), type: 'email' }]}
                         >
                             <Input prefix={<UserOutlined />} placeholder={t('common.email')} />
                         </Form.Item>
 
                         <Form.Item
                             name="password"
-                            rules={[{ required: true, message: t('common.error') }]}
+                            rules={[{ required: true, message: t('common.required') }]}
                         >
                             <Input.Password prefix={<LockOutlined />} placeholder={t('common.password')} />
                         </Form.Item>

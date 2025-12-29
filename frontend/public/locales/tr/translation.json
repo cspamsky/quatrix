@@ -28,7 +28,14 @@
         "offline": "Çevrimdışı",
         "disconnected": "Bağlantı Kesildi",
         "form_reset": "Form sıfırlandı",
-        "processing": "İşlem yapılıyor..."
+        "processing": "İşlem yapılıyor...",
+        "enabled": "Aktif",
+        "disabled": "Devre Dışı",
+        "optional": "İsteğe Bağlı",
+        "active": "Aktif",
+        "name": "İsim",
+        "download": "İndir",
+        "open": "Aç"
     },
     "nav": {
         "dashboard": "Kontrol Paneli",
@@ -66,7 +73,16 @@
         "rcon_password_edit": "RCON Şifresi (Değiştirmek için girin)",
         "empty_no_change": "Boş bırakılırsa değişmez",
         "default_map": "Varsayılan Harita",
-        "workshop_management": "Workshop Yönetimi"
+        "workshop_management": "Workshop Yönetimi",
+        "installType": "Kurulum Tipi",
+        "newInstall": "Yeni Kurulum (SteamCMD)",
+        "existingPath": "Var Olan Dosya Yolu",
+        "path_label": "Sunucu Klasörü Yolu",
+        "path_placeholder": "C:\\CS2-Servers\\MyServer",
+        "existing_desc": "Sistemde zaten kurulu olan bir sunucuyu eklemek için klasör yolunu girin.",
+        "example_path": "Örn: C:\\CS2-Servers\\Sunucum",
+        "auto_allocate": "Otomatik Belirle",
+        "max_players": "Maksimum Oyuncu"
     },
     "server": {
         "name": "İsim",
@@ -74,6 +90,7 @@
         "port": "Port",
         "start": "Başlat",
         "stop": "Durdur",
+        "force_stop": "Zorla Durdur",
         "restart": "Yeniden Başlat",
         "console": "Konsol",
         "config": "Ayarlar",
@@ -86,7 +103,12 @@
         "processing_starting": "Sunucu başlatılıyor...",
         "processing_stopping": "Sunucu durduruluyor...",
         "processing_restarting": "Sunucu yeniden başlatılıyor...",
-        "processing_verifying": "Dosyalar doğrulanıyor..."
+        "processing_verifying": "Dosyalar doğrulanıyor...",
+        "vac_secure": "VAC Koruması",
+        "steam_web_api_key": "Steam Web API Anahtarı",
+        "rcon_password": "RCON Şifresi",
+        "select_server": "Sunucu seçin",
+        "select_server_prompt": "Lütfen devam etmek için bir sunucu seçin"
     },
     "status": {
         "CREATING": "Oluşturuluyor",
@@ -95,7 +117,9 @@
         "RUNNING": "Çalışıyor",
         "STOPPING": "Durduruluyor",
         "ERROR": "Hata",
-        "UPDATING": "Güncelleniyor"
+        "UPDATING": "Güncelleniyor",
+        "INSTALLING": "Kuruluyor",
+        "VALIDATING": "Doğrulanıyor"
     },
     "workshop": {
         "title": "Workshop Ayarları",
@@ -128,7 +152,8 @@
         "appInfo": "Uygulama Bilgisi",
         "productName": "Ürün Adı",
         "version": "Versiyon",
-        "environment": "Ortam"
+        "environment": "Ortam",
+        "stable": "Kararlı"
     },
     "terminal": {
         "connecting": "Sunucu terminaline bağlanılıyor...",
@@ -163,7 +188,8 @@
     },
     "files": {
         "title": "Dosya Yöneticisi",
-        "name": "Ad",
+        "root": "Kök Dizin",
+        "name": "İsim",
         "size": "Boyut",
         "modified": "Son Değişiklik",
         "folder_empty": "Klasör Boş",
@@ -216,7 +242,17 @@
         "save_fail": "Kaydetme başarısız",
         "folder_download_not_supported": "Klasör indirme desteklenmiyor. Lütfen önce arşivleyin.",
         "processing_pasting": "Dosyalar yapıştırılıyor...",
-        "processing_downloading": "Dosya indirme için hazırlanıyor..."
+        "processing_downloading": "Dosya indirme için hazırlanıyor...",
+        "uploading": "Yükleniyor",
+        "files": "dosya",
+        "download_zip": "Zip Olarak İndir",
+        "processing_zipping": "Zip arşivi oluşturuluyor...",
+        "zip_download_started": "Zip oluşturuldu, indirme başlıyor...",
+        "processing_moving": "Dosyalar taşınıyor...",
+        "move_success": "Dosyalar taşındı",
+        "move_fail": "Taşıma başarısız",
+        "items_selected": "{{count}} öge seçildi",
+        "total_files": "{{count}} öge"
     },
     "rcon": {
         "players": "Bağlı Oyuncular",
@@ -234,6 +270,47 @@
         "confirm_kick": "Oyuncu atılsın mı?",
         "confirm_ban": "Oyuncu yasaklansın mı?",
         "back_to_console": "Konsola Dön",
-        "command_sent": "Komut iletildi"
+        "command_sent": "Komut iletildi",
+        "connect_success": "RCON bağlantısı başarılı (Sistem şifresi kullanıldı)",
+        "connect_failed": "Bağlantı başarısız",
+        "disconnected": "RCON bağlantısı kesildi",
+        "disconnect_failed": "Bağlantı kesme başarısız",
+        "command_executed": "Komut çalıştırıldı",
+        "command_failed": "Komut çalıştırılamadı",
+        "kicked_by_admin": "Yönetici tarafından atıldı",
+        "banned_by_admin": "Yönetici tarafından yasaklandı",
+        "player_kicked": "{{name}} atıldı.",
+        "ban_duration_text": "{{name}} (ID: {{id}}) için yasaklama süresi:",
+        "player_banned": "{{name}} yasaklandı.",
+        "password_hint": "Boş bırakılırsa kayıtlı şifre kullanılır"
+    },
+    "wizard": {
+        "title": "İlk Kurulum Sihirbazı",
+        "welcome": "Hoş Geldiniz",
+        "welcome_title": "Quatrix'e Hoş Geldiniz!",
+        "welcome_para": "CS2 sunucu yönetim panelinizi hazır hale getirmek için hızlı bir başlangıç kurulumu yapmamız gerekiyor. Bu sihirbaz, SteamCMD kurulumu ve sunucu yollarınızı yapılandırmanızda size rehberlik edecektir.",
+        "steamcmd": "SteamCMD",
+        "steamcmd_title": "SteamCMD Kurulumu",
+        "steamcmd_para": "Quatrix, Counter-Strike 2'yi indirmek ve güncellemek için SteamCMD kullanır.",
+        "steamcmd_win_instructions": "Windows için Talimatlar:",
+        "steamcmd_win_step1": "1. SteamCMD'yi",
+        "steamcmd_win_here": "buradan",
+        "steamcmd_win_step2": "indirip klasöre ayıklayın (örn: C:\\steamcmd).",
+        "steamcmd_win_step3": "3. Kendi kendini güncellemesi için steamcmd.exe'yi bir kez çalıştırın.",
+        "steamcmd_next_hint": "Kurulumu tamamladıktan sonra, yolu belirlemek için bir sonraki adıma geçin.",
+        "config": "Yapılandırma",
+        "config_title": "Yolları Yapılandır",
+        "config_steamcmd_label": "SteamCMD Dizini",
+        "config_steamcmd_help": "steamcmd.exe dosyasını içeren klasörün tam yolu",
+        "config_servers_label": "Sunucular Kök Dizini",
+        "config_servers_help": "CS2 sunucularının kurulacağı ana klasör",
+        "ready": "Hazır!",
+        "ready_title": "Her şey hazır!",
+        "ready_para": "Quatrix artık yapılandırıldı ve CS2 sunucularınızı yönetmeye hazır. Başlamak için aşağıdaki butona tıklayın.",
+        "previous": "Geri",
+        "next": "İleri",
+        "go_dashboard": "Kontrol Paneline Git",
+        "save_success": "Yapılandırma başarıyla kaydedildi!",
+        "save_fail": "Ayarlar kaydedilemedi"
     }
 }

@@ -128,5 +128,24 @@ export const fileService = {
             { headers: getAuthHeader() }
         );
         return response.data;
+    },
+    async uploadFiles(serverId: string, path: string, files: File[]) {
+        const formData = new FormData();
+        files.forEach(file => {
+            formData.append('files', file);
+        });
+
+        const response = await axios.post<{ success: boolean }>(
+            `${API_URL}/api/files/${serverId}/upload`,
+            formData,
+            {
+                params: { path },
+                headers: {
+                    ...getAuthHeader(),
+                    'Content-Type': 'multipart/form-data'
+                }
+            }
+        );
+        return response.data;
     }
 };

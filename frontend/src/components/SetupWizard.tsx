@@ -8,6 +8,7 @@ import {
     SettingOutlined
 } from '@ant-design/icons';
 import { settingsService } from '../services/settingsService';
+import { useTranslation } from 'react-i18next';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -21,7 +22,7 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ visible, onComplete }) => {
     const [current, setCurrent] = useState(0);
     const [loading, setLoading] = useState(false);
     const [form] = Form.useForm();
-
+    const { t } = useTranslation();
     const handleNext = async () => {
         if (current === 2) {
             // Final step - Save configuration
@@ -30,11 +31,11 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ visible, onComplete }) => {
                 setLoading(true);
                 const response = await settingsService.updateSettings(values);
                 if (response.success) {
-                    message.success('Configuration saved successfully!');
+                    message.success(t('wizard.save_success'));
                     setCurrent(current + 1);
                 }
             } catch (error: any) {
-                message.error(error.response?.data?.message || 'Failed to save settings');
+                message.error(error.response?.data?.message || t('wizard.save_fail'));
             } finally {
                 setLoading(false);
             }
@@ -45,62 +46,60 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ visible, onComplete }) => {
 
     const steps = [
         {
-            title: 'Welcome',
+            title: t('wizard.welcome'),
             content: (
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                     <RocketOutlined style={{ fontSize: 64, color: '#1890ff', marginBottom: 24 }} />
-                    <Title level={3}>Welcome to Quatrix!</Title>
+                    <Title level={3}>{t('wizard.welcome_title')}</Title>
                     <Paragraph>
-                        We need to perform a quick initial setup to get your CS2 server management panel ready.
-                        This wizard will guide you through installing SteamCMD and configuring your server paths.
+                        {t('wizard.welcome_para')}
                     </Paragraph>
                 </div>
             ),
         },
         {
-            title: 'SteamCMD',
+            title: t('wizard.steamcmd'),
             content: (
                 <div>
-                    <Title level={4}><DownloadOutlined /> Install SteamCMD</Title>
+                    <Title level={4}><DownloadOutlined /> {t('wizard.steamcmd_title')}</Title>
                     <Paragraph>
-                        Quatrix uses SteamCMD to download and update Counter-Strike 2.
+                        {t('wizard.steamcmd_para')}
                     </Paragraph>
                     <Card size="small" style={{ background: 'rgba(0, 0, 0, 0.02)', marginBottom: 16 }}>
                         <Space direction="vertical">
-                            <Text strong>Instructions for Windows:</Text>
-                            <Text>1. Download SteamCMD from <a href="https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip" target="_blank" rel="noreferrer">here</a>.</Text>
-                            <Text>2. Extract it to a folder (e.g., <code>C:\steamcmd</code>).</Text>
-                            <Text>3. Run <code>steamcmd.exe</code> once to let it update itself.</Text>
+                            <Text strong>{t('wizard.steamcmd_win_instructions')}</Text>
+                            <Text>{t('wizard.steamcmd_win_step1')} <a href="https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip" target="_blank" rel="noreferrer">{t('wizard.steamcmd_win_here')}</a> {t('wizard.steamcmd_win_step2')}</Text>
+                            <Text>{t('wizard.steamcmd_win_step3')}</Text>
                         </Space>
                     </Card>
                     <Paragraph type="secondary">
-                        Once you have installed it, proceed to the next step to set the path.
+                        {t('wizard.steamcmd_next_hint')}
                     </Paragraph>
                 </div>
             ),
         },
         {
-            title: 'Configuration',
+            title: t('wizard.config'),
             content: (
                 <div>
-                    <Title level={4}><SettingOutlined /> Configure Paths</Title>
+                    <Title level={4}><SettingOutlined /> {t('wizard.config_title')}</Title>
                     <Form form={form} layout="vertical" initialValues={{
                         steamcmdPath: './steamcmd',
                         serversPath: './cs2-servers'
                     }}>
                         <Form.Item
                             name="steamcmdPath"
-                            label="SteamCMD Directory"
-                            rules={[{ required: true, message: 'Please input SteamCMD path!' }]}
-                            help="Full path to the folder containing steamcmd.exe"
+                            label={t('wizard.config_steamcmd_label')}
+                            rules={[{ required: true, message: t('common.required') }]}
+                            help={t('wizard.config_steamcmd_help')}
                         >
                             <Input prefix={<FolderOpenOutlined />} placeholder="C:\steamcmd" />
                         </Form.Item>
                         <Form.Item
                             name="serversPath"
-                            label="Servers Root Directory"
-                            rules={[{ required: true, message: 'Please input servers root path!' }]}
-                            help="Folder where CS2 servers will be installed"
+                            label={t('wizard.config_servers_label')}
+                            rules={[{ required: true, message: t('common.required') }]}
+                            help={t('wizard.config_servers_help')}
                         >
                             <Input prefix={<FolderOpenOutlined />} placeholder="C:\quatrix\servers" />
                         </Form.Item>
@@ -109,14 +108,13 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ visible, onComplete }) => {
             ),
         },
         {
-            title: 'Ready!',
+            title: t('wizard.ready'),
             content: (
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                     <CheckCircleOutlined style={{ fontSize: 64, color: '#52c41a', marginBottom: 24 }} />
-                    <Title level={3}>You're all set!</Title>
+                    <Title level={3}>{t('wizard.ready_title')}</Title>
                     <Paragraph>
-                        Quatrix is now configured and ready to manage your CS2 servers.
-                        Click the button below to start your journey.
+                        {t('wizard.ready_para')}
                     </Paragraph>
                 </div>
             ),
@@ -126,20 +124,20 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ visible, onComplete }) => {
     return (
         <Modal
             open={visible}
-            title="Initial Setup Wizard"
+            title={t('wizard.title')}
             footer={[
                 current > 0 && current < 3 && (
                     <Button key="back" onClick={() => setCurrent(current - 1)}>
-                        Previous
+                        {t('wizard.previous')}
                     </Button>
                 ),
                 current < 3 ? (
                     <Button key="next" type="primary" onClick={handleNext} loading={loading}>
-                        Next
+                        {t('wizard.next')}
                     </Button>
                 ) : (
                     <Button key="finish" type="primary" onClick={onComplete}>
-                        Go to Dashboard
+                        {t('wizard.go_dashboard')}
                     </Button>
                 ),
             ]}

@@ -61,6 +61,7 @@ model Server {
   
   // Status
   status        String       @default("STOPPED") // Status as String for SQLite
+  vacEnabled    Boolean      @default(true)
   
   // Ownership
   ownerId       String

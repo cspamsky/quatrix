@@ -1,5 +1,8 @@
 import { prisma } from '../utils/prisma';
 import fs from 'fs';
+import path from 'path';
+import net from 'net';
+import dgram from 'dgram';
 import { steamcmdService } from './steamcmd.service';
 import { processService } from './process.service';
 import { terminalService } from './terminal.service';
@@ -31,15 +34,40 @@ class ServerService {
         rconPassword?: string;
         maxPlayers?: number;
         map?: string;
+        port?: number;
+        vacEnabled?: boolean;
+        installPath?: string;
     }) {
         // 1. Allocate ports
-        const port = await this.allocatePort();
+        const port = data.port || await this.allocatePort();
         const rconPort = port + 1000; // Common convention
 
         // 2. RCON password
         const rconPassword = data.rconPassword || Math.random().toString(36).slice(-10);
 
-        // 3. Create DB record
+        // 3. Handle Installation Path
+        let status = 'CREATING';
+        let installPath = data.installPath;
+
+        if (installPath) {
+            // Validate existing path
+            if (!fs.existsSync(installPath)) {
+                throw new ApiError(400, `Specified path does not exist: ${installPath}`);
+            }
+            // Check for cs2.exe or server files (simple check)
+            const cs2Exe = process.platform === 'win32' ? 'cs2.exe' : 'cs2';
+            const exeFound = fs.existsSync(path.join(installPath, 'game', 'bin', 'win64', cs2Exe)) ||
+                fs.existsSync(path.join(installPath, 'game', 'bin', 'linux64', cs2Exe));
+
+            if (!exeFound) {
+                logger.warn(`Server executable not found at ${installPath}, but proceeding as requested.`);
+            }
+            status = 'STOPPED'; // If it already exists, we don't need to "create" it via SteamCMD
+        } else {
+            installPath = steamcmdService.getServerPath('pending'); // Temporary
+        }
+
+        // 4. Create DB record
         const server = await prisma.server.create({
             data: {
                 name: data.name,
@@ -52,20 +80,25 @@ class ServerService {
                 steamAuthKey: data.steamAuthKey,
                 maxPlayers: data.maxPlayers || 10,
                 map: data.map || 'de_dust2',
-                status: 'CREATING',
-                installPath: steamcmdService.getServerPath('pending') // Temporary
+                status: status,
+                vacEnabled: data.vacEnabled ?? true,
+                installPath: installPath
             }
         });
 
-        // 4. Update install path with actual ID
-        const actualPath = steamcmdService.getServerPath(server.id);
-        await prisma.server.update({
-            where: { id: server.id },
-            data: { installPath: actualPath }
-        });
+        // 5. Update install path if it was a new installation
+        if (!data.installPath) {
+            const actualPath = steamcmdService.getServerPath(server.id);
+            await prisma.server.update({
+                where: { id: server.id },
+                data: { installPath: actualPath }
+            });
 
-        // 5. Start installation in background
-        this.installServerBackground(server.id);
+            // 6. Start installation in background
+            this.installServerBackground(server.id);
+        } else {
+            terminalService.streamOutput(server.id, `\x1b[32m[Quatrix] Existing server added at: ${installPath}\x1b[0m\n`);
+        }
 
         return server;
     }
@@ -100,7 +133,9 @@ class ServerService {
                 steamAuthKey: server.steamAuthKey || undefined,
                 rconPassword: server.rconPassword,
                 workshopCollection: server.workshopCollection || undefined,
-                workshopMapId: server.workshopMapId || undefined
+                workshopMapId: server.workshopMapId || undefined,
+                vacEnabled: server.vacEnabled,
+                installPath: server.installPath
             });
 
             await prisma.server.update({
@@ -144,6 +179,36 @@ class ServerService {
             where: { id: serverId },
             data: { status: 'STOPPED', lastStoppedAt: new Date() }
         });
+    }
+
+    /**
+     * Force stop a server (even during installation)
+     */
+    public async forceStopServer(serverId: string, userId: string) {
+        const server = await this.getServerAndVerifyOwner(serverId, userId);
+
+        logger.info(`Force stopping server ${serverId} (current status: ${server.status})`);
+
+        // Stop any running game server process
+        if (processService.isRunning(serverId)) {
+            logger.info(`Stopping running game process for server ${serverId}`);
+            await processService.stopServer(serverId);
+        }
+
+        // Stop any ongoing installation
+        if (server.status === 'CREATING' || server.status === 'INSTALLING') {
+            logger.info(`Stopping installation for server ${serverId}`);
+            steamcmdService.stopInstallation(serverId);
+            terminalService.streamOutput(serverId, '\n\x1b[31m[Quatrix] Installation forcefully stopped by user.\x1b[0m\n');
+        }
+
+        // Update status to STOPPED
+        await prisma.server.update({
+            where: { id: serverId },
+            data: { status: 'STOPPED', lastStoppedAt: new Date() }
+        });
+
+        logger.info(`Server ${serverId} force stopped successfully`);
     }
 
     /**
@@ -256,6 +321,8 @@ class ServerService {
         map?: string;
         workshopCollection?: string;
         workshopMapId?: string;
+        vacEnabled?: boolean;
+        port?: number;
     }) {
         await this.getServerAndVerifyOwner(serverId, userId);
 
@@ -267,6 +334,11 @@ class ServerService {
         if (data.gsltToken !== undefined) updateData.gsltToken = data.gsltToken;
         if (data.steamAuthKey !== undefined) updateData.steamAuthKey = data.steamAuthKey;
         if (data.map !== undefined) updateData.map = data.map;
+        if (data.vacEnabled !== undefined) updateData.vacEnabled = data.vacEnabled;
+        if (data.port !== undefined) {
+            updateData.port = parseInt(data.port as any);
+            updateData.rconPort = updateData.port + 1000;
+        }
         if (data.maxPlayers !== undefined) {
             updateData.maxPlayers = data.maxPlayers ? parseInt(data.maxPlayers as any) : undefined;
         }
@@ -283,18 +355,65 @@ class ServerService {
 
     // --- Helpers ---
 
-    private async allocatePort(): Promise<number> {
-        const usedPorts = await prisma.server.findMany({ select: { port: true } });
-        const usedPortSet = new Set(usedPorts.map(s => s.port));
+    /**
+     * Checks if a port is available on both TCP and UDP
+     */
+    private async isPortAvailable(port: number): Promise<boolean> {
+        return new Promise((resolve) => {
+            const tcpServer = net.createServer();
+            const udpSocket = dgram.createSocket('udp4');
 
+            tcpServer.once('error', () => {
+                udpSocket.close();
+                resolve(false);
+            });
+
+            udpSocket.once('error', () => {
+                tcpServer.close();
+                resolve(false);
+            });
+
+            tcpServer.listen(port, () => {
+                udpSocket.bind(port, () => {
+                    // Both successful
+                    tcpServer.close();
+                    udpSocket.close();
+                    resolve(true);
+                });
+            });
+        });
+    }
+
+    private async allocatePort(): Promise<number> {
+        const usedPorts = await prisma.server.findMany({ select: { port: true, rconPort: true } });
+        const usedPortSet = new Set<number>();
+
+        usedPorts.forEach(s => {
+            usedPortSet.add(s.port);
+            usedPortSet.add(s.rconPort);
+        });
+
+        // Search for a free port in range
         for (let port = this.DEFAULT_PORT_START; port <= this.DEFAULT_PORT_END; port++) {
-            if (!usedPortSet.has(port)) return port;
+            // Check if DB says it's free
+            if (!usedPortSet.has(port)) {
+                // Now check if OS says it's free (both for game port and potential RCON port)
+                const isMainAvailable = await this.isPortAvailable(port);
+                const isRconAvailable = await this.isPortAvailable(port + 1000);
+
+                if (isMainAvailable && isRconAvailable) {
+                    return port;
+                }
+            }
         }
-        throw new ApiError(500, 'No available ports in range');
+        throw new ApiError(500, 'No available ports in range (OS and DB check failed)');
     }
 
     private async installServerBackground(serverId: string) {
         try {
+            const server = await prisma.server.findUnique({ where: { id: serverId } });
+            if (!server) return;
+
             terminalService.streamOutput(serverId, '\x1b[32m[Quatrix] Starting server file validation...\x1b[0m\n');
 
             await steamcmdService.installOrUpdateServer(serverId, (data) => {
@@ -306,7 +425,7 @@ class ServerService {
                     const percent = parseFloat(match[1]);
                     terminalService.sendProgress(serverId, percent);
                 }
-            });
+            }, server.installPath);
 
             const exists = await prisma.server.findUnique({ where: { id: serverId } });
             if (exists) {

@@ -28,7 +28,14 @@
         "offline": "Offline",
         "disconnected": "Disconnected",
         "form_reset": "Form reset",
-        "processing": "Processing..."
+        "processing": "Processing...",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "optional": "Optional",
+        "active": "Active",
+        "name": "Name",
+        "download": "Download",
+        "open": "Open"
     },
     "nav": {
         "dashboard": "Dashboard",
@@ -66,7 +73,16 @@
         "rcon_password_edit": "RCON Password (Enter to change)",
         "empty_no_change": "Leave empty to keep current password",
         "default_map": "Default Map",
-        "workshop_management": "Workshop Management"
+        "workshop_management": "Workshop Management",
+        "installType": "Installation Type",
+        "newInstall": "New Installation (SteamCMD)",
+        "existingPath": "Existing File Path",
+        "path_label": "Server Folder Path",
+        "path_placeholder": "C:\\CS2-Servers\\MyServer",
+        "existing_desc": "Enter the folder path for a server already installed on the system.",
+        "example_path": "Ex: C:\\CS2-Servers\\MyServer",
+        "auto_allocate": "Auto-allocate",
+        "max_players": "Max Players"
     },
     "server": {
         "name": "Name",
@@ -74,6 +90,7 @@
         "port": "Port",
         "start": "Start",
         "stop": "Stop",
+        "force_stop": "Force Stop",
         "restart": "Restart",
         "console": "Console",
         "config": "Config",
@@ -86,7 +103,12 @@
         "processing_starting": "Starting server...",
         "processing_stopping": "Stopping server...",
         "processing_restarting": "Restarting server...",
-        "processing_verifying": "Verifying files..."
+        "processing_verifying": "Verifying files...",
+        "vac_secure": "VAC Secure",
+        "steam_web_api_key": "Steam Web API Key",
+        "rcon_password": "RCON Password",
+        "select_server": "Select a server",
+        "select_server_prompt": "Please select a server to continue"
     },
     "status": {
         "CREATING": "Creating",
@@ -95,7 +117,9 @@
         "RUNNING": "Running",
         "STOPPING": "Stopping",
         "ERROR": "Error",
-        "UPDATING": "Updating"
+        "UPDATING": "Updating",
+        "INSTALLING": "Installing",
+        "VALIDATING": "Validating"
     },
     "workshop": {
         "title": "Workshop Settings",
@@ -128,7 +152,8 @@
         "appInfo": "Application Info",
         "productName": "Product Name",
         "version": "Version",
-        "environment": "Environment"
+        "environment": "Environment",
+        "stable": "Stable"
     },
     "terminal": {
         "connecting": "Connecting to server terminal...",
@@ -163,6 +188,7 @@
     },
     "files": {
         "title": "File Manager",
+        "root": "Root",
         "name": "Name",
         "size": "Size",
         "modified": "Last Modified",
@@ -216,7 +242,17 @@
         "save_fail": "Save failed",
         "folder_download_not_supported": "Folder download is not supported. Please archive first.",
         "processing_pasting": "Pasting files...",
-        "processing_downloading": "Preparing file for download..."
+        "processing_downloading": "Preparing file for download...",
+        "uploading": "Uploading",
+        "files": "files",
+        "download_zip": "Download as Zip",
+        "processing_zipping": "Creating zip archive...",
+        "zip_download_started": "Zip created, starting download...",
+        "processing_moving": "Moving files...",
+        "move_success": "Files moved",
+        "move_fail": "Move failed",
+        "items_selected": "{{count}} items selected",
+        "total_files": "{{count}} items"
     },
     "rcon": {
         "players": "Connected Players",
@@ -234,6 +270,47 @@
         "confirm_kick": "Kick player?",
         "confirm_ban": "Ban player?",
         "back_to_console": "Back to Console",
-        "command_sent": "Command sent"
+        "command_sent": "Command sent",
+        "connect_success": "RCON connection successful (Stored password used)",
+        "connect_failed": "Connection failed",
+        "disconnected": "RCON terminal disconnected",
+        "disconnect_failed": "Disconnect failed",
+        "command_executed": "Command executed",
+        "command_failed": "Command failed",
+        "kicked_by_admin": "Kicked by Admin",
+        "banned_by_admin": "Banned by Admin",
+        "player_kicked": "{{name}} kicked.",
+        "ban_duration_text": "Ban duration for {{name}} (ID: {{id}}):",
+        "player_banned": "{{name}} banned.",
+        "password_hint": "Stored password will be used if left empty"
+    },
+    "wizard": {
+        "title": "Initial Setup Wizard",
+        "welcome": "Welcome",
+        "welcome_title": "Welcome to Quatrix!",
+        "welcome_para": "We need to perform a quick initial setup to get your CS2 server management panel ready. This wizard will guide you through installing SteamCMD and configuring your server paths.",
+        "steamcmd": "SteamCMD",
+        "steamcmd_title": "Install SteamCMD",
+        "steamcmd_para": "Quatrix uses SteamCMD to download and update Counter-Strike 2.",
+        "steamcmd_win_instructions": "Instructions for Windows:",
+        "steamcmd_win_step1": "1. Download SteamCMD from",
+        "steamcmd_win_here": "here",
+        "steamcmd_win_step2": "2. Extract it to a folder (e.g., C:\\steamcmd).",
+        "steamcmd_win_step3": "3. Run steamcmd.exe once to let it update itself.",
+        "steamcmd_next_hint": "Once you have installed it, proceed to the next step to set the path.",
+        "config": "Configuration",
+        "config_title": "Configure Paths",
+        "config_steamcmd_label": "SteamCMD Directory",
+        "config_steamcmd_help": "Full path to the folder containing steamcmd.exe",
+        "config_servers_label": "Servers Root Directory",
+        "config_servers_help": "Folder where CS2 servers will be installed",
+        "ready": "Ready!",
+        "ready_title": "You're all set!",
+        "ready_para": "Quatrix is now configured and ready to manage your CS2 servers. Click the button below to start your journey.",
+        "previous": "Previous",
+        "next": "Next",
+        "go_dashboard": "Go to Dashboard",
+        "save_success": "Configuration saved successfully!",
+        "save_fail": "Failed to save settings"
     }
 }

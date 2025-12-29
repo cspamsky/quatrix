@@ -41,13 +41,13 @@ function Files() {
                 <Title level={2} style={{ margin: 0 }}>{t('nav.files')}</Title>
                 <Select
                     style={{ width: 300 }}
-                    placeholder="Sunucu seçin"
+                    placeholder={t('server.select_server')}
                     value={selectedServer}
                     onChange={setSelectedServer}
                     loading={loading}
                     options={servers.map(server => ({
                         value: server.id,
-                        label: `${server.name} (${server.status})`,
+                        label: `${server.name} (${t(`status.${server.status}`)})`,
                     }))}
                 />
             </div>
@@ -59,7 +59,7 @@ function Files() {
             ) : (
                 <Card style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
                     <Empty
-                        description="Lütfen bir sunucu seçin"
+                        description={t('server.select_server_prompt')}
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
                     />
                 </Card>

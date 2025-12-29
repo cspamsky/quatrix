@@ -4,6 +4,7 @@ import {
     createServer,
     startServer,
     stopServer,
+    forceStopServer,
     restartServer,
     deleteServer,
     validateServer,
@@ -25,6 +26,7 @@ router.get('/', getMyServers);
 router.post('/', createServer);
 router.post('/:id/start', startServer);
 router.post('/:id/stop', stopServer);
+router.post('/:id/force-stop', forceStopServer);
 router.post('/:id/restart', restartServer);
 router.post('/:id/validate', validateServer);
 router.put('/:id', updateServer);

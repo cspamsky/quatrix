@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { rconService } from '../services/rcon.service';
 import { logger } from '../utils/logger';
+import { prisma } from '../utils/prisma';
 
 const router = Router();
 
@@ -10,13 +11,26 @@ const router = Router();
 router.post('/:serverId/connect', async (req: Request, res: Response) => {
     try {
         const { serverId } = req.params;
-        const { host, port, password } = req.body;
+        const { password: passwordOverride } = req.body; // Optional override
 
-        if (!host || !port || !password) {
-            return res.status(400).json({ error: 'Host, port, and password are required' });
+        const server = await prisma.server.findUnique({
+            where: { id: serverId },
+            select: { port: true, rconPassword: true }
+        });
+
+        if (!server) {
+            return res.status(404).json({ error: 'Server not found' });
         }
 
-        await rconService.connect(serverId, host, parseInt(port), password);
+        const rconHost = '127.0.0.1';
+        const rconPort = server.port;
+        const rconPassword = passwordOverride || server.rconPassword;
+
+        if (!rconPassword) {
+            return res.status(400).json({ error: 'RCON password is not configured for this server' });
+        }
+
+        await rconService.connect(serverId, rconHost, rconPort, rconPassword);
         return res.json({ success: true, message: 'RCON connected successfully' });
     } catch (error: any) {
         logger.error(`RCON connect error: ${error.message}`);
