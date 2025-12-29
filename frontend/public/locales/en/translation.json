@@ -26,7 +26,9 @@
         "unsaved_changes": "You have unsaved changes. Discard them?",
         "online": "Online",
         "offline": "Offline",
-        "disconnected": "Disconnected"
+        "disconnected": "Disconnected",
+        "form_reset": "Form reset",
+        "processing": "Processing..."
     },
     "nav": {
         "dashboard": "Dashboard",
@@ -80,7 +82,11 @@
         "delete_confirm_title": "Delete Server?",
         "delete_confirm_content": "This will stop the server (or installation) and delete all files. This action cannot be undone.",
         "rename_title": "Rename Server",
-        "verify_files": "Verify Server Files"
+        "verify_files": "Verify Server Files",
+        "processing_starting": "Starting server...",
+        "processing_stopping": "Stopping server...",
+        "processing_restarting": "Restarting server...",
+        "processing_verifying": "Verifying files..."
     },
     "status": {
         "CREATING": "Creating",
@@ -114,9 +120,11 @@
         "updatePassword": "Update Password",
         "management": "Management Tools",
         "installSteamCMD": "Install/Update SteamCMD Online",
-        "resetWizard": "Re-run Setup Wizard",
-        "installSteamCMD_confirm": "Install SteamCMD? This will download and extract SteamCMD to the configured directory.",
-        "resetWizard_confirm": "Reset Setup Wizard? This will reset the configuration flag.",
+        "installSteamCMD_desc": "Automatically downloads and extracts SteamCMD to the configured directory. This will update current install or perform a fresh one if missing.",
+        "resetWizard": "Reset Setup Wizard",
+        "resetWizard_desc": "Application will return to initial setup mode. Your settings are preserved, but the wizard will reappear on login.",
+        "installSteamCMD_confirm": "Install SteamCMD?",
+        "resetWizard_confirm": "Reset Setup Wizard?",
         "appInfo": "Application Info",
         "productName": "Product Name",
         "version": "Version",
@@ -147,7 +155,11 @@
         "free": "Free",
         "days": "d",
         "hours": "h",
-        "minutes": "m"
+        "minutes": "m",
+        "usedPorts": "Used Ports",
+        "noPorts": "No active listening ports",
+        "diskUsage": "Disk Usage",
+        "freeSpace": "Free Space"
     },
     "files": {
         "title": "File Manager",
@@ -202,7 +214,9 @@
         "open_fail": "Could not open file",
         "save_success": "Saved",
         "save_fail": "Save failed",
-        "folder_download_not_supported": "Folder download is not supported. Please archive first."
+        "folder_download_not_supported": "Folder download is not supported. Please archive first.",
+        "processing_pasting": "Pasting files...",
+        "processing_downloading": "Preparing file for download..."
     },
     "rcon": {
         "players": "Connected Players",
@@ -219,6 +233,7 @@
         "refresh_players": "Refresh Players",
         "confirm_kick": "Kick player?",
         "confirm_ban": "Ban player?",
-        "back_to_console": "Back to Console"
+        "back_to_console": "Back to Console",
+        "command_sent": "Command sent"
     }
 }

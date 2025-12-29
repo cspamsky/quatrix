@@ -21,11 +21,17 @@
 - 🎮 **Advanced RCON Management**: Dedicated RCON console with live player management (Kick/Ban UI) through a native RCON implementation.
 - 📁 **Advanced File Manager**: High-performance filesystem management with bulk operations, Recycle Bin (`.quatrix_trash`), bi-directional Zip support, and clipboard (Cut/Paste) functionality.
 - 🌍 **Steam Workshop Support**: Seamlessly manage Workshop collections and maps with database persistence and visual configuration.
-- 📊 **Real-Time Monitoring**: Live tracking of System Resources (CPU, RAM, Storage) via WebSockets.
+- 📊 **Real-Time Monitoring**: Live tracking of System Resources (CPU, RAM, Storage) via WebSockets with optimized card layouts.
 - 💻 **Pro Terminal**: Robust Xterm.js console integration for live logs and bi-directional RCON commands.
 - 📝 **Visual Config Editor**: Manage `.cfg`, `.json`, and `.txt` files through a secure, full-screen web-based editor.
+- 🎨 **Premium UI/UX Design System**: 
+  - Unified card design language with soft shadows and borderless variants
+  - Optimized Dashboard with compact layouts and hidden scrollbars
+  - Consistent Settings page with standardized spacing and button dimensions
+  - Fixed navigation with sticky sidebar and header
+  - Global scrollbar customization (hidden but functional)
 - 🌓 **Dynamic Themes**: Seamless switching between **Dark** and **Light** modes across all pages.
-- 🌍 **Bilingual Support**: Full support for **English** and **Turkish** languages.
+- 🌍 **Bilingual Support**: Full support for **English** and **Turkish** languages with complete i18n coverage.
 - 📱 **Responsive UI 2.0**: Fully adaptive dashboard optimized for Desktop, Tablet, and Mobile devices without horizontal overflow.
 - 👤 **User Management**: Secure authentication system (JWT + Bcrypt) with individualized server ownership.
 

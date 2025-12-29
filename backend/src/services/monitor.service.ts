@@ -38,16 +38,23 @@ class MonitorService {
      */
     async getSystemStats() {
         try {
-            const [cpu, mem, disk, fs] = await Promise.all([
+            const [cpu, mem, disk, network] = await Promise.all([
                 systeminformation.currentLoad(),
                 systeminformation.mem(),
                 systeminformation.fsSize(),
-                systeminformation.fsStats()
+                systeminformation.networkConnections()
             ]);
 
             // Filter for the main disk (usually C: or /)
             // For now, we take the first one or the one with biggest size
             const mainDisk = disk.length > 0 ? disk[0] : { size: 0, used: 0, use: 0 };
+
+            // Get unique listening ports
+            const usedPorts = Array.from(new Set(
+                network
+                    .filter(conn => conn.state === 'LISTEN')
+                    .map(conn => conn.localPort)
+            )).sort((a, b) => parseInt(a) - parseInt(b));
 
             return {
                 timestamp: Date.now(),
@@ -67,6 +74,9 @@ class MonitorService {
                     total: mainDisk.size,
                     used: mainDisk.used,
                     percentage: Math.round(mainDisk.use)
+                },
+                network: {
+                    usedPorts
                 },
                 uptime: process.uptime()
             };

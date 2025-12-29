@@ -1,653 +1,275 @@
 import { useState, useEffect } from 'react';
 import {
-    Card, Statistic, Row, Col, Button, Typography, Space, Modal, Form, Input, Table, Tag, App, Select
+    Card, Row, Col, Typography, Space, Progress, Statistic, Tag, List
 } from 'antd';
 import {
     DashboardOutlined,
+    ThunderboltOutlined,
+    HddOutlined,
+    GlobalOutlined,
+    FieldTimeOutlined,
+    SafetyCertificateOutlined,
     PlayCircleOutlined,
     StopOutlined,
-    GlobalOutlined,
-    RocketOutlined,
-    PlusOutlined,
-    ReloadOutlined,
-    SettingOutlined,
-    DeleteOutlined,
-    ExclamationCircleOutlined,
-    SafetyCertificateOutlined,
-    EditOutlined
+    CloudServerOutlined
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { useMonitorStore } from '../store/monitorStore';
 import { serverService } from '../services/serverService';
-import Console from '../components/Console';
-import ServerResources from '../components/ServerResources';
-import WorkshopManager from '../components/WorkshopManager';
 
 const { Title, Text } = Typography;
 
 function Dashboard() {
-    const { message, modal } = App.useApp();
     const { t } = useTranslation();
-
-    // State
-    const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+    const { stats, isConnected, startMonitoring, stopMonitoring } = useMonitorStore();
     const [servers, setServers] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [isModalVisible, setIsModalVisible] = useState(false);
-    const [selectedServerForConsole, setSelectedServerForConsole] = useState<string | null>(null);
-    const [isEditModalVisible, setIsEditModalVisible] = useState(false);
-    const [editingServer, setEditingServer] = useState<any>(null);
-    const [selectedServerForWorkshop, setSelectedServerForWorkshop] = useState<any | null>(null);
-    const [form] = Form.useForm();
-    const [editForm] = Form.useForm();
+    const [loadingServers, setLoadingServers] = useState(true);
+
+    useEffect(() => {
+        startMonitoring();
+        fetchServers();
+
+        // Refresh server counts every 30 seconds
+        const interval = setInterval(fetchServers, 30000);
+
+        return () => {
+            stopMonitoring();
+            clearInterval(interval);
+        };
+    }, []);
 
     const fetchServers = async () => {
-        setLoading(true);
         try {
             const response = await serverService.getMyServers();
             if (response.success) {
                 setServers(response.data);
             }
         } catch (error) {
-            message.error(t('common.error'));
+            console.error('Failed to fetch servers for dashboard', error);
         } finally {
-            setLoading(false);
+            setLoadingServers(false);
         }
     };
 
-    useEffect(() => {
-        // Check backend health
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-        fetch(`${API_URL}/health`)
-            .then(res => res.json())
-            .then(() => setApiStatus('online'))
-            .catch(() => setApiStatus('offline'));
-
-        fetchServers();
-    }, []);
-
-    const handleCreateServer = async (values: any) => {
-        try {
-            // Trim critical tokens
-            const finalValues = {
-                ...values,
-                gsltToken: values.gsltToken?.trim(),
-                steamAuthKey: values.steamAuthKey?.trim()
-            };
-            const response = await serverService.createServer(finalValues);
-            if (response.success) {
-                message.success(t('common.success'));
-                setIsModalVisible(false);
-                form.resetFields();
-                fetchServers();
-                setSelectedServerForConsole(response.data.id);
-            }
-        } catch (error: any) {
-            message.error(error.response?.data?.message || t('common.error'));
-        }
+    const getStatusColor = (percent: number) => {
+        if (percent < 60) return '#52c41a'; // Green
+        if (percent < 85) return '#faad14'; // Orange
+        return '#f5222d'; // Red
     };
 
-    const handleStart = async (id: string) => {
-        setLoading(true);
-        try {
-            await serverService.startServer(id);
-            message.success(t('common.success'));
-            fetchServers();
-        } catch (error: any) {
-            message.error(error.response?.data?.message || t('common.error'));
-        } finally {
-            setLoading(false);
-        }
+    const formatUptime = (seconds: number) => {
+        const d = Math.floor(seconds / (3600 * 24));
+        const h = Math.floor((seconds % (3600 * 24)) / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        return `${d}d ${h}h ${m}m`;
     };
-
-    const handleStop = async (id: string) => {
-        setLoading(true);
-        try {
-            await serverService.stopServer(id);
-            message.success(t('common.success'));
-            fetchServers();
-        } catch (error: any) {
-            message.error(error.response?.data?.message || t('common.error'));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleRestart = async (id: string) => {
-        setLoading(true);
-        try {
-            await serverService.restartServer(id);
-            message.success(t('common.success'));
-            fetchServers();
-        } catch (error: any) {
-            message.error(error.response?.data?.message || t('common.error'));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleDelete = (id: string) => {
-        modal.confirm({
-            title: t('server.delete_confirm_title'),
-            icon: <ExclamationCircleOutlined />,
-            content: t('server.delete_confirm_content'),
-            okText: t('common.delete'),
-            okType: 'danger',
-            cancelText: t('common.cancel'),
-            onOk: async () => {
-                try {
-                    await serverService.deleteServer(id);
-                    message.success(t('common.success'));
-                    fetchServers();
-                } catch (error: any) {
-                    message.error(error.response?.data?.message || t('common.error'));
-                }
-            },
-        });
-    };
-
-    const handleValidate = async (id: string) => {
-        try {
-            const response = await serverService.validateServer(id);
-            if (response.success) {
-                message.success(t('common.success'));
-                setSelectedServerForConsole(id);
-                fetchServers();
-            }
-        } catch (error: any) {
-            message.error(error.response?.data?.message || t('common.error'));
-        }
-    };
-
-    const handleUpdateServer = async (values: any) => {
-        if (!editingServer) return;
-        try {
-            // Trim critical tokens
-            const finalValues = {
-                ...values,
-                gsltToken: values.gsltToken?.trim(),
-                steamAuthKey: values.steamAuthKey?.trim()
-            };
-            const response = await serverService.updateServer(editingServer.id, finalValues);
-            if (response.success) {
-                message.success(t('common.success'));
-                setIsEditModalVisible(false);
-                setEditingServer(null);
-                fetchServers();
-            }
-        } catch (error: any) {
-            message.error(error.response?.data?.message || t('common.error'));
-        }
-    };
-
-    const handleEdit = (record: any) => {
-        setEditingServer(record);
-        setIsEditModalVisible(true);
-    };
-
-    // Populate edit form when modal opens
-    useEffect(() => {
-        if (isEditModalVisible && editingServer) {
-            editForm.setFieldsValue({
-                name: editingServer.name,
-                description: editingServer.description,
-                gsltToken: editingServer.gsltToken,
-                steamAuthKey: editingServer.steamAuthKey,
-                rconPassword: '', // Don't populate password for security
-                maxPlayers: editingServer.maxPlayers || 10,
-                map: editingServer.map || 'de_dust2',
-            });
-        }
-    }, [isEditModalVisible, editingServer, editForm]);
-
-    const columns = [
-        {
-            title: t('server.name'),
-            dataIndex: 'name',
-            key: 'name',
-        },
-        {
-            title: t('server.status'),
-            dataIndex: 'status',
-            key: 'status',
-            responsive: ['md' as const, 'lg' as const, 'xl' as const, 'xxl' as const],
-            render: (status: string) => {
-                let color = 'default';
-                if (status === 'RUNNING') color = 'success';
-                if (status === 'CREATING' || status === 'STARTING') color = 'processing';
-                if (status === 'STOPPED') color = 'error';
-                if (status === 'ERROR') color = 'warning';
-                return <Tag color={color}>{t(`status.${status}`)}</Tag>;
-            }
-        },
-        {
-            title: t('server.port'),
-            dataIndex: 'port',
-            key: 'port',
-            responsive: ['xl' as const, 'xxl' as const],
-        },
-        {
-            title: t('common.actions'),
-            key: 'actions',
-            render: (_: any, record: any) => (
-                <Space wrap>
-                    <Button
-                        icon={<EditOutlined />}
-                        size="small"
-                        onClick={() => handleEdit(record)}
-                        title={t('common.edit')}
-                    />
-                    {record.status === 'STOPPED' || record.status === 'ERROR' ? (
-                        <Button
-                            icon={<PlayCircleOutlined />}
-                            onClick={() => handleStart(record.id)}
-                            type="primary"
-                            size="small"
-                        >
-                            <span className="button-text">{t('server.start')}</span>
-                        </Button>
-                    ) : (
-                        <Button
-                            icon={<StopOutlined />}
-                            onClick={() => handleStop(record.id)}
-                            danger
-                            size="small"
-                            disabled={record.status === 'CREATING'}
-                        >
-                            <span className="button-text">{t('server.stop')}</span>
-                        </Button>
-                    )}
-                    {record.status === 'RUNNING' && (
-                        <Button
-                            icon={<ReloadOutlined />}
-                            onClick={() => handleRestart(record.id)}
-                            size="small"
-                            title={t('server.restart')}
-                        >
-                            <span className="button-text">{t('server.restart')}</span>
-                        </Button>
-                    )}
-                    <Button
-                        icon={<SettingOutlined />}
-                        size="small"
-                        onClick={() => setSelectedServerForConsole(record.id)}
-                        title={t('server.console')}
-                    >
-                        <span className="button-text">{t('server.console')}</span>
-                    </Button>
-                    <Button
-                        icon={<SafetyCertificateOutlined />}
-                        size="small"
-                        onClick={() => handleValidate(record.id)}
-                        disabled={record.status !== 'STOPPED' && record.status !== 'ERROR'}
-                        title={t('server.verify_files')}
-                    >
-                        <span className="button-text">{t('server.verify')}</span>
-                    </Button>
-                    <Button
-                        icon={<GlobalOutlined />}
-                        size="small"
-                        onClick={() => setSelectedServerForWorkshop(record)}
-                        title={t('server.workshop')}
-                    >
-                        <span className="button-text">{t('server.workshop')}</span>
-                    </Button>
-                    <Button
-                        icon={<DeleteOutlined />}
-                        size="small"
-                        danger
-                        onClick={() => handleDelete(record.id)}
-                        title={t('common.delete')}
-                    >
-                        <span className="button-text">{record.status === 'CREATING' ? t('common.cancel') : t('common.delete')}</span>
-                    </Button>
-                </Space>
-            )
-        }
-    ];
 
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            {/* Header Actions */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Title level={2} style={{ margin: 0 }}>{t('dashboard.title')}</Title>
-                <Space>
-                    <Button icon={<ReloadOutlined />} onClick={fetchServers}>{t('common.refresh')}</Button>
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => setIsModalVisible(true)}
-                        disabled={apiStatus !== 'online'}
-                    >
-                        {t('dashboard.createServer')}
-                    </Button>
-                </Space>
-            </div>
+        <div style={{ width: '100%', height: 'auto' }}>
+            <style>{`
+                .hide-scrollbar::-webkit-scrollbar {
+                    display: none;
+                }
+            `}</style>
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Title level={2} style={{ margin: 0 }}>{t('nav.dashboard')}</Title>
+                    <Tag color={isConnected ? 'success' : 'error'} style={{ padding: '4px 12px', borderRadius: '12px' }}>
+                        {isConnected ? t('common.online') : t('common.offline')}
+                    </Tag>
+                </div>
 
-            {/* Statistics */}
-            <Row gutter={16}>
-                <Col xs={24} sm={12} lg={8}>
-                    <Card variant="borderless" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-                        <Statistic
-                            title={t('dashboard.totalServers')}
-                            value={servers.length}
-                            prefix={<DashboardOutlined />}
-                            valueStyle={{ color: '#1890ff' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={8}>
-                    <Card variant="borderless" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-                        <Statistic
-                            title={t('dashboard.runningServers')}
-                            value={servers.filter(s => s.status === 'RUNNING').length}
-                            prefix={<PlayCircleOutlined />}
-                            valueStyle={{ color: '#52c41a' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={8}>
-                    <Card variant="borderless" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-                        <Statistic
-                            title={t('dashboard.stoppedServers')}
-                            value={servers.filter(s => s.status === 'STOPPED').length}
-                            prefix={<StopOutlined />}
-                            valueStyle={{ color: '#ff4d4f' }}
-                        />
-                    </Card>
-                </Col>
-            </Row>
+                {/* Server Statistics Summary */}
+                <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={8}>
+                        <Card size="small" variant="borderless" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)', borderRadius: 12 }}>
+                            <Statistic
+                                title={t('dashboard.totalServers')}
+                                value={servers.length}
+                                prefix={<CloudServerOutlined />}
+                                valueStyle={{ color: '#1890ff' }}
+                                loading={loadingServers}
+                            />
+                        </Card>
+                    </Col>
+                    <Col xs={24} sm={8}>
+                        <Card size="small" variant="borderless" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)', borderRadius: 12 }}>
+                            <Statistic
+                                title={t('dashboard.runningServers')}
+                                value={servers.filter(s => s.status === 'RUNNING').length}
+                                prefix={<PlayCircleOutlined />}
+                                valueStyle={{ color: '#52c41a' }}
+                                loading={loadingServers}
+                            />
+                        </Card>
+                    </Col>
+                    <Col xs={24} sm={8}>
+                        <Card size="small" variant="borderless" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)', borderRadius: 12 }}>
+                            <Statistic
+                                title={t('dashboard.stoppedServers')}
+                                value={servers.filter(s => s.status === 'STOPPED' || s.status === 'ERROR').length}
+                                prefix={<StopOutlined />}
+                                valueStyle={{ color: '#ff4d4f' }}
+                                loading={loadingServers}
+                            />
+                        </Card>
+                    </Col>
+                </Row>
 
-            {/* Main Content Area */}
-            <Row gutter={[16, 16]}>
-                <Col xs={24} xl={16}>
-                    <Card title={t('dashboard.yourServers')} style={{ height: '100%', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-                        <Table
-                            dataSource={servers}
-                            columns={columns}
-                            rowKey="id"
-                            loading={loading}
-                            locale={{ emptyText: t('dashboard.noServers') }}
-                            pagination={{ pageSize: 5 }}
-                            className="responsive-table"
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} xl={8}>
-                    <ServerResources />
-                </Col>
-            </Row>
+                <Row gutter={[16, 16]} style={{ display: 'flex' }}>
+                    {/* Combined System Resources - CPU, RAM, Disk */}
+                    <Col xs={24} lg={16} style={{ display: 'flex' }}>
+                        <Card
+                            title={<Space size="small"><DashboardOutlined /> {t('resources.title')}</Space>}
+                            style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', width: '100%' }}
+                            bodyStyle={{ padding: '16px 20px' }}
+                            loading={!stats}
+                        >
+                            {stats && (
+                                <Row gutter={[20, 0]}>
+                                    <Col xs={24} md={12}>
+                                        <Space direction="vertical" style={{ width: '100%' }} size="small">
+                                            {/* CPU Section */}
+                                            <div>
+                                                <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                                                    <Space size="small"><ThunderboltOutlined /> <Text strong style={{ fontSize: '13px' }}>{t('resources.cpu')}</Text></Space>
+                                                    <Text style={{ fontSize: '13px' }}>{stats.cpu.load}%</Text>
+                                                </Space>
+                                                <Progress
+                                                    percent={stats.cpu.load}
+                                                    strokeColor={getStatusColor(stats.cpu.load)}
+                                                    showInfo={false}
+                                                    strokeLinecap="round"
+                                                    size="small"
+                                                />
+                                            </div>
 
-            {/* Backend Info Alert if Offline */}
-            {apiStatus !== 'online' && (
-                <Card style={{ background: '#fff2f0', border: '1px solid #ffccc7' }}>
-                    <Space>
-                        <GlobalOutlined style={{ color: '#ff4d4f' }} />
-                        <Text type="danger">{t('dashboard.backendOffline')}</Text>
-                    </Space>
-                </Card>
-            )}
+                                            {/* Memory Section */}
+                                            <div style={{ marginTop: 4 }}>
+                                                <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                                                    <Space size="small"><HddOutlined /> <Text strong style={{ fontSize: '13px' }}>{t('resources.memory')}</Text></Space>
+                                                    <Text style={{ fontSize: '13px' }}>{stats.memory.percentage}%</Text>
+                                                </Space>
+                                                <Progress
+                                                    percent={stats.memory.percentage}
+                                                    strokeColor={getStatusColor(stats.memory.percentage)}
+                                                    showInfo={false}
+                                                    strokeLinecap="round"
+                                                    size="small"
+                                                />
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <Text type="secondary" style={{ fontSize: '11px' }}>
+                                                        {t('resources.used')}: {(stats.memory.used / 1024 / 1024 / 1024).toFixed(1)} GB
+                                                    </Text>
+                                                </div>
+                                            </div>
 
-            {/* Create Server Modal */}
-            <Modal
-                title={t('dashboard.createServer')}
-                open={isModalVisible}
-                onCancel={() => setIsModalVisible(false)}
-                footer={null}
-            >
-                <Form
-                    form={form}
-                    onFinish={handleCreateServer}
-                    layout="vertical"
-                    initialValues={{
-                        maxPlayers: 10,
-                        map: 'de_dust2',
-                    }}
-                >
-                    <Form.Item
-                        name="name"
-                        label={t('dashboard.serverName')}
-                        rules={[{ required: true, message: t('dashboard.gslt_required') }]}
-                    >
-                        <Input placeholder={t('dashboard.serverName_placeholder')} />
-                    </Form.Item>
+                                            {/* Uptime Section */}
+                                            <div style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.02)', borderRadius: 8, marginTop: 8 }}>
+                                                <Statistic
+                                                    title={<Text type="secondary" style={{ fontSize: '12px' }}><FieldTimeOutlined /> {t('resources.uptime')}</Text>}
+                                                    value={formatUptime(stats.uptime)}
+                                                    valueStyle={{ fontSize: '15px', fontWeight: 'bold' }}
+                                                />
+                                            </div>
+                                        </Space>
+                                    </Col>
 
-                    <Form.Item
-                        name="description"
-                        label={t('dashboard.description')}
-                    >
-                        <Input.TextArea placeholder={t('dashboard.description_placeholder')} />
-                    </Form.Item>
+                                    <Col xs={24} md={12}>
+                                        <Space direction="vertical" style={{ width: '100%' }} size="small">
+                                            {/* Disk/Storage Section */}
+                                            <div>
+                                                <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                                                    <Space size="small"><HddOutlined /> <Text strong style={{ fontSize: '13px' }}>{t('resources.diskUsage')}</Text></Space>
+                                                    <Text style={{ fontSize: '13px' }}>{stats.disk.percentage}%</Text>
+                                                </Space>
+                                                <Progress
+                                                    percent={stats.disk.percentage}
+                                                    strokeColor={getStatusColor(stats.disk.percentage)}
+                                                    showInfo={false}
+                                                    strokeLinecap="round"
+                                                    size="small"
+                                                />
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <Text type="secondary" style={{ fontSize: '11px' }}>
+                                                        {t('resources.total')}: {(stats.disk.total / 1024 / 1024 / 1024).toFixed(1)} GB
+                                                    </Text>
+                                                </div>
+                                            </div>
 
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item
-                                name="gsltToken"
-                                label={t('dashboard.gsltToken')}
-                                help={<a href="https://steamcommunity.com/dev/managegameservers" target="_blank" rel="noreferrer">Steam Dev Portal</a>}
-                                rules={[{ required: true, message: t('dashboard.gslt_required') }]}
-                            >
-                                <Input placeholder="5F0B..." />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item
-                                name="steamAuthKey"
-                                label="Steam Web API Key (-authkey)"
-                                help={<a href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noreferrer">Get API Key</a>}
-                            >
-                                <Input placeholder={t('dashboard.description_placeholder')} />
-                            </Form.Item>
-                        </Col>
-                    </Row>
+                                            <div style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.02)', borderRadius: 8, marginTop: 32 }}>
+                                                <Statistic
+                                                    title={<Text type="secondary" style={{ fontSize: '12px' }}><SafetyCertificateOutlined /> {t('resources.freeSpace')}</Text>}
+                                                    value={((stats.disk.total - stats.disk.used) / 1024 / 1024 / 1024).toFixed(1)}
+                                                    suffix="GB"
+                                                    valueStyle={{ fontSize: '15px', fontWeight: 'bold' }}
+                                                />
+                                            </div>
+                                        </Space>
+                                    </Col>
+                                </Row>
+                            )}
+                        </Card>
+                    </Col>
 
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item
-                                name="rconPassword"
-                                label="RCON Password"
-                                rules={[
-                                    { required: true, message: t('dashboard.rcon_required') },
-                                    { min: 6, message: t('common.min_chars') }
-                                ]}
-                            >
-                                <Input.Password placeholder={t('dashboard.description_placeholder')} />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item
-                                name="maxPlayers"
-                                label={t('dashboard.players_required')}
-                                rules={[{ required: true, message: t('dashboard.players_required') }]}
-                            >
-                                <Input type="number" min={2} max={64} placeholder="10" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item
-                                name="map"
-                                label={t('dashboard.default_map')}
-                                rules={[{ required: true, message: t('dashboard.map_required') }]}
-                            >
-                                <Select placeholder={t('dashboard.map_placeholder')}>
-                                    <Select.OptGroup label={t('dashboard.competitive_maps')}>
-                                        <Select.Option value="de_dust2">Dust 2</Select.Option>
-                                        <Select.Option value="de_mirage">Mirage</Select.Option>
-                                        <Select.Option value="de_inferno">Inferno</Select.Option>
-                                        <Select.Option value="de_nuke">Nuke</Select.Option>
-                                        <Select.Option value="de_overpass">Overpass</Select.Option>
-                                        <Select.Option value="de_vertigo">Vertigo</Select.Option>
-                                        <Select.Option value="de_ancient">Ancient</Select.Option>
-                                        <Select.Option value="de_anubis">Anubis</Select.Option>
-                                    </Select.OptGroup>
-                                    <Select.OptGroup label={t('dashboard.other_maps')}>
-                                        <Select.Option value="cs_office">Office</Select.Option>
-                                        <Select.Option value="cs_italy">Italy</Select.Option>
-                                    </Select.OptGroup>
-                                </Select>
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-                        <Space>
-                            <Button onClick={() => setIsModalVisible(false)}>{t('common.cancel')}</Button>
-                            <Button type="primary" htmlType="submit" icon={<RocketOutlined />}>
-                                {t('dashboard.createAndInstall')}
-                            </Button>
-                        </Space>
-                    </Form.Item>
-                </Form>
-            </Modal>
-
-            {/* Console Modal */}
-            <Modal
-                title={`${t('dashboard.server_console')} - ${servers.find(s => s.id === selectedServerForConsole)?.name || ''}`}
-                open={!!selectedServerForConsole}
-                onCancel={() => setSelectedServerForConsole(null)}
-                width={800}
-                footer={null}
-                destroyOnHidden
-            >
-                {selectedServerForConsole && (
-                    <Console serverId={selectedServerForConsole} />
-                )}
-            </Modal>
-
-            {/* Edit Server Modal */}
-            <Modal
-                title={t('dashboard.editDetails')}
-                open={isEditModalVisible}
-                onCancel={() => setIsEditModalVisible(false)}
-                footer={null}
-                destroyOnHidden
-            >
-                <Form
-                    form={editForm}
-                    onFinish={handleUpdateServer}
-                    layout="vertical"
-                >
-                    <Form.Item
-                        name="name"
-                        label={t('dashboard.serverName')}
-                        rules={[{ required: true, message: t('dashboard.gslt_required') }]}
-                    >
-                        <Input />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="description"
-                        label={t('dashboard.description')}
-                    >
-                        <Input.TextArea />
-                    </Form.Item>
-
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item
-                                name="gsltToken"
-                                label={t('dashboard.gsltToken')}
-                                help={<a href="https://steamcommunity.com/dev/managegameservers" target="_blank" rel="noreferrer">Steam Dev Portal</a>}
-                                rules={[{ required: true, message: t('dashboard.gslt_required') }]}
-                            >
-                                <Input placeholder="5F0B..." />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item
-                                name="steamAuthKey"
-                                label="Steam Web API Key (-authkey)"
-                                help={<a href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noreferrer">Get API Key</a>}
-                            >
-                                <Input placeholder={t('dashboard.empty_no_change')} />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item
-                                name="rconPassword"
-                                label={t('dashboard.rcon_password_edit')}
-                                rules={[
-                                    { min: 6, message: t('common.min_chars') }
-                                ]}
-                            >
-                                <Input.Password placeholder={t('dashboard.empty_no_change')} />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item
-                                name="maxPlayers"
-                                label={t('dashboard.players_required')}
-                                rules={[{ required: true, message: t('dashboard.players_required') }]}
-                            >
-                                <Input type="number" min={2} max={64} />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item
-                                name="map"
-                                label={t('dashboard.default_map')}
-                                rules={[{ required: true, message: t('dashboard.map_required') }]}
-                            >
-                                <Select>
-                                    <Select.OptGroup label={t('dashboard.competitive_maps')}>
-                                        <Select.Option value="de_dust2">Dust 2</Select.Option>
-                                        <Select.Option value="de_mirage">Mirage</Select.Option>
-                                        <Select.Option value="de_inferno">Inferno</Select.Option>
-                                        <Select.Option value="de_nuke">Nuke</Select.Option>
-                                        <Select.Option value="de_overpass">Overpass</Select.Option>
-                                        <Select.Option value="de_vertigo">Vertigo</Select.Option>
-                                        <Select.Option value="de_ancient">Ancient</Select.Option>
-                                        <Select.Option value="de_anubis">Anubis</Select.Option>
-                                    </Select.OptGroup>
-                                    <Select.OptGroup label={t('dashboard.other_maps')}>
-                                        <Select.Option value="cs_office">Office</Select.Option>
-                                        <Select.Option value="cs_italy">Italy</Select.Option>
-                                    </Select.OptGroup>
-                                </Select>
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-                        <Space>
-                            <Button onClick={() => setIsEditModalVisible(false)}>{t('common.cancel')}</Button>
-                            <Button type="primary" htmlType="submit">
-                                {t('common.update')}
-                            </Button>
-                        </Space>
-                    </Form.Item>
-                </Form>
-            </Modal>
-
-            {/* Workshop Manager Modal */}
-            <Modal
-                title={`${t('dashboard.workshop_management')} - ${selectedServerForWorkshop?.name || ''}`}
-                open={!!selectedServerForWorkshop}
-                onCancel={() => setSelectedServerForWorkshop(null)}
-                width={480}
-                footer={null}
-                destroyOnHidden
-            >
-                {selectedServerForWorkshop && (
-                    <WorkshopManager
-                        key={selectedServerForWorkshop.id}
-                        server={selectedServerForWorkshop}
-                        onUpdate={() => {
-                            fetchServers();
-                            setSelectedServerForWorkshop(null); // Close modal on success
-                        }}
-                    />
-                )}
-            </Modal>
-        </Space>
+                    {/* Used Ports - Matched height scrollable */}
+                    <Col xs={24} lg={8} style={{ display: 'flex' }}>
+                        <Card
+                            title={<Space size="small"><GlobalOutlined /> {t('resources.usedPorts')}</Space>}
+                            style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', width: '100%', display: 'flex', flexDirection: 'column' }}
+                            bodyStyle={{ flex: 1, overflow: 'hidden', padding: '16px 20px', display: 'flex', flexDirection: 'column' }}
+                            loading={!stats}
+                        >
+                            <style>{`
+                                .custom-scrollbar::-webkit-scrollbar {
+                                    width: 4px;
+                                }
+                                .custom-scrollbar::-webkit-scrollbar-track {
+                                    background: transparent;
+                                }
+                                .custom-scrollbar::-webkit-scrollbar-thumb {
+                                    background: rgba(0,0,0,0.1);
+                                    border-radius: 10px;
+                                }
+                                .port-item {
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: space-between;
+                                    padding: 8px 12px;
+                                    background: rgba(24, 144, 255, 0.04);
+                                    border-radius: 10px;
+                                    margin-bottom: 8px;
+                                    border: 1px solid rgba(24, 144, 255, 0.08);
+                                    transition: all 0.2s ease;
+                                }
+                                .port-item:hover {
+                                    background: rgba(24, 144, 255, 0.08);
+                                    border-color: rgba(24, 144, 255, 0.2);
+                                    transform: translateX(3px);
+                                }
+                            `}</style>
+                            {stats && (
+                                <div style={{ flex: 1, overflowY: 'auto', paddingRight: '8px', maxHeight: '200px' }} className="custom-scrollbar">
+                                    <List
+                                        dataSource={stats.network?.usedPorts || []}
+                                        renderItem={port => (
+                                            <div className="port-item">
+                                                <Space size="small">
+                                                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#1890ff' }} />
+                                                    <Text strong style={{ fontSize: '14px' }}>{port}</Text>
+                                                </Space>
+                                                <Tag color="blue" style={{ borderRadius: '4px', margin: 0, fontSize: '11px' }}>Active</Tag>
+                                            </div>
+                                        )}
+                                        locale={{ emptyText: t('resources.noPorts') }}
+                                    />
+                                </div>
+                            )}
+                        </Card>
+                    </Col>
+                </Row>
+            </Space>
+        </div>
     );
 }
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Input, Button, App, Empty, Spin, Typography, Space } from 'antd';
 import { FileTextOutlined, SaveOutlined, ReloadOutlined, UnorderedListOutlined } from '@ant-design/icons';
-import { fileService, ConfigFile } from '../services/fileService';
+import { fileService, FileEntry } from '../services/fileService';
 import { useTranslation } from 'react-i18next';
 
 const { Sider, Content } = Layout;
@@ -15,7 +15,7 @@ interface ConfigEditorProps {
 const ConfigEditor: React.FC<ConfigEditorProps> = ({ serverId }) => {
     const { t } = useTranslation();
     const { message } = App.useApp();
-    const [files, setFiles] = useState<ConfigFile[]>([]);
+    const [files, setFiles] = useState<FileEntry[]>([]);
     const [selectedFile, setSelectedFile] = useState<string | null>(null);
     const [content, setContent] = useState('');
     const [originalContent, setOriginalContent] = useState('');
@@ -29,10 +29,11 @@ const ConfigEditor: React.FC<ConfigEditorProps> = ({ serverId }) => {
     const fetchFiles = async () => {
         setLoading(true);
         try {
-            const response = await fileService.listFiles(serverId);
-            setFiles(response.data);
-            if (response.data.length > 0 && !selectedFile) {
-                handleFileSelect(response.data[0].name);
+            const result = await fileService.listFiles(serverId, 'cfg'); // Assuming 'cfg' or root
+            const configFiles = result.files.filter(f => !f.isDirectory && (f.name.endsWith('.cfg') || f.name.endsWith('.ini')));
+            setFiles(configFiles);
+            if (configFiles.length > 0 && !selectedFile) {
+                handleFileSelect(configFiles[0].name);
             }
         } catch (error) {
             message.error(t('common.error'));
@@ -51,9 +52,9 @@ const ConfigEditor: React.FC<ConfigEditorProps> = ({ serverId }) => {
         setSelectedFile(filename);
         setLoading(true);
         try {
-            const response = await fileService.getFileContent(serverId, filename);
-            setContent(response.data);
-            setOriginalContent(response.data);
+            const result = await fileService.getFileContent(serverId, filename);
+            setContent(result.content);
+            setOriginalContent(result.content);
         } catch (error) {
             message.error(t('common.error'));
         } finally {

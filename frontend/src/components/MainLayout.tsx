@@ -102,8 +102,19 @@ const MainLayout = () => {
                 </Space>
             </Header>
 
-            <Layout>
-                <Sider width={250} style={{ background: darkMode ? '#141414' : '#fff' }} breakpoint="lg" collapsedWidth="0">
+            <Layout style={{ height: 'calc(100vh - 64px)' }}>
+                <Sider
+                    width={250}
+                    style={{
+                        background: darkMode ? '#141414' : '#fff',
+                        position: 'sticky',
+                        top: 64,
+                        height: 'calc(100vh - 64px)',
+                        overflowY: 'auto'
+                    }}
+                    breakpoint="lg"
+                    collapsedWidth="0"
+                >
                     <Menu
                         mode="inline"
                         theme={darkMode ? 'dark' : 'light'}
@@ -150,8 +161,19 @@ const MainLayout = () => {
                     padding: '24px',
                     minHeight: 280,
                     background: darkMode ? '#000' : '#f5f5f5',
-                    color: darkMode ? 'rgba(255,255,255,0.85)' : 'initial'
-                }}>
+                    color: darkMode ? 'rgba(255,255,255,0.85)' : 'initial',
+                    overflowY: 'auto',
+                    height: 'calc(100vh - 64px)',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none'
+                }}
+                    className="hide-scrollbar"
+                >
+                    <style>{`
+                        .hide-scrollbar::-webkit-scrollbar {
+                            display: none;
+                        }
+                    `}</style>
                     <Outlet />
                 </Content>
             </Layout>

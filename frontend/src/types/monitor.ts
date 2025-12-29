@@ -17,5 +17,8 @@ export interface SystemStats {
         used: number;
         percentage: number;
     };
+    network: {
+        usedPorts: string[];
+    };
     uptime: number;
 }

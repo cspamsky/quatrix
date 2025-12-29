@@ -26,7 +26,9 @@
         "unsaved_changes": "Kaydedilmemiş değişiklikleriniz var. Çıkmak istiyor musunuz?",
         "online": "Çevrimiçi",
         "offline": "Çevrimdışı",
-        "disconnected": "Bağlantı Kesildi"
+        "disconnected": "Bağlantı Kesildi",
+        "form_reset": "Form sıfırlandı",
+        "processing": "İşlem yapılıyor..."
     },
     "nav": {
         "dashboard": "Kontrol Paneli",
@@ -80,7 +82,11 @@
         "delete_confirm_title": "Sunucuyu Sil?",
         "delete_confirm_content": "Bu işlem sunucuyu (veya kurulumu) durduracak ve tüm dosyaları silecektir. Bu işlem geri alınamaz.",
         "rename_title": "Sunucuyu Yeniden Adlandır",
-        "verify_files": "Sunucu Dosyalarını Doğrula"
+        "verify_files": "Sunucu Dosyalarını Doğrula",
+        "processing_starting": "Sunucu başlatılıyor...",
+        "processing_stopping": "Sunucu durduruluyor...",
+        "processing_restarting": "Sunucu yeniden başlatılıyor...",
+        "processing_verifying": "Dosyalar doğrulanıyor..."
     },
     "status": {
         "CREATING": "Oluşturuluyor",
@@ -114,9 +120,11 @@
         "updatePassword": "Şifreyi Güncelle",
         "management": "Yönetim Araçları",
         "installSteamCMD": "SteamCMD'yi Çevrimiçi Kur/Güncelle",
-        "resetWizard": "Kurulum Sihirbazını Yeniden Çalıştır",
-        "installSteamCMD_confirm": "SteamCMD kurulsun mu? Bu işlem SteamCMD'yi yapılandırılan dizine indirip ayıklayacaktır.",
-        "resetWizard_confirm": "Kurulum sihirbazı sıfırlansın mı? Bu işlem yapılandırma bayrağını sıfırlar.",
+        "installSteamCMD_desc": "SteamCMD'yi otomatik olarak indirir ve yapılandırılan dizine ayıklar. Bu işlem mevcut kurulumu günceller veya eksikse yeni kurulum yapar.",
+        "resetWizard": "Kurulum Sihirbazını Sıfırla",
+        "resetWizard_desc": "Uygulama ilk kurulum moduna döner. Mevcut ayarlarınız korunur ancak giriş sayfasında kurulum sihirbazı tekrar görünür.",
+        "installSteamCMD_confirm": "SteamCMD kurulsun mu?",
+        "resetWizard_confirm": "Kurulum sihirbazı sıfırlansın mı?",
         "appInfo": "Uygulama Bilgisi",
         "productName": "Ürün Adı",
         "version": "Versiyon",
@@ -147,7 +155,11 @@
         "free": "Boş",
         "days": "g",
         "hours": "sa",
-        "minutes": "dk"
+        "minutes": "dk",
+        "usedPorts": "Kullanılan Portlar",
+        "noPorts": "Aktif dinlenen port yok",
+        "diskUsage": "Disk Kullanımı",
+        "freeSpace": "Boş Alan"
     },
     "files": {
         "title": "Dosya Yöneticisi",
@@ -202,7 +214,9 @@
         "open_fail": "Dosya açılamadı",
         "save_success": "Kaydedildi",
         "save_fail": "Kaydetme başarısız",
-        "folder_download_not_supported": "Klasör indirme desteklenmiyor. Lütfen önce arşivleyin."
+        "folder_download_not_supported": "Klasör indirme desteklenmiyor. Lütfen önce arşivleyin.",
+        "processing_pasting": "Dosyalar yapıştırılıyor...",
+        "processing_downloading": "Dosya indirme için hazırlanıyor..."
     },
     "rcon": {
         "players": "Bağlı Oyuncular",
@@ -219,6 +233,7 @@
         "refresh_players": "Oyuncuları Yenile",
         "confirm_kick": "Oyuncu atılsın mı?",
         "confirm_ban": "Oyuncu yasaklansın mı?",
-        "back_to_console": "Konsola Dön"
+        "back_to_console": "Konsola Dön",
+        "command_sent": "Komut iletildi"
     }
 }

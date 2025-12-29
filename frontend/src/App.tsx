@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
+import Servers from './pages/Servers';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Settings from './pages/Settings';
@@ -32,7 +33,7 @@ function App() {
                         <Route path="/settings" element={<Settings />} />
                         <Route path="/files" element={<Files />} />
                         {/* More routes can be added here */}
-                        <Route path="/servers" element={<Dashboard />} />
+                        <Route path="/servers" element={<Servers />} /> {/* Updated route to use Servers component */}
                         <Route path="/rcon" element={<Rcon />} />
                     </Route>
                 </Route>

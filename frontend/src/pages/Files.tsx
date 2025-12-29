@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, Select, Typography, Space, Empty } from 'antd';
-import { FolderOpenOutlined } from '@ant-design/icons';
+// Unused import removed
 import { useTranslation } from 'react-i18next';
 import { serverService } from '../services/serverService';
 import FileManager from '../components/FileManager';
@@ -38,9 +38,7 @@ function Files() {
     return (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Title level={2} style={{ margin: 0 }}>
-                    <FolderOpenOutlined /> Dosya Yöneticisi
-                </Title>
+                <Title level={2} style={{ margin: 0 }}>{t('nav.files')}</Title>
                 <Select
                     style={{ width: 300 }}
                     placeholder="Sunucu seçin"

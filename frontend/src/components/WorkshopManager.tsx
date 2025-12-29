@@ -79,7 +79,10 @@ const WorkshopManager: React.FC<WorkshopManagerProps> = ({ server, onUpdate }) =
                             type="text"
                             danger
                             icon={<DeleteOutlined />}
-                            onClick={() => form.resetFields()}
+                            onClick={() => {
+                                form.resetFields();
+                                message.info(t('common.form_reset'));
+                            }}
                             size="small"
                         >
                             {t('workshop.reset')}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Select, Typography, Space, Input, Button, Alert, List, Table, Tag, Modal, Form, InputNumber, Popconfirm, Tooltip, Tabs } from 'antd';
+import { Card, Select, Typography, Space, Input, Button, Alert, List, Table, Tag, Modal, Form, InputNumber, Popconfirm, Tooltip, Tabs, App } from 'antd';
 import {
     SendOutlined,
     LinkOutlined,
@@ -37,6 +37,7 @@ interface Player {
 
 function Rcon() {
     const { t } = useTranslation();
+    const { message } = App.useApp();
     const [servers, setServers] = useState<any[]>([]);
     const [selectedServer, setSelectedServer] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -153,6 +154,7 @@ function Rcon() {
                 command: cmdToRun,
             });
 
+            message.success(t('rcon.command_sent'));
             setHistory(prev => [...prev, {
                 command: cmdToRun,
                 response: response.data.response || 'Komut çalıştırıldı',
@@ -160,7 +162,7 @@ function Rcon() {
             }]);
             if (!cmdOverride) setCommand('');
         } catch (error: any) {
-            setError(error.response?.data?.error || 'Komut çalıştırılamadı');
+            message.error(error.response?.data?.error || 'Komut çalıştırılamadı');
         }
     };
 
@@ -260,9 +262,7 @@ function Rcon() {
     return (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Title level={2} style={{ margin: 0 }}>
-                    <SendOutlined /> {t('nav.rcon')}
-                </Title>
+                <Title level={2} style={{ margin: 0 }}>{t('nav.rcon')}</Title>
                 <div style={{ display: 'flex', gap: 16 }}>
                     <Select
                         style={{ width: 300 }}

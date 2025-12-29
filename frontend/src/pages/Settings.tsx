@@ -46,12 +46,15 @@ const Settings = () => {
 
     const onConfigFinish = async (values: any) => {
         setLoading(true);
+        const hide = message.loading(t('common.processing'), 0);
         try {
             const response = await settingsService.updateSettings(values);
+            hide();
             if (response.success) {
                 message.success(t('common.success'));
             }
         } catch (error: any) {
+            hide();
             message.error(error.response?.data?.message || t('common.error'));
         } finally {
             setLoading(false);
@@ -60,13 +63,16 @@ const Settings = () => {
 
     const onPasswordFinish = async (values: any) => {
         setPasswordLoading(true);
+        const hide = message.loading(t('common.processing'), 0);
         try {
             const response = await authService.changePassword(values);
+            hide();
             if (response.success) {
                 message.success(t('common.success'));
                 passwordForm.resetFields();
             }
         } catch (error: any) {
+            hide();
             message.error(error.response?.data?.message || t('common.error'));
         } finally {
             setPasswordLoading(false);
@@ -80,10 +86,13 @@ const Settings = () => {
             content: t('settings.installSteamCMD_confirm'),
             onOk: async () => {
                 setInstalling(true);
+                const hide = message.loading(t('common.processing'), 0);
                 try {
                     const res = await settingsService.installSteamCMD();
+                    hide();
                     if (res.success) message.success(t('common.success'));
                 } catch (error: any) {
+                    hide();
                     message.error(error.response?.data?.message || t('common.error'));
                 } finally {
                     setInstalling(false);
@@ -111,19 +120,19 @@ const Settings = () => {
     };
 
     return (
-        <div style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '40px' }}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <div style={{ width: '100%', height: 'auto' }}>
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Title level={2} style={{ margin: 0 }}>{t('settings.title')}</Title>
-                    <Button icon={<ReloadOutlined />} onClick={fetchSettings} loading={initialLoading}>
-                        {t('common.refresh')}
-                    </Button>
                 </div>
 
                 {/* Global Configuration */}
                 <Card
                     loading={initialLoading}
-                    title={<span><SettingOutlined /> {t('settings.save')}</span>}
+                    variant="borderless"
+                    title={<Space><SettingOutlined style={{ color: '#1890ff' }} /> {t('settings.save')}</Space>}
+                    style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+                    bodyStyle={{ padding: '20px' }}
                 >
                     <Form
                         form={configForm}
@@ -131,37 +140,39 @@ const Settings = () => {
                         onFinish={onConfigFinish}
                         autoComplete="off"
                     >
-                        <Row gutter={24}>
-                            <Col span={24}>
+                        <Row gutter={[24, 0]}>
+                            <Col xs={24} md={12}>
                                 <Form.Item
                                     name="steamcmdPath"
-                                    label={t('settings.steamcmd')}
+                                    label={<Text strong>{t('settings.steamcmd')}</Text>}
                                     rules={[{ required: true, message: t('common.required') }]}
-                                    extra={t('settings.steamcmd_desc')}
+                                    extra={<Text type="secondary" style={{ fontSize: '12px' }}>{t('settings.steamcmd_desc')}</Text>}
                                 >
                                     <Input
-                                        prefix={<FolderOpenOutlined />}
-                                        placeholder="e.g., C:\steamcmd or ./steamcmd"
+                                        prefix={<FolderOpenOutlined style={{ color: '#bfbfbf' }} />}
+                                        placeholder="e.g., C:\steamcmd"
+                                        style={{ borderRadius: 8 }}
                                     />
                                 </Form.Item>
                             </Col>
 
-                            <Col span={24}>
+                            <Col xs={24} md={12}>
                                 <Form.Item
                                     name="serversPath"
-                                    label={t('settings.serversPath')}
+                                    label={<Text strong>{t('settings.serversPath')}</Text>}
                                     rules={[{ required: true, message: t('common.required') }]}
-                                    extra={t('settings.serversPath_desc')}
+                                    extra={<Text type="secondary" style={{ fontSize: '12px' }}>{t('settings.serversPath_desc')}</Text>}
                                 >
                                     <Input
-                                        prefix={<FolderOpenOutlined />}
-                                        placeholder="e.g., C:\cs2-servers or ./cs2-servers"
+                                        prefix={<FolderOpenOutlined style={{ color: '#bfbfbf' }} />}
+                                        placeholder="e.g., C:\cs2-servers"
+                                        style={{ borderRadius: 8 }}
                                     />
                                 </Form.Item>
                             </Col>
                         </Row>
 
-                        <Divider />
+                        <Divider style={{ margin: '20px 0' }} />
 
                         <Form.Item style={{ marginBottom: 0 }}>
                             <Button
@@ -170,6 +181,7 @@ const Settings = () => {
                                 icon={<SaveOutlined />}
                                 loading={loading}
                                 size="large"
+                                style={{ borderRadius: 8, height: 40 }}
                             >
                                 {t('settings.save')}
                             </Button>
@@ -177,10 +189,15 @@ const Settings = () => {
                     </Form>
                 </Card>
 
-                <Row gutter={24}>
+                <Row gutter={[16, 16]}>
                     <Col xs={24} lg={12}>
-                        {/* Password Reset */}
-                        <Card title={<span><LockOutlined /> {t('settings.security')}</span>}>
+                        {/* Security */}
+                        <Card
+                            variant="borderless"
+                            title={<Space><LockOutlined style={{ color: '#ff4d4f' }} /> {t('settings.security')}</Space>}
+                            style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', height: '100%' }}
+                            bodyStyle={{ padding: '20px' }}
+                        >
                             <Form
                                 form={passwordForm}
                                 layout="vertical"
@@ -188,26 +205,35 @@ const Settings = () => {
                             >
                                 <Form.Item
                                     name="currentPassword"
-                                    label={t('settings.currentPassword')}
+                                    label={<Text strong>{t('settings.currentPassword')}</Text>}
                                     rules={[{ required: true, message: t('common.required') }]}
                                 >
-                                    <Input.Password prefix={<LockOutlined />} />
+                                    <Input.Password
+                                        prefix={<LockOutlined style={{ color: '#bfbfbf' }} />}
+                                        style={{ borderRadius: 8 }}
+                                    />
                                 </Form.Item>
                                 <Form.Item
                                     name="newPassword"
-                                    label={t('settings.newPassword')}
+                                    label={<Text strong>{t('settings.newPassword')}</Text>}
                                     rules={[
                                         { required: true, message: t('common.required') },
                                         { min: 6, message: t('common.min_chars') }
                                     ]}
                                 >
-                                    <Input.Password prefix={<LockOutlined />} />
+                                    <Input.Password
+                                        prefix={<LockOutlined style={{ color: '#bfbfbf' }} />}
+                                        style={{ borderRadius: 8 }}
+                                    />
                                 </Form.Item>
                                 <Button
-                                    type="default"
+                                    type="primary"
+                                    danger
+                                    ghost
                                     htmlType="submit"
                                     loading={passwordLoading}
                                     block
+                                    style={{ borderRadius: 8, height: 40 }}
                                 >
                                     {t('settings.updatePassword')}
                                 </Button>
@@ -217,45 +243,89 @@ const Settings = () => {
 
                     <Col xs={24} lg={12}>
                         {/* Management Tools */}
-                        <Card title={<span><RocketOutlined /> {t('settings.management')}</span>}>
-                            <Space direction="vertical" style={{ width: '100%' }}>
-                                <Button
-                                    icon={<CloudDownloadOutlined />}
-                                    block
-                                    onClick={handleInstallSteamCMD}
-                                    loading={installing}
-                                >
-                                    {t('settings.installSteamCMD')}
-                                </Button>
-                                <Button
-                                    icon={<ReloadOutlined />}
-                                    block
-                                    onClick={handleResetWizard}
-                                >
-                                    {t('settings.resetWizard')}
-                                </Button>
-                                <Divider style={{ margin: '12px 0' }} />
-                            </Space>
+                        <Card
+                            variant="borderless"
+                            title={<Space><RocketOutlined style={{ color: '#722ed1' }} /> {t('settings.management')}</Space>}
+                            style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', height: '100%' }}
+                            bodyStyle={{ padding: '20px' }}
+                        >
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <div style={{ padding: '16px', background: 'linear-gradient(135deg, rgba(24,144,255,0.05) 0%, rgba(24,144,255,0.02) 100%)', borderRadius: 10, border: '1px solid rgba(24,144,255,0.15)' }}>
+                                    <div style={{ marginBottom: 10 }}>
+                                        <Text strong style={{ fontSize: '13px', color: '#1890ff' }}>
+                                            <CloudDownloadOutlined style={{ marginRight: 6 }} />
+                                            {t('settings.installSteamCMD')}
+                                        </Text>
+                                    </div>
+                                    <Text type="secondary" style={{ display: 'block', marginBottom: 12, fontSize: '12px', lineHeight: '1.5' }}>
+                                        {t('settings.installSteamCMD_desc')}
+                                    </Text>
+                                    <Button
+                                        type="primary"
+                                        icon={<CloudDownloadOutlined />}
+                                        block
+                                        onClick={handleInstallSteamCMD}
+                                        loading={installing}
+                                        style={{ borderRadius: 8, height: 38 }}
+                                    >
+                                        {t('settings.installSteamCMD')}
+                                    </Button>
+                                </div>
+
+                                <div style={{ padding: '16px', background: 'linear-gradient(135deg, rgba(255,77,79,0.05) 0%, rgba(255,77,79,0.02) 100%)', borderRadius: 10, border: '1px solid rgba(255,77,79,0.2)' }}>
+                                    <div style={{ marginBottom: 10 }}>
+                                        <Text strong style={{ fontSize: '13px', color: '#ff4d4f' }}>
+                                            <ReloadOutlined style={{ marginRight: 6 }} />
+                                            {t('settings.resetWizard')}
+                                        </Text>
+                                    </div>
+                                    <Text type="secondary" style={{ display: 'block', marginBottom: 12, fontSize: '12px', lineHeight: '1.5' }}>
+                                        {t('settings.resetWizard_desc')}
+                                    </Text>
+                                    <Button
+                                        danger
+                                        icon={<ReloadOutlined />}
+                                        block
+                                        onClick={handleResetWizard}
+                                        style={{ borderRadius: 8, height: 38 }}
+                                    >
+                                        {t('settings.resetWizard')}
+                                    </Button>
+                                </div>
+                            </div>
+                        </Card>
+                    </Col>
+
+                    <Col xs={24}>
+                        {/* App Info */}
+                        <Card
+                            variant="borderless"
+                            style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', background: 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)' }}
+                            bodyStyle={{ padding: '20px' }}
+                        >
+                            <Row gutter={[24, 24]}>
+                                <Col xs={24} sm={8}>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', display: 'block', marginBottom: 4 }}>{t('settings.productName')}</Text>
+                                        <Title level={4} style={{ margin: 0, color: '#fff' }}>Quatrix</Title>
+                                    </div>
+                                </Col>
+                                <Col xs={24} sm={8}>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', display: 'block', marginBottom: 4 }}>{t('settings.version')}</Text>
+                                        <Title level={4} style={{ margin: 0, color: '#fff' }}>v1.0.0</Title>
+                                    </div>
+                                </Col>
+                                <Col xs={24} sm={8}>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', display: 'block', marginBottom: 4 }}>{t('settings.environment')}</Text>
+                                        <Title level={4} style={{ margin: 0, color: '#fff' }}>Stable (Windows)</Title>
+                                    </div>
+                                </Col>
+                            </Row>
                         </Card>
                     </Col>
                 </Row>
-
-                <Card title={t('settings.appInfo')}>
-                    <Row gutter={24}>
-                        <Col span={8}>
-                            <Text type="secondary">{t('settings.productName')}</Text>
-                            <Title level={5} style={{ marginTop: 4 }}>Quatrix</Title>
-                        </Col>
-                        <Col span={8}>
-                            <Text type="secondary">{t('settings.version')}</Text>
-                            <Title level={5} style={{ marginTop: 4 }}>v1.0.0</Title>
-                        </Col>
-                        <Col span={8}>
-                            <Text type="secondary">{t('settings.environment')}</Text>
-                            <Title level={5} style={{ marginTop: 4 }}>Development (Native)</Title>
-                        </Col>
-                    </Row>
-                </Card>
             </Space>
         </div>
     );

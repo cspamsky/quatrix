@@ -97,17 +97,10 @@ class SteamCMDService {
             this.activeInstalls.set(serverId, child);
 
             // Track output to detect successful update completion
-            let updateComplete = false;
-
             child.stdout.on('data', (data: Buffer) => {
                 const output = data.toString('utf8');
                 if (onProgress) onProgress(output);
                 logger.debug(`SteamCMD [${serverId}]: ${output.trim()}`);
-
-                // Check if update completed successfully
-                if (output.includes('Update complete') || output.includes('Success! App \'730\' fully installed')) {
-                    updateComplete = true;
-                }
             });
 
             child.stderr.on('data', (data) => {

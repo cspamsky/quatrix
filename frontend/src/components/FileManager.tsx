@@ -111,6 +111,7 @@ const FileManager: React.FC<FileManagerProps> = ({ serverId }) => {
             messageApi.info(t('files.folder_download_not_supported'));
             return;
         }
+        messageApi.info(t('files.processing_downloading'));
         fileService.downloadFile(serverId, file.path);
     };
 
@@ -120,7 +121,7 @@ const FileManager: React.FC<FileManagerProps> = ({ serverId }) => {
             messageApi.success(t('files.recycle_success'));
             loadFiles(currentPath);
         } catch (error: any) {
-            messageApi.error('İşlem başarısız: ' + (error.response?.data?.error || error.message));
+            messageApi.error(t('files.recycle_fail') + ': ' + (error.response?.data?.error || error.message));
         }
     };
 
@@ -130,7 +131,7 @@ const FileManager: React.FC<FileManagerProps> = ({ serverId }) => {
             messageApi.success(t('files.delete_success'));
             loadFiles(currentPath);
         } catch (error: any) {
-            messageApi.error('Silme başarısız: ' + (error.response?.data?.error || error.message));
+            messageApi.error(t('files.delete_fail') + ': ' + (error.response?.data?.error || error.message));
         }
     };
 
@@ -140,7 +141,7 @@ const FileManager: React.FC<FileManagerProps> = ({ serverId }) => {
             messageApi.success(t('files.restore_success'));
             loadFiles(currentPath);
         } catch (error: any) {
-            messageApi.error('Geri yükleme başarısız: ' + (error.response?.data?.error || error.message));
+            messageApi.error(t('files.restore_fail') + ': ' + (error.response?.data?.error || error.message));
         }
     };
 
@@ -150,7 +151,7 @@ const FileManager: React.FC<FileManagerProps> = ({ serverId }) => {
             messageApi.success(t('files.trash_cleared'));
             loadFiles(currentPath);
         } catch (error: any) {
-            messageApi.error('İşlem başarısız');
+            messageApi.error(t('common.error') + ': ' + (error.response?.data?.error || error.message));
         }
     };
 
@@ -165,7 +166,7 @@ const FileManager: React.FC<FileManagerProps> = ({ serverId }) => {
             setArchiveName('');
             loadFiles(currentPath);
         } catch (error: any) {
-            messageApi.error('Arşivleme başarısız');
+            messageApi.error(t('files.archive_fail') + ': ' + (error.response?.data?.error || error.message));
         }
     };
 
@@ -175,7 +176,7 @@ const FileManager: React.FC<FileManagerProps> = ({ serverId }) => {
             messageApi.success(t('files.unzip_success'));
             loadFiles(currentPath);
         } catch (error: any) {
-            messageApi.error('Çıkarma işlemi başarısız');
+            messageApi.error(t('files.unzip_fail') + ': ' + (error.response?.data?.error || error.message));
         }
     };
 
@@ -189,7 +190,7 @@ const FileManager: React.FC<FileManagerProps> = ({ serverId }) => {
             setTargetItem(null);
             loadFiles(currentPath);
         } catch (error: any) {
-            messageApi.error('İşlem başarısız');
+            messageApi.error(t('files.rename_fail') + ': ' + (error.response?.data?.error || error.message));
         }
     };
 
@@ -203,7 +204,7 @@ const FileManager: React.FC<FileManagerProps> = ({ serverId }) => {
             setPathValue('');
             loadFiles(currentPath);
         } catch (error: any) {
-            messageApi.error('Klasör oluşturma başarısız');
+            messageApi.error(t('files.folder_fail') + ': ' + (error.response?.data?.error || error.message));
         }
     };
 
@@ -215,6 +216,7 @@ const FileManager: React.FC<FileManagerProps> = ({ serverId }) => {
 
     const handlePaste = async () => {
         if (!clipboard) return;
+        const hide = messageApi.loading(t('files.processing_pasting'), 0);
         try {
             // Using rename for "Move" operation
             for (const srcPath of clipboard.paths) {
@@ -222,11 +224,13 @@ const FileManager: React.FC<FileManagerProps> = ({ serverId }) => {
                 const destPath = currentPath ? `${currentPath}/${fileName}` : fileName;
                 await fileService.renamePath(serverId, srcPath, destPath);
             }
+            hide();
             messageApi.success(t('files.paste_success'));
             setClipboard(null);
             loadFiles(currentPath);
         } catch (error: any) {
-            messageApi.error('Yapıştırma başarısız: ' + error.message);
+            hide();
+            messageApi.error(t('files.paste_fail') + ': ' + error.message);
         }
     };
 
@@ -246,8 +250,8 @@ const FileManager: React.FC<FileManagerProps> = ({ serverId }) => {
             await fileService.saveFileContent(serverId, editingFile, fileContent);
             messageApi.success(t('files.save_success'));
             setEditingFile(null);
-        } catch (error) {
-            messageApi.error(t('files.save_fail'));
+        } catch (error: any) {
+            messageApi.error(t('files.save_fail') + ': ' + (error.response?.data?.error || error.message));
         }
     };
 
