@@ -1,7 +1,7 @@
 # 🎮 Quatrix - CS2 Server Management Panel
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
 [![React Version](https://img.shields.io/badge/react-18.x-blue.svg)](https://reactjs.org/)
 [![Prisma](https://img.shields.io/badge/Prisma-ORM-blueviolet.svg)](https://www.prisma.io/)
 [![Ant Design](https://img.shields.io/badge/UI-Ant%20Design-0170fe.svg)](https://ant.design/)
@@ -18,6 +18,7 @@
 ## ✨ Key Features
 
 - 🚀 **One-Click Deployment**: Deploy CS2 servers instantly using integrated SteamCMD automation.
+- 🎮 **Advanced RCON Management**: Dedicated RCON console with live player management (Kick/Ban UI) through a native RCON implementation.
 - 📁 **Advanced File Manager**: High-performance filesystem management with bulk operations, Recycle Bin (`.quatrix_trash`), bi-directional Zip support, and clipboard (Cut/Paste) functionality.
 - 🌍 **Steam Workshop Support**: Seamlessly manage Workshop collections and maps with database persistence and visual configuration.
 - 📊 **Real-Time Monitoring**: Live tracking of System Resources (CPU, RAM, Storage) via WebSockets.
@@ -62,7 +63,7 @@
 ## 🚀 Installation & Setup
 
 ### 1. Prerequisites
-- **Node.js**: v18.0 or higher
+- **Node.js**: v20.0 or higher
 - **SteamCMD**: Installed on the host system (Windows recommended for Native performance)
 - **OS**: Windows (Full Native Support)
 
@@ -109,7 +110,7 @@ quatrix/
 
 - [x] **Phase 6**: Steam Workshop Integration (Workshop Map Manager).
 - [x] **Phase 6**: Advanced File Manager (Search, Archive, Trash).
-- [ ] **Phase 6**: RCON-based Player Management (Kick/Ban UI).
+- [x] **Phase 6**: RCON-based Player Management (Kick/Ban UI).
 - [ ] **Phase 7**: Plugin Manager (Metamod/Sourcemod auto-installer).
 - [ ] **Phase 8**: Detailed Server Backups & Automatic Updates.
 
