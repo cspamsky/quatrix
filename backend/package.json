@@ -30,6 +30,7 @@
         "morgan": "^1.10.0",
         "multer": "^2.0.2",
         "prisma": "^5.7.0",
+        "quatrix-root": "file:..",
         "rcon-srcds": "^2.0.1",
         "socket.io": "^4.6.0",
         "systeminformation": "^5.28.2",
