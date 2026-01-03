@@ -1,56 +1,157 @@
-# 🎮 Quatrix - Advanced CS2 Server Management Panel
+# 🎮 Quatrix - CS2 Server Management Panel
+
+<div align="center">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
-[![React Version](https://img.shields.io/badge/react-18.x-blue.svg)](https://reactjs.org/)
-[![Prisma](https://img.shields.io/badge/Prisma-ORM-blueviolet.svg)](https://www.prisma.io/)
-[![Ant Design](https://img.shields.io/badge/UI-Ant%20Design-0170fe.svg)](https://ant.design/)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
+[![React](https://img.shields.io/badge/react-18.x-blue.svg)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 
-![Quatrix Banner](https://via.placeholder.com/1200x400/1890ff/ffffff?text=Quatrix+CS2+Manager)
+**Modern, powerful web-based management platform for Counter-Strike 2 dedicated servers**
 
-**Quatrix** is a premium, high-performance web-based management platform designed for **Counter-Strike 2** dedicated servers. Built with a focus on **native performance**, Quatrix allows you to deploy, manage, and monitor your servers directly on your host machine with an industry-leading user interface.
+[Features](#-features) • [Quick Start](#-quick-start) • [Screenshots](#-screenshots) • [Documentation](#-documentation)
 
-> [!WARNING]
-> **Development Stage:** This project is built with **Vibecoding** and is currently in the active development phase. Some features may be incomplete or contains stability issues.
-
-![Quatrix Dashboard](screenshots/dashboard.png)
+</div>
 
 ---
 
-## ✨ Key Features
+## 🌟 Overview
 
-- 🚀 **One-Click Deployment**: Deploy CS2 servers instantly using integrated SteamCMD automation.
-- 🎮 **Advanced RCON Management**: Dedicated RCON console with live player management (Kick/Ban UI) through a native RCON implementation.
-- 📁 **Advanced File Manager**: High-performance filesystem management with bulk operations, Recycle Bin (`.quatrix_trash`), bi-directional Zip support, and clipboard (Cut/Paste) functionality.
-- 🌍 **Steam Workshop Support**: Seamlessly manage Workshop collections and maps with database persistence and visual configuration.
-- 📊 **Real-Time Monitoring**: Live tracking of System Resources (CPU, RAM, Storage) via WebSockets with optimized card layouts.
-- 💻 **Pro Terminal**: Robust Xterm.js console integration for live logs and bi-directional RCON commands.
-- 📝 **Visual Config Editor**: Manage `.cfg`, `.json`, and `.txt` files through a secure, full-screen web-based editor.
-- 🎨 **Premium UI/UX Design System**: 
-  - Unified card design language with soft shadows and borderless variants
-  - Optimized Dashboard with compact layouts and hidden scrollbars
-  - Consistent Settings page with standardized spacing and button dimensions
-  - Fixed navigation with sticky sidebar and header
-  - Global scrollbar customization (hidden but functional)
-- 🌓 **Dynamic Themes**: Seamless switching between **Dark** and **Light** modes across all pages.
-- 🌍 **Bilingual Support**: Full support for **English** and **Turkish** languages with complete i18n coverage.
-- 📱 **Responsive UI 2.0**: Fully adaptive dashboard optimized for Desktop, Tablet, and Mobile devices without horizontal overflow.
-- 👤 **User Management**: Secure authentication system (JWT + Bcrypt) with individualized server ownership.
+**Quatrix** is a premium, high-performance web panel designed for managing **Counter-Strike 2** dedicated servers. Deploy, configure, and monitor your CS2 servers through an intuitive web interface with real-time updates and advanced features.
+
+> **⚠️ Development Status:** Active development - some features may be incomplete or unstable.
+
+---
+
+## ✨ Features
+
+### 🎯 Core Features
+- **🚀 One-Click Deployment** - Install CS2 servers instantly via SteamCMD
+- **🎮 RCON Console** - Full-featured RCON with player management (kick/ban)
+- **📁 File Manager** - Web-based file browser with Monaco editor, zip support, and drag & drop
+- **🌍 Workshop Integration** - Manage Steam Workshop collections and maps
+- **📊 Real-Time Monitoring** - Live CPU, RAM, and disk usage tracking
+- **💻 Live Terminal** - Xterm.js console with real-time server logs
+
+### 🎨 User Experience
+- **🌓 Dark/Light Themes** - Seamless theme switching
+- **🌍 Multi-Language** - English and Turkish support (i18n)
+- **📱 Responsive Design** - Works on desktop, tablet, and mobile
+- **🎨 Modern UI** - Built with Ant Design 5
+- **👤 User Management** - Secure JWT authentication with role-based access
+
+### 🔧 Technical Features
+- **⚡ Real-Time Updates** - WebSocket-based live data
+- **🗄️ SQLite Database** - Lightweight and portable
+- **🔒 Secure** - Bcrypt password hashing, JWT tokens
+- **🎯 Native Performance** - Direct process management
+- **📦 Easy Setup** - One-command installation
+
+---
+
+## 🚀 Quick Start
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/cspamsky/quatrix.git
+cd quatrix
+
+# Run automated setup
+npm run setup
+
+# Start the application
+npm run dev
+```
+
+**Access Points:**
+- 🎨 **Frontend:** http://localhost:3001
+- ⚙️ **Backend API:** http://localhost:3000
+
+### Prerequisites
+
+- **Node.js** v20.0+ ([Download](https://nodejs.org/))
+- **npm** v10.0+
+- **Git**
+- **Windows OS** (optimized for Windows, Linux support planned)
+- **SteamCMD** (optional - can be installed via Setup Wizard)
+
+---
+
+## 📖 Documentation
+
+### Installation Options
+
+<details>
+<summary><b>Option 1: Automated Setup (Recommended)</b></summary>
+
+```bash
+# 1. Clone and navigate
+git clone https://github.com/cspamsky/quatrix.git
+cd quatrix
+
+# 2. Run setup script
+npm run setup
+
+# 3. Start the application
+npm run dev
+```
+
+The setup script will:
+- ✅ Install all dependencies (backend + frontend)
+- ✅ Generate Prisma Client
+- ✅ Set up the database
+- ✅ Verify the installation
+
+</details>
+
+<details>
+<summary><b>Option 2: Manual Setup</b></summary>
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/cspamsky/quatrix.git
+cd quatrix
+
+# 2. Install dependencies
+npm install
+
+# 3. Setup database
+cd backend
+npx prisma generate
+npx prisma migrate deploy
+cd ..
+
+# 4. Start the application
+npm run dev
+```
+
+</details>
+
+### First-Time Configuration
+
+1. **Open** http://localhost:3001 in your browser
+2. **Register** an admin account
+3. **Complete** the Setup Wizard:
+   - Set SteamCMD installation path
+   - Configure CS2 servers root directory
+4. **Create** your first CS2 server!
 
 ---
 
 ## 📸 Screenshots
 
 <details>
-<summary>View Screenshots</summary>
+<summary>Click to view screenshots</summary>
+
+### Dashboard
+![Dashboard](screenshots/dashboard.png)
 
 ### Login Page
 ![Login](screenshots/login.png)
 
-### Register Page
-![Register](screenshots/register.png)
-
-### Settings Page
+### Settings
 ![Settings](screenshots/settings.png)
 
 </details>
@@ -59,105 +160,129 @@
 
 ## 🛠️ Tech Stack
 
-| Component | Technology |
-| :--- | :--- |
-| **Frontend** | React 18, Vite, Ant Design 5, Socket.io-client, Xterm.js |
-| **Backend** | Node.js (ESM), TypeScript, Express, Socket.io, Multer, Systeminformation |
-| **Database** | SQLite, Prisma ORM |
-| **Automation** | SteamCMD (Native Integration) |
-
----
-
-## ⚡ Quick Start
-
-### Prerequisites
-- **Node.js**: v18.0 or higher
-- **SteamCMD**: Installed on the host system (Windows)
-- **Git**: For cloning the repository
-- **Windows OS**: Currently optimized for Windows process management
-
-### Installation & Setup
-
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/cspamsky/quatrix.git
-    cd quatrix
-    ```
-
-2.  **Install dependencies:**
-    ```bash
-    npm install
-    # This automatically installs dependencies for root, backend, and frontend
-    ```
-
-3.  **Start the development server:**
-    ```bash
-    npm run dev
-    # Runs backend (3000) and frontend (5173) concurrently
-    ```
-
-4.  **Initial Configuration:**
-    - Open `http://localhost:5173`.
-    - Register an admin account.
-    - Follow the **Setup Wizard** to configure your SteamCMD and Server Storage paths.
-
----
-
-## 📖 Feature Guide
-
-### 🚀 Server Management
-- **Dashboard**: Real-time overview of all your servers, including status, players, and resource usage.
-- **One-Click Install**: Automatically download and install CS2 servers via SteamCMD.
-- **Existing Server Import**: Easily add pre-installed servers by just pointing to their folder path.
-- **Force Stop & Restart**: Reliable server control using Windows-native process management (SIGKILL).
-
-### 📂 Advanced File Manager
-- **Web-Based Editor**: Integrated **Monaco Editor** (VS Code engine) for editing `.cfg` and `.json` files.
-- **Drag & Drop Upload**: Support for dragging files directly into the browser.
-- **Zip/Unzip**: Create backups or extract mods on the fly.
-- **Context Menu**: Right-click for common actions (Rename, Cut, Download).
+| Layer | Technologies |
+|-------|-------------|
+| **Frontend** | React 18, TypeScript, Vite, Ant Design 5, Socket.io-client, Xterm.js, Monaco Editor |
+| **Backend** | Node.js (ESM), TypeScript, Express, Socket.io, Prisma ORM |
+| **Database** | SQLite |
+| **Real-Time** | WebSockets (Socket.io) |
+| **Automation** | SteamCMD, Native Process Management |
 
 ---
 
 ## 📁 Project Structure
 
-```text
-quatrix/
-├── backend/            # Node.js ESM API & Process Management
-│   ├── src/services/   # SteamCMD, RCON, and Terminal logic
-│   └── prisma/         # SQLite Schema and Migrations
-├── frontend/           # React 18 Dashboard
-│   ├── src/components/ # Advanced UI Components (FileManager, Console)
-│   └── src/pages/      # Dashboard and Auth views
-├── screenshots/        # Visual documentation
-└── README.md           # Project Overview
 ```
+quatrix/
+├── backend/              # Node.js API & Services
+│   ├── src/
+│   │   ├── routes/      # API endpoints
+│   │   ├── services/    # Business logic (SteamCMD, RCON, etc.)
+│   │   └── middleware/  # Auth, validation, etc.
+│   └── prisma/          # Database schema & migrations
+│
+├── frontend/            # React Application
+│   ├── src/
+│   │   ├── components/  # Reusable UI components
+│   │   ├── pages/       # Page components
+│   │   ├── services/    # API clients
+│   │   └── store/       # State management (Zustand)
+│   └── public/
+│       └── locales/     # i18n translations
+│
+├── scripts/             # Utility scripts
+│   └── setup.js        # Automated setup script
+│
+└── screenshots/         # Documentation images
+```
+
+---
+
+## 🎯 Feature Highlights
+
+### Server Management
+- ✅ Create servers with custom configurations
+- ✅ Start/Stop/Restart with one click
+- ✅ Import existing server installations
+- ✅ Real-time status monitoring
+- ✅ Force stop for unresponsive servers
+
+### File Manager
+- ✅ Browse server files in web interface
+- ✅ Edit configs with Monaco Editor (VS Code engine)
+- ✅ Upload/Download files
+- ✅ Create/Extract ZIP archives
+- ✅ Cut/Copy/Paste operations
+- ✅ Recycle bin for deleted files
+
+### RCON Console
+- ✅ Execute server commands
+- ✅ View live server logs
+- ✅ Player management (kick/ban)
+- ✅ Real-time player list
+- ✅ Command history
+
+### Workshop Management
+- ✅ Add Workshop collections
+- ✅ Set Workshop start maps
+- ✅ Database-persisted configurations
 
 ---
 
 ## 🛣️ Roadmap
 
-- [x] **Phase 1-5**: Core Server Management (Start/Stop, RCON, SteamCMD).
-- [x] **Phase 6**: Advanced File Manager (Zip, Drag&Drop, Monaco Editor).
-- [x] **Phase 6**: Steam Workshop Integration.
-- [ ] **Phase 7**: Plugin Manager (Metamod/Sourcemod auto-installer).
-- [ ] **Phase 8**: Detailed Server Backups & Scheduled Tasks.
+- [x] Core server management (Start/Stop/Restart)
+- [x] RCON console integration
+- [x] Advanced file manager
+- [x] Steam Workshop support
+- [x] Real-time monitoring
+- [x] Multi-language support (EN/TR)
+- [ ] Plugin manager (Metamod/SourceMod)
+- [ ] Automated backups
+- [ ] Scheduled tasks
+- [ ] Multi-user support with permissions
+- [ ] Linux support
+- [ ] Docker deployment
 
 ---
 
-## 🛑 Troubleshooting
+## 🐛 Troubleshooting
 
-- **Server Won't Start?**
-  - Ensure you have a valid GSLT token.
-  - Check that no other process is using port 27015.
-- **"Breakpad" Errors:**
-  - These are standard CS2 log messages and are automatically filtered by Quatrix to keep your console clean.
+### Common Issues
+
+**Port Already in Use**
+```bash
+# Windows
+netstat -ano | findstr :3000
+taskkill /PID <process_id> /F
+
+# Linux/Mac
+lsof -ti:3000 | xargs kill -9
+```
+
+**Database Issues**
+```bash
+cd backend
+npx prisma migrate reset --force
+npx prisma migrate deploy
+```
+
+**Server Won't Start**
+- Verify you have a valid GSLT token from [Steam Game Server Account Management](https://steamcommunity.com/dev/managegameservers)
+- Check that port 27015 is not in use
+- Ensure SteamCMD is properly configured
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please feel free to submit issues and pull requests.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ---
 
@@ -167,5 +292,21 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Developed with ❤️ with Vibecoding.**  
-*Disclaimer: This project is not affiliated with Valve Corporation.*
+## 🙏 Acknowledgments
+
+- Built with ❤️ using modern web technologies
+- Powered by [SteamCMD](https://developer.valvesoftware.com/wiki/SteamCMD)
+- UI components from [Ant Design](https://ant.design/)
+- Terminal powered by [Xterm.js](https://xtermjs.org/)
+
+---
+
+<div align="center">
+
+**Quatrix** - Professional CS2 Server Management
+
+*Not affiliated with Valve Corporation*
+
+[⬆ Back to Top](#-quatrix---cs2-server-management-panel)
+
+</div>
