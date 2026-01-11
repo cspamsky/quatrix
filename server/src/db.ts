@@ -44,6 +44,9 @@ db.exec(`
   )
 `);
 
+// Add index on user_id for faster lookups
+db.exec(`CREATE INDEX IF NOT EXISTS idx_servers_user_id ON servers(user_id)`);
+
 // Add new columns if they don't exist (migrations)
 try {
   db.exec(`ALTER TABLE servers ADD COLUMN password TEXT`);

@@ -132,9 +132,10 @@ try {
 
   app.post("/api/servers", authenticateToken, (req, res) => {
     const { name, port, rcon_password } = req.body;
+    const userId = (req as any).user.id;
     try {
-      const result = db.prepare("INSERT INTO servers (name, port, rcon_password, status) VALUES (?, ?, ?, 'OFFLINE')")
-        .run(name, port, rcon_password);
+      const result = db.prepare("INSERT INTO servers (user_id, name, port, rcon_password, status) VALUES (?, ?, ?, ?, 'OFFLINE')")
+        .run(userId, name, port, rcon_password);
       res.json({ id: result.lastInsertRowid, name, port, status: 'OFFLINE' });
     } catch (error) {
       res.status(500).json({ message: "Failed to create server" });
