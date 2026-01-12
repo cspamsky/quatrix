@@ -43,3 +43,12 @@ client/.eslintcache
 
 # TypeScript
 *.tsbuildinfo
+
+# Preservation
+!.gitkeep
+!assets/
+!assets/*.png
+
+# Misc
+*.tmp
+*.bak

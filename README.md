@@ -100,7 +100,7 @@ quatrix/                     # Root Hub
 
 Quatrix is built by specialists for specialists. Whether it's a bug report, a feature request, or a PR, follow our [Contribution Guidelines](CONTRIBUTING.md).
 
-Developed with precision for the CS2 community. ⚡
+Developed with precision for Quatrix. ⚡
 
 ---
 
