@@ -198,7 +198,18 @@ try {
       const server = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
       if (!server) return res.status(404).json({ message: "Server not found" });
 
+      // Stop the server if running
       serverManager.stopServer(id as string);
+      
+      // Delete server files from disk
+      try {
+        serverManager.deleteServerFiles(id as string);
+      } catch (fileError) {
+        console.error("Error deleting server files:", fileError);
+        // Continue with database deletion even if file deletion fails
+      }
+      
+      // Delete from database
       db.prepare("DELETE FROM servers WHERE id = ?").run(id);
       res.json({ message: "Server deleted successfully" });
     } catch (error) {
@@ -216,6 +227,33 @@ try {
       res.status(500).json({ message: "Failed to create server" });
     }
   });
+
+  // Update server settings (map, players, passwords, etc.)
+  app.put("/api/servers/:id", authenticateToken, (req: any, res) => {
+    const { id } = req.params;
+    const { name, map, max_players, port, password, rcon_password, vac_enabled, gslt_token, steam_api_key } = req.body;
+    
+    try {
+      const server = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+      if (!server) return res.status(404).json({ message: "Server not found" });
+
+      db.prepare(`
+        UPDATE servers 
+        SET name = ?, map = ?, max_players = ?, port = ?, password = ?, 
+            rcon_password = ?, vac_enabled = ?, gslt_token = ?, steam_api_key = ?
+        WHERE id = ?
+      `).run(name, map, max_players, port, password, rcon_password, vac_enabled ? 1 : 0, gslt_token, steam_api_key, id);
+
+      // Emit socket event for real-time UI update
+      io.emit('server_update', { serverId: parseInt(id) });
+
+      res.json({ message: "Server settings updated successfully" });
+    } catch (error) {
+      console.error("Update server error:", error);
+      res.status(500).json({ message: "Failed to update server settings" });
+    }
+  });
+
 
   app.post("/api/servers/:id/start", authenticateToken, async (req: any, res) => {
     const id = req.params.id;
@@ -497,6 +535,35 @@ try {
       console.error("Stats collection error:", err);
     }
   }, 2000);
+
+  // Periodic map check (every 10 seconds) - detects RCON map changes
+  setInterval(async () => {
+    try {
+      const servers = db.prepare("SELECT id, map FROM servers WHERE status = 'ONLINE'").all() as any[];
+      if (servers.length === 0) return;
+
+      console.log(`[MAP CHECK] Checking ${servers.length} online servers...`);
+      
+      for (const server of servers) {
+        try {
+          const currentMap = await serverManager.getCurrentMap(server.id);
+          console.log(`[MAP CHECK] Server ${server.id}: DB=${server.map}, Current=${currentMap}`);
+          if (currentMap && currentMap !== server.map) {
+            // Map changed via RCON - update database
+            db.prepare("UPDATE servers SET map = ? WHERE id = ?").run(currentMap, server.id);
+            // Emit socket event for real-time UI update
+            io.emit('server_update', { serverId: server.id });
+            console.log(`✅ Map changed for server ${server.id}: ${server.map} → ${currentMap}`);
+          }
+        } catch (error) {
+          console.log(`[MAP CHECK] Error checking server ${server.id}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error("Map check error:", error);
+    }
+  }, 30000); // Check every 30 seconds (production setting)
+
 
   httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

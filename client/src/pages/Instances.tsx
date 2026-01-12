@@ -18,9 +18,12 @@ import {
   FileText
 } from 'lucide-react'
 import { apiFetch } from '../utils/api'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
+import { useNotification } from '../contexts/NotificationContext'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
+import { getMapImage } from '../utils/mapImages'
 
 const socket = io('http://localhost:3001')
 
@@ -38,6 +41,8 @@ interface Instance {
 
 const Instances = () => {
   const navigate = useNavigate()
+  const { showNotification } = useNotification()
+  const { showConfirm } = useConfirmDialog()
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [instances, setInstances] = useState<Instance[]>([])
   const [serverIp, setServerIp] = useState<string>('')
@@ -45,6 +50,31 @@ const Instances = () => {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [installingId, setInstallingId] = useState<number | null>(null)
   const [restartingId, setRestartingId] = useState<number | null>(null)
+
+  const fetchSystemInfo = async () => {
+    try {
+      const response = await apiFetch('http://localhost:3001/api/system-info')
+      if (response.ok) {
+        const data = await response.json()
+        setServerIp(data.publicIp || window.location.hostname)
+      }
+    } catch (error) {
+      console.error('Failed to fetch system info:', error)
+      setServerIp(window.location.hostname)
+    }
+  }
+
+  const fetchServers = useCallback(async () => {
+    try {
+      const response = await apiFetch('http://localhost:3001/api/servers')
+      const data = await response.json()
+      setInstances(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Failed to fetch servers:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     fetchServers()
@@ -61,38 +91,28 @@ const Instances = () => {
       )
     })
 
+    // Listen for server updates (map changes, settings, etc.)
+    socket.on('server_update', () => {
+      // Refresh the specific server data
+      fetchServers()
+    })
+
     return () => {
       socket.off('status_update')
+      socket.off('server_update')
     }
-  }, [])
-
-  const fetchSystemInfo = async () => {
-    try {
-      const response = await apiFetch('http://localhost:3001/api/system-info')
-      if (response.ok) {
-        const data = await response.json()
-        setServerIp(data.publicIp || window.location.hostname)
-      }
-    } catch (error) {
-      console.error('Failed to fetch system info:', error)
-      setServerIp(window.location.hostname)
-    }
-  }
-
-  const fetchServers = async () => {
-    try {
-      const response = await apiFetch('http://localhost:3001/api/servers')
-      const data = await response.json()
-      setInstances(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error('Failed to fetch servers:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [fetchServers])
 
   const handleDeleteServer = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this server instance? All data will be permanently removed.')) return
+    const confirmed = await showConfirm({
+      title: 'Delete Server Instance',
+      message: 'Are you sure you want to delete this server instance? All data will be permanently removed.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger'
+    })
+    
+    if (!confirmed) return
     
     setDeletingId(id)
     try {
@@ -100,13 +120,14 @@ const Instances = () => {
         method: 'DELETE'
       })
       if (response.ok) {
+        showNotification('success', 'Server Deleted', 'Server and all associated files have been permanently removed')
         setInstances(prev => prev.filter(i => i.id !== id))
       } else {
-        alert('Failed to delete server')
+        showNotification('error', 'Delete Failed', 'Failed to delete server')
       }
     } catch (error) {
       console.error('Delete server error:', error)
-      alert('Connection error')
+      showNotification('error', 'Connection Error', 'Unable to reach the server')
     } finally {
       setDeletingId(null)
     }
@@ -138,14 +159,15 @@ const Instances = () => {
         method: 'POST'
       })
       if (response.ok) {
+        showNotification('success', 'Server Starting', 'Your server is now booting up...')
         fetchServers()
       } else {
         const data = await response.json()
-        alert(data.message || 'Failed to start server')
+        showNotification('error', 'Start Failed', data.message || 'Failed to start server')
       }
     } catch (error) {
       console.error('Start server error:', error)
-      alert('Connection error')
+      showNotification('error', 'Connection Error', 'Unable to reach the server')
     }
   }
 
@@ -155,14 +177,15 @@ const Instances = () => {
         method: 'POST'
       })
       if (response.ok) {
+        showNotification('success', 'Server Stopped', 'Server has been shut down successfully')
         fetchServers()
       } else {
         const data = await response.json()
-        alert(data.message || 'Failed to stop server')
+        showNotification('error', 'Stop Failed', data.message || 'Failed to stop server')
       }
     } catch (error) {
       console.error('Stop server error:', error)
-      alert('Connection error')
+      showNotification('error', 'Connection Error', 'Unable to reach the server')
     }
   }
 
@@ -173,14 +196,15 @@ const Instances = () => {
         method: 'POST'
       })
       if (response.ok) {
+        showNotification('info', 'Server Restarting', 'Server will be back online shortly...')
         fetchServers()
       } else {
         const data = await response.json()
-        alert(data.message || 'Failed to restart server')
+        showNotification('error', 'Restart Failed', data.message || 'Failed to restart server')
       }
     } catch (error) {
       console.error('Restart error:', error)
-      alert('Connection error')
+      showNotification('error', 'Connection Error', 'Unable to reach the server')
     } finally {
       setRestartingId(null)
     }
@@ -246,7 +270,7 @@ const Instances = () => {
                 <img 
                   alt={`Map ${instance.map}`} 
                   className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-500" 
-                  src={instance.image || "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=400"}
+                  src={getMapImage(instance.map)}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#111827] to-transparent"></div>
                 

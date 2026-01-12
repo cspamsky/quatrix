@@ -2,6 +2,7 @@ import { apiFetch } from '../utils/api'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, Server, MapPin, Users, Lock, Key, Shield } from 'lucide-react'
+import { useNotification } from '../contexts/NotificationContext'
 
 interface ServerData {
   id: number
@@ -19,6 +20,7 @@ interface ServerData {
 const ServerSettings = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { showNotification } = useNotification()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [server, setServer] = useState<ServerData | null>(null)
@@ -54,13 +56,13 @@ const ServerSettings = () => {
       })
 
       if (response.ok) {
-        alert('Server settings saved successfully!')
+        showNotification('success', 'Settings Saved', 'Server settings have been updated successfully')
       } else {
-        alert('Failed to save settings')
+        showNotification('error', 'Save Failed', 'Failed to save server settings')
       }
     } catch (error) {
       console.error('Save error:', error)
-      alert('Connection error')
+      showNotification('error', 'Connection Error', 'Unable to reach the server')
     } finally {
       setSaving(false)
     }

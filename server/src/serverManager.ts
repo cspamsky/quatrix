@@ -245,6 +245,27 @@ class ServerManager {
         }
     }
 
+    async getCurrentMap(instanceId: string | number): Promise<string | null> {
+        try {
+            const response = await this.sendCommand(instanceId, 'status');
+            
+            // CS2 format: "loaded spawngroup(  1)  : SV:  [1: de_mirage | main lump | mapload]"
+            const mapMatch = response.match(/loaded spawngroup\(\s*1\)\s*:\s*SV:\s*\[1:\s*(\w+_\w+)/i);
+            
+            if (mapMatch && mapMatch[1]) {
+                console.log(`[MAP DETECTED]: ${mapMatch[1]}`);
+                return mapMatch[1];
+            }
+            
+            console.log('[MAP DETECTION FAILED] - No spawngroup pattern matched');
+            console.log('[DEBUG] First 500 chars of status:', response.substring(0, 500));
+            return null;
+        } catch (error) {
+            console.error(`Failed to get current map for instance ${instanceId}:`, error);
+            return null;
+        }
+    }
+
     async startServer(instanceId: string | number, options: any, onLog?: (data: string) => void) {
         const id = instanceId.toString();
         
@@ -358,6 +379,21 @@ class ServerManager {
 
     isServerRunning(instanceId: string | number): boolean {
         return this.runningServers.has(instanceId.toString());
+    }
+
+    deleteServerFiles(instanceId: string | number): void {
+        const serverDir = path.join(this.installDir, instanceId.toString());
+        
+        if (fs.existsSync(serverDir)) {
+            try {
+                // Recursively delete the entire server directory
+                fs.rmSync(serverDir, { recursive: true, force: true });
+                console.log(`Deleted server files for instance ${instanceId} at ${serverDir}`);
+            } catch (error) {
+                console.error(`Failed to delete server files for instance ${instanceId}:`, error);
+                throw new Error(`Failed to delete server files: ${error}`);
+            }
+        }
     }
 
     async listFiles(instanceId: string | number, subDir: string = ''): Promise<any[]> {

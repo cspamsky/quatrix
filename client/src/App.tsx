@@ -14,35 +14,41 @@ import ServerSettings from './pages/ServerSettings'
 import FileManager from './pages/FileManager'
 import ProtectedRoute from './components/ProtectedRoute'
 import PublicRoute from './components/PublicRoute'
+import { NotificationProvider } from './contexts/NotificationContext'
+import { ConfirmDialogProvider } from './contexts/ConfirmDialogContext'
 
 const App = () => {
   return (
-    <Router>
-      <Routes>
-        {/* Auth Routes (No Sidebar, Prevent logged-in access) */}
-        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-        <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+    <ConfirmDialogProvider>
+      <NotificationProvider>
+      <Router>
+        <Routes>
+          {/* Auth Routes (No Sidebar, Prevent logged-in access) */}
+          <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+          <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
 
-        {/* Protected Dashboard Routes (With Sidebar, Require authentication) */}
-        <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
-        <Route path="/instances" element={<ProtectedRoute><Layout><Instances /></Layout></ProtectedRoute>} />
-        <Route path="/instances/create" element={<ProtectedRoute><Layout><CreateInstance /></Layout></ProtectedRoute>} />
-        <Route path="/instances/:id/console" element={<ProtectedRoute><Layout><Console /></Layout></ProtectedRoute>} />
-        <Route path="/instances/:id/settings" element={<ProtectedRoute><Layout><ServerSettings /></Layout></ProtectedRoute>} />
-        <Route path="/instances/:id/files" element={<ProtectedRoute><Layout><FileManager /></Layout></ProtectedRoute>} />
-        <Route path="/console" element={<ProtectedRoute><Layout><Console /></Layout></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
-        <Route path="/players" element={<ProtectedRoute><Layout><Players /></Layout></ProtectedRoute>} />
-        <Route path="/maps" element={<ProtectedRoute><Layout><Maps /></Layout></ProtectedRoute>} />
-        <Route path="/plugins" element={<ProtectedRoute><Layout><Plugins /></Layout></ProtectedRoute>} />
+          {/* Protected Dashboard Routes (With Sidebar, Require authentication) */}
+          <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+          <Route path="/instances" element={<ProtectedRoute><Layout><Instances /></Layout></ProtectedRoute>} />
+          <Route path="/instances/create" element={<ProtectedRoute><Layout><CreateInstance /></Layout></ProtectedRoute>} />
+          <Route path="/instances/:id/console" element={<ProtectedRoute><Layout><Console /></Layout></ProtectedRoute>} />
+          <Route path="/instances/:id/settings" element={<ProtectedRoute><Layout><ServerSettings /></Layout></ProtectedRoute>} />
+          <Route path="/instances/:id/files" element={<ProtectedRoute><Layout><FileManager /></Layout></ProtectedRoute>} />
+          <Route path="/console" element={<ProtectedRoute><Layout><Console /></Layout></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
+          <Route path="/players" element={<ProtectedRoute><Layout><Players /></Layout></ProtectedRoute>} />
+          <Route path="/maps" element={<ProtectedRoute><Layout><Maps /></Layout></ProtectedRoute>} />
+          <Route path="/plugins" element={<ProtectedRoute><Layout><Plugins /></Layout></ProtectedRoute>} />
 
-        {/* Default route redirects to dashboard if logged in, otherwise login */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        
-        {/* Catch all to Dashboard or Login based on auth */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </Router>
+          {/* Default route redirects to dashboard if logged in, otherwise login */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          
+          {/* Catch all to Dashboard or Login based on auth */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </Router>
+    </NotificationProvider>
+    </ConfirmDialogProvider>
   )
 }
 
