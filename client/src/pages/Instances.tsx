@@ -20,12 +20,10 @@ import {
 import { apiFetch } from '../utils/api'
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { io } from 'socket.io-client'
+import socket from '../utils/socket'
 import { useNotification } from '../contexts/NotificationContext'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { getMapImage } from '../utils/mapImages'
-
-const socket = io('http://localhost:3001')
 
 interface Instance {
   id: number

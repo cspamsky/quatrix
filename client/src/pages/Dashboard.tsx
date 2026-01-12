@@ -10,9 +10,7 @@ import {
   Server,
   Terminal
 } from 'lucide-react'
-import { io } from 'socket.io-client'
-
-const socket = io('http://localhost:3001')
+import socket from '../utils/socket'
 
 const Dashboard = () => {
   const [stats, setStats] = useState<any>({
