@@ -22,7 +22,7 @@ Game server management shouldn't feel like 1999. Quatrix bridges the gap between
 - **Unified File Manager**: A web-native explorer for live configuration editing without SFTP baggage.
 - **Self-Healing Deployment**: Intelligent setup scripts with automated SteamCMD provisioning and dependency resolution.
 
-### � Enterprise-Grade Security
+### 🔒 Enterprise-Grade Security
 
 - **Data Isolation**: Multi-tenant architecture ensuring users only access their authorized server nodes.
 - **JWT-Powered Auth**: Stateless, secure authentication with bcrypt password hashing.
@@ -30,7 +30,7 @@ Game server management shouldn't feel like 1999. Quatrix bridges the gap between
 
 ---
 
-## �️ Technology Stack
+## 🛠️ Technology Stack
 
 | Layer              | Technology                                           |
 | :----------------- | :--------------------------------------------------- |
@@ -74,16 +74,17 @@ npm run dev
 
 ---
 
-## � Architecture Overview
+## 📁 Architecture Overview
 
 ```text
 quatrix/                     # Root Hub
+├── assets/                  # Brand Assets & Screenshots
 ├── client/                  # Frontend Application (React Hub)
-│   └── src/                 # Source Code
+│   └── src/                 # UI Components & Logic
 ├── server/                  # Backend Engine (Node Service)
 │   ├── data/                # Server Instances & SteamCMD Binaries
-│   └── src/                 # Core Logic & ServerManager
-└── memory-bank/             # High-Level Documentation & State
+│   └── src/                 # Core logic, DB & ServerManager
+└── setup.js                 # Automation & Initialization Script
 ```
 
 ---
