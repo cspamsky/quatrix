@@ -431,6 +431,45 @@ try {
     }
   });
 
+  app.get("/api/servers/:id/plugins/status", authenticateToken, async (req: any, res) => {
+    const { id } = req.params;
+    try {
+      const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+      if (!server) return res.status(404).json({ message: "Server not found" });
+
+      const status = await serverManager.getPluginStatus(id);
+      res.json(status);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/servers/:id/plugins/install-metamod", authenticateToken, async (req: any, res) => {
+    const { id } = req.params;
+    try {
+      const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+      if (!server) return res.status(404).json({ message: "Server not found" });
+
+      await serverManager.installMetamod(id);
+      res.json({ success: true, message: "Metamod installed successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/servers/:id/plugins/install-cssharp", authenticateToken, async (req: any, res) => {
+    const { id } = req.params;
+    try {
+      const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+      if (!server) return res.status(404).json({ message: "Server not found" });
+
+      await serverManager.installCounterStrikeSharp(id);
+      res.json({ success: true, message: "CounterStrikeSharp installed successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/system-info", async (req, res) => {
     try {
       const os = await si.osInfo();

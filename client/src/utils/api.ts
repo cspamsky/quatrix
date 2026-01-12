@@ -27,6 +27,20 @@ export const apiFetch = async (url: string, options: RequestInit = {}) => {
     if (url.includes('/api/logs')) mockData = MOCK_LOGS;
     if (url.includes('/api/login')) mockData = { token: 'demo-token', user: { username: 'DemoUser' } };
     
+    // Plugin Support in Demo
+    if (url.includes('/plugins/status')) {
+        const stored = localStorage.getItem(`demo_plugins_${url.split('/')[3]}`);
+        mockData = stored ? JSON.parse(stored) : { metamod: true, cssharp: false };
+    }
+    if (url.includes('/plugins/install')) {
+        const serverId = url.split('/')[3];
+        const plugin = url.includes('metamod') ? 'metamod' : 'cssharp';
+        const current = JSON.parse(localStorage.getItem(`demo_plugins_${serverId}`) || '{"metamod":true,"cssharp":false}');
+        current[plugin] = true;
+        localStorage.setItem(`demo_plugins_${serverId}`, JSON.stringify(current));
+        mockData = { success: true, message: "Demo: Installation simulated" };
+    }
+    
     return {
       ok: true,
       status: 200,

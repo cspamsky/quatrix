@@ -9,6 +9,10 @@ const __dirname = path.dirname(__filename);
 
 class ServerManager {
     private runningServers: Map<string, any> = new Map();
+    private pluginMeta = [
+        { id: 'metamod', name: 'Metamod:Source', version: '2.0.0-git1316', url: 'https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1316-windows.zip' },
+        { id: 'cssharp', name: 'CounterStrikeSharp', version: 'v286', url: 'https://github.com/extremer-cs/CounterStrikeSharp/releases/download/v286/counterstrikesharp-with-runtime-v286-windows-874246a.zip' }
+    ];
 
     private getSetting(key: string): string {
         const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as { value: string };
@@ -440,6 +444,68 @@ class ServerManager {
         }
 
         fs.writeFileSync(absolutePath, content);
+    }
+    async downloadAndExtract(url: string, targetDir: string): Promise<void> {
+        if (!fs.existsSync(targetDir)) {
+            fs.mkdirSync(targetDir, { recursive: true });
+        }
+
+        const zipPath = path.join(targetDir, 'temp_plugin.zip');
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Failed to download from ${url}: ${response.statusText}`);
+        
+        const arrayBuffer = await response.arrayBuffer();
+        fs.writeFileSync(zipPath, Buffer.from(arrayBuffer));
+
+        const AdmZip = (await import('adm-zip')).default;
+        const zip = new AdmZip(zipPath);
+        zip.extractAllTo(targetDir, true);
+        fs.unlinkSync(zipPath);
+    }
+
+    async installMetamod(instanceId: string | number): Promise<void> {
+        const id = instanceId.toString();
+        const csgoDir = path.join(this.installDir, id, 'game', 'csgo');
+        const metamodUrl = this.pluginMeta.find(p => p.id === 'metamod')?.url;
+        if (!metamodUrl) throw new Error("Metamod URL not found");
+
+        console.log(`Installing Metamod for instance ${id}...`);
+        await this.downloadAndExtract(metamodUrl, csgoDir);
+
+        // 📝 Patch gameinfo.gi
+        const gameinfoPath = path.join(csgoDir, 'gameinfo.gi');
+        if (fs.existsSync(gameinfoPath)) {
+            let content = fs.readFileSync(gameinfoPath, 'utf8');
+            if (!content.includes('Game csgo/addons/metamod')) {
+                // Find SearchPaths block and inject metamod
+                content = content.replace(
+                    /SearchPaths\s*{/g,
+                    'SearchPaths\n\t\t\tGame\tcsgo/addons/metamod'
+                );
+                fs.writeFileSync(gameinfoPath, content);
+                console.log(`Patched gameinfo.gi for instance ${id}`);
+            }
+        }
+    }
+
+    async installCounterStrikeSharp(instanceId: string | number): Promise<void> {
+        const id = instanceId.toString();
+        const csgoDir = path.join(this.installDir, id, 'game', 'csgo');
+        const cssUrl = this.pluginMeta.find(p => p.id === 'cssharp')?.url;
+        if (!cssUrl) throw new Error("CounterStrikeSharp URL not found");
+
+        console.log(`Installing CounterStrikeSharp for instance ${id}...`);
+        await this.downloadAndExtract(cssUrl, csgoDir);
+    }
+
+    async getPluginStatus(instanceId: string | number) {
+        const id = instanceId.toString();
+        const csgoDir = path.join(this.installDir, id, 'game', 'csgo');
+        
+        return {
+            metamod: fs.existsSync(path.join(csgoDir, 'addons', 'metamod')),
+            cssharp: fs.existsSync(path.join(csgoDir, 'addons', 'counterstrikesharp'))
+        };
     }
 }
 

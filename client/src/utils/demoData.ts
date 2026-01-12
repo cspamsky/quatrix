@@ -58,3 +58,8 @@ export const MOCK_LOGS = [
   { id: "5", type: "info", content: "Match started: Elite Competitive vs Global Elites" },
   { id: "6", type: "error", content: "Failed to load plugin: CustomAntiCheat.dll (Missing dependency)" }
 ];
+
+export const MOCK_PLUGINS = {
+    metamod: true,
+    cssharp: false
+};
