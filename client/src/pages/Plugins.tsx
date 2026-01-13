@@ -27,6 +27,7 @@ const Plugins = () => {
   const [instances, setInstances] = useState<Instance[]>([])
   const [selectedServer, setSelectedServer] = useState<string | null>(null)
   const [pluginStatus, setPluginStatus] = useState<{ metamod: boolean, cssharp: boolean, matchzy: boolean, simpleadmin: boolean }>({ metamod: false, cssharp: false, matchzy: false, simpleadmin: false })
+  const [pluginUpdates, setPluginUpdates] = useState<any>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -63,6 +64,18 @@ const Plugins = () => {
     }
   }, []);
 
+  const fetchPluginUpdates = useCallback(async (id: string) => {
+    try {
+        const response = await apiFetch(`/api/servers/${id}/plugins/updates`);
+        if (response.ok) {
+            const data = await response.json();
+            setPluginUpdates(data);
+        }
+    } catch (error) {
+        console.error('Failed to fetch plugin updates:', error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchInstances();
   }, [fetchInstances]);
@@ -70,8 +83,64 @@ const Plugins = () => {
   useEffect(() => {
     if (selectedServer) {
         fetchPluginStatus(selectedServer);
+        fetchPluginUpdates(selectedServer);
     }
-  }, [selectedServer, fetchPluginStatus]);
+  }, [selectedServer, fetchPluginStatus, fetchPluginUpdates]);
+
+  // Auto-update plugins if enabled
+  useEffect(() => {
+    const autoUpdateEnabled = localStorage.getItem('autoPluginUpdates') === 'true';
+    if (!autoUpdateEnabled || !pluginUpdates || !selectedServer) return;
+
+    // Check if any plugin has updates and auto-update them
+    const updatePlugins = async () => {
+      if (pluginUpdates.matchzy?.hasUpdate && pluginStatus.matchzy) {
+        console.log('Auto-updating MatchZy...');
+        await handleUpdate('matchzy');
+      }
+      if (pluginUpdates.simpleadmin?.hasUpdate && pluginStatus.simpleadmin) {
+        console.log('Auto-updating SimpleAdmin...');
+        await handleUpdate('simpleadmin');
+      }
+    };
+
+    updatePlugins();
+  }, [pluginUpdates]); // Only run when updates are fetched
+
+  const handleUpdate = async (plugin: 'matchzy' | 'simpleadmin') => {
+    if (!selectedServer) return;
+
+    const pluginName = plugin === 'matchzy' ? 'MatchZy' : 'CS2-SimpleAdmin';
+    
+    const confirmed = await showConfirm({
+      title: `Update ${pluginName}?`,
+      message: `This will uninstall the current version and install the latest version from GitHub. The server will need to be restarted.`,
+      confirmText: 'Update Now',
+      type: 'warning'
+    });
+
+    if (!confirmed) return;
+
+    setActionLoading(plugin);
+    try {
+      const response = await apiFetch(`/api/servers/${selectedServer}/plugins/update-${plugin}`, {
+        method: 'POST'
+      });
+
+      if (response.ok) {
+        showNotification('success', `${pluginName} updated successfully!`);
+        await fetchPluginStatus(selectedServer);
+        await fetchPluginUpdates(selectedServer);
+      } else {
+        const data = await response.json();
+        showNotification('error', data.message || 'Update failed');
+      }
+    } catch (error) {
+      showNotification('error', 'Failed to update plugin');
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const handleAction = async (plugin: 'metamod' | 'cssharp' | 'matchzy' | 'simpleadmin', action: 'install' | 'uninstall') => {
     if (!selectedServer) return;
@@ -339,35 +408,56 @@ const Plugins = () => {
                 <tr className="hover:bg-white/[0.02] transition-colors group">
                     <td className="py-4 px-6">
                         <div className="font-bold text-white text-sm">MatchZy</div>
-                        <div className="text-[11px] text-gray-500">v0.8.15</div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-gray-500">v0.8.15</span>
+                            {pluginUpdates?.matchzy?.hasUpdate && (
+                                <span className="px-2 py-0.5 bg-green-500/10 text-green-500 rounded text-[9px] font-bold border border-green-500/20 animate-pulse">
+                                    {pluginUpdates.matchzy.latestVersion} Available
+                                </span>
+                            )}
+                        </div>
                     </td>
                     <td className="py-4 px-6 text-xs text-gray-400">shobhit-pathak</td>
                     <td className="py-4 px-6 text-xs text-gray-400">Competitive match & practice system for CS2 servers.</td>
                     <td className="py-4 px-6 text-right">
-                        {pluginStatus.matchzy ? (
-                            <button 
-                                disabled={actionLoading !== null}
-                                onClick={() => handleAction('matchzy', 'uninstall')}
-                                className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 border border-red-500/20 transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ml-auto"
-                            >
-                                {actionLoading === 'matchzy' ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                                Uninstall
-                            </button>
-                        ) : (
-                            <button 
-                                disabled={actionLoading !== null || !pluginStatus.cssharp}
-                                onClick={() => handleAction('matchzy', 'install')}
-                                className={`px-3 py-1.5 rounded transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ml-auto ${
-                                    !pluginStatus.cssharp 
-                                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed' 
-                                    : 'bg-gray-800 text-gray-300 hover:bg-primary hover:text-white'
-                                }`}
-                                title={!pluginStatus.cssharp ? "Requires CounterStrikeSharp" : ""}
-                            >
-                                {actionLoading === 'matchzy' ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-                                Install
-                            </button>
-                        )}
+                        <div className="flex items-center gap-2 justify-end">
+                            {pluginStatus.matchzy ? (
+                                <>
+                                    {pluginUpdates?.matchzy?.hasUpdate && (
+                                        <button 
+                                            disabled={actionLoading !== null}
+                                            onClick={() => handleUpdate('matchzy')}
+                                            className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded hover:bg-green-500/20 border border-green-500/20 transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2"
+                                        >
+                                            {actionLoading === 'matchzy' ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                                            Update
+                                        </button>
+                                    )}
+                                    <button 
+                                        disabled={actionLoading !== null}
+                                        onClick={() => handleAction('matchzy', 'uninstall')}
+                                        className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 border border-red-500/20 transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2"
+                                    >
+                                        {actionLoading === 'matchzy' ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                                        Uninstall
+                                    </button>
+                                </>
+                            ) : (
+                                <button 
+                                    disabled={actionLoading !== null || !pluginStatus.cssharp}
+                                    onClick={() => handleAction('matchzy', 'install')}
+                                    className={`px-3 py-1.5 rounded transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ${
+                                        !pluginStatus.cssharp 
+                                        ? 'bg-gray-800 text-gray-500 cursor-not-allowed' 
+                                        : 'bg-gray-800 text-gray-300 hover:bg-primary hover:text-white'
+                                    }`}
+                                    title={!pluginStatus.cssharp ? "Requires CounterStrikeSharp" : ""}
+                                >
+                                    {actionLoading === 'matchzy' ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                                    Install
+                                </button>
+                            )}
+                        </div>
                     </td>
                 </tr>
                 <tr className="hover:bg-white/[0.02] transition-colors group">
@@ -384,35 +474,56 @@ const Plugins = () => {
                 <tr className="hover:bg-white/[0.02] transition-colors group">
                     <td className="py-4 px-6">
                         <div className="font-bold text-white text-sm">CS2 SimpleAdmin</div>
-                        <div className="text-[11px] text-gray-500">v1.7.8-beta-8</div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-gray-500">v1.7.8-beta-8</span>
+                            {pluginUpdates?.simpleadmin?.hasUpdate && (
+                                <span className="px-2 py-0.5 bg-green-500/10 text-green-500 rounded text-[9px] font-bold border border-green-500/20 animate-pulse">
+                                    {pluginUpdates.simpleadmin.latestVersion} Available
+                                </span>
+                            )}
+                        </div>
                     </td>
                     <td className="py-4 px-6 text-xs text-gray-400">daffyyyy</td>
                     <td className="py-4 px-6 text-xs text-gray-400">Essential admin commands (kick, ban, map) and player management.</td>
                     <td className="py-4 px-6 text-right">
-                        {pluginStatus.simpleadmin ? (
-                            <button 
-                                disabled={actionLoading !== null}
-                                onClick={() => handleAction('simpleadmin', 'uninstall')}
-                                className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 border border-red-500/20 transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ml-auto"
-                            >
-                                {actionLoading === 'simpleadmin' ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                                Uninstall
-                            </button>
-                        ) : (
-                            <button 
-                                disabled={actionLoading !== null || !pluginStatus.cssharp}
-                                onClick={() => handleAction('simpleadmin', 'install')}
-                                className={`px-3 py-1.5 rounded transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ml-auto ${
-                                    !pluginStatus.cssharp 
-                                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed' 
-                                    : 'bg-gray-800 text-gray-300 hover:bg-primary hover:text-white'
-                                }`}
-                                title={!pluginStatus.cssharp ? "Requires CounterStrikeSharp" : ""}
-                            >
-                                {actionLoading === 'simpleadmin' ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-                                Install
-                            </button>
-                        )}
+                        <div className="flex items-center gap-2 justify-end">
+                            {pluginStatus.simpleadmin ? (
+                                <>
+                                    {pluginUpdates?.simpleadmin?.hasUpdate && (
+                                        <button 
+                                            disabled={actionLoading !== null}
+                                            onClick={() => handleUpdate('simpleadmin')}
+                                            className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded hover:bg-green-500/20 border border-green-500/20 transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2"
+                                        >
+                                            {actionLoading === 'simpleadmin' ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                                            Update
+                                        </button>
+                                    )}
+                                    <button 
+                                        disabled={actionLoading !== null}
+                                        onClick={() => handleAction('simpleadmin', 'uninstall')}
+                                        className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 border border-red-500/20 transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2"
+                                    >
+                                        {actionLoading === 'simpleadmin' ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                                        Uninstall
+                                    </button>
+                                </>
+                            ) : (
+                                <button 
+                                    disabled={actionLoading !== null || !pluginStatus.cssharp}
+                                    onClick={() => handleAction('simpleadmin', 'install')}
+                                    className={`px-3 py-1.5 rounded transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ${
+                                        !pluginStatus.cssharp 
+                                        ? 'bg-gray-800 text-gray-500 cursor-not-allowed' 
+                                        : 'bg-gray-800 text-gray-300 hover:bg-primary hover:text-white'
+                                    }`}
+                                    title={!pluginStatus.cssharp ? "Requires CounterStrikeSharp" : ""}
+                                >
+                                    {actionLoading === 'simpleadmin' ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                                    Install
+                                </button>
+                            )}
+                        </div>
                     </td>
                 </tr>
               </tbody>

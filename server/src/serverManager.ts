@@ -10,14 +10,117 @@ const __dirname = path.dirname(__filename);
 
 class ServerManager {
     private runningServers: Map<string, any> = new Map();
-    private pluginMeta = [
-        { id: 'metamod', name: 'Metamod:Source', version: '2.0 (Build 1380)', url: 'https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1380-windows.zip' },
-        { id: 'cssharp', name: 'CounterStrikeSharp', version: 'v1.0.355', url: 'https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.355/counterstrikesharp-with-runtime-windows-1.0.355.zip' }
-    ];
+    private pluginRegistry = {
+        metamod: {
+            name: 'Metamod:Source',
+            currentVersion: '2.0-git1380',
+            githubRepo: null, // Not on GitHub, uses AlliedMods
+            downloadUrl: 'https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1380-windows.zip',
+            customVersionCheck: null // Manual version check if needed
+        },
+        cssharp: {
+            name: 'CounterStrikeSharp',
+            currentVersion: 'v1.0.355',
+            githubRepo: 'roflmuffin/CounterStrikeSharp',
+            downloadUrlPattern: 'https://github.com/roflmuffin/CounterStrikeSharp/releases/download/{version}/counterstrikesharp-with-runtime-windows-{version_clean}.zip',
+            assetNamePattern: 'counterstrikesharp-with-runtime-windows-*.zip'
+        },
+        matchzy: {
+            name: 'MatchZy',
+            currentVersion: '0.8.15',
+            githubRepo: 'shobhit-pathak/MatchZy',
+            downloadUrlPattern: 'https://github.com/shobhit-pathak/MatchZy/releases/download/{version}/MatchZy-{version}.zip',
+            assetNamePattern: 'MatchZy-*.zip'
+        },
+        simpleadmin: {
+            name: 'CS2-SimpleAdmin',
+            currentVersion: 'v1.7.8-beta-8',
+            githubRepo: 'daffyyyy/CS2-SimpleAdmin',
+            downloadUrlPattern: 'https://github.com/daffyyyy/CS2-SimpleAdmin/releases/download/{version}/CS2-SimpleAdmin-{version}.zip',
+            assetNamePattern: 'CS2-SimpleAdmin-*.zip'
+        }
+    };
 
     private getSetting(key: string): string {
         const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as { value: string };
         return row ? row.value : '';
+    }
+
+    async checkPluginUpdate(pluginId: 'metamod' | 'cssharp' | 'matchzy' | 'simpleadmin'): Promise<{
+        name: string;
+        currentVersion: string;
+        latestVersion: string | null;
+        hasUpdate: boolean;
+        downloadUrl: string | null;
+        error: string | null;
+    }> {
+        const plugin = this.pluginRegistry[pluginId];
+        
+        // Metamod doesn't have GitHub API
+        if (!plugin.githubRepo) {
+            return {
+                name: plugin.name,
+                currentVersion: plugin.currentVersion,
+                latestVersion: null,
+                hasUpdate: false,
+                downloadUrl: ('downloadUrl' in plugin) ? plugin.downloadUrl : null,
+                error: 'No GitHub repository available'
+            };
+        }
+
+        try {
+            const apiUrl = `https://api.github.com/repos/${plugin.githubRepo}/releases/latest`;
+            const response = await fetch(apiUrl, {
+                headers: {
+                    'User-Agent': 'Quatrix-CS2-Manager',
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`GitHub API returned ${response.status}`);
+            }
+
+            const data = await response.json() as any;
+            const latestVersion = data.tag_name;
+            
+            // Find matching asset
+            let downloadUrl = null;
+            if (data.assets && Array.isArray(data.assets)) {
+                const asset = data.assets.find((a: any) => {
+                    if (pluginId === 'cssharp') {
+                        return a.name.includes('counterstrikesharp-with-runtime-windows');
+                    } else if (pluginId === 'matchzy') {
+                        return a.name.startsWith('MatchZy-') && a.name.endsWith('.zip');
+                    } else if (pluginId === 'simpleadmin') {
+                        return a.name.startsWith('CS2-SimpleAdmin-') && a.name.endsWith('.zip');
+                    }
+                    return false;
+                });
+                downloadUrl = asset?.browser_download_url || null;
+            }
+
+            const hasUpdate = latestVersion !== plugin.currentVersion;
+
+            return {
+                name: plugin.name,
+                currentVersion: plugin.currentVersion,
+                latestVersion,
+                hasUpdate,
+                downloadUrl,
+                error: null
+            };
+        } catch (error: any) {
+            console.error(`Failed to check updates for ${plugin.name}:`, error.message);
+            return {
+                name: plugin.name,
+                currentVersion: plugin.currentVersion,
+                latestVersion: null,
+                hasUpdate: false,
+                downloadUrl: null,
+                error: error.message
+            };
+        }
     }
 
     private logToFile(instanceId: string | number, message: string) {
@@ -471,7 +574,7 @@ class ServerManager {
     async installMetamod(instanceId: string | number): Promise<void> {
         const id = instanceId.toString();
         const csgoDir = path.join(this.installDir, id, 'game', 'csgo');
-        const metamodUrl = this.pluginMeta.find(p => p.id === 'metamod')?.url;
+        const metamodUrl = this.pluginRegistry.metamod.downloadUrl;
         if (!metamodUrl) throw new Error("Metamod URL not found");
 
         console.log(`Installing Metamod for instance ${id}...`);
@@ -513,7 +616,7 @@ class ServerManager {
     async installCounterStrikeSharp(instanceId: string | number): Promise<void> {
         const id = instanceId.toString();
         const csgoDir = path.join(this.installDir, id, 'game', 'csgo');
-        const cssUrl = this.pluginMeta.find(p => p.id === 'cssharp')?.url;
+        const cssUrl = this.pluginRegistry.cssharp.downloadUrlPattern.replace('{version}', this.pluginRegistry.cssharp.currentVersion).replace('{version_clean}', this.pluginRegistry.cssharp.currentVersion.replace('v', ''));
         if (!cssUrl) throw new Error("CounterStrikeSharp URL not found");
 
         console.log(`Installing CounterStrikeSharp for instance ${id}...`);
@@ -563,6 +666,57 @@ class ServerManager {
              fs.rmSync(cssDir, { recursive: true, force: true });
              console.log(`CounterStrikeSharp directory removed for instance ${id}`);
         }
+    }
+
+    async updatePlugin(instanceId: string | number, pluginId: 'matchzy' | 'simpleadmin'): Promise<void> {
+        const id = instanceId.toString();
+        console.log(`Updating ${pluginId} for instance ${id}...`);
+
+        // Get latest version info
+        const updateInfo = await this.checkPluginUpdate(pluginId);
+        
+        if (!updateInfo.hasUpdate) {
+            console.log(`${pluginId} is already up to date (${updateInfo.currentVersion})`);
+            return;
+        }
+
+        if (!updateInfo.downloadUrl) {
+            throw new Error(`No download URL found for ${pluginId} update`);
+        }
+
+        console.log(`Updating ${pluginId} from ${updateInfo.currentVersion} to ${updateInfo.latestVersion}...`);
+
+        // Uninstall old version
+        if (pluginId === 'matchzy') {
+            await this.uninstallMatchZy(instanceId);
+        } else if (pluginId === 'simpleadmin') {
+            await this.uninstallSimpleAdmin(instanceId);
+        }
+
+        // Install new version
+        const csgoDir = path.join(this.installDir, id, 'game', 'csgo');
+        const addonsDir = path.join(csgoDir, 'addons');
+
+        if (pluginId === 'simpleadmin') {
+            // SimpleAdmin needs dependencies too
+            const anyBaseLibUrl = 'https://github.com/NickFox007/AnyBaseLibCS2/releases/latest/download/AnyBaseLib.zip';
+            const playerSettingsUrl = 'https://github.com/NickFox007/PlayerSettingsCS2/releases/latest/download/PlayerSettings.zip';
+            const menuManagerUrl = 'https://github.com/NickFox007/MenuManagerCS2/releases/latest/download/MenuManager.zip';
+
+            console.log('Installing dependencies...');
+            await this.downloadAndExtract(anyBaseLibUrl, csgoDir);
+            await this.downloadAndExtract(playerSettingsUrl, csgoDir);
+            await this.downloadAndExtract(menuManagerUrl, csgoDir);
+            
+            await this.downloadAndExtract(updateInfo.downloadUrl, addonsDir);
+        } else {
+            await this.downloadAndExtract(updateInfo.downloadUrl, csgoDir);
+        }
+
+        // Update registry with new version
+        this.pluginRegistry[pluginId].currentVersion = updateInfo.latestVersion!;
+
+        console.log(`${pluginId} updated successfully to ${updateInfo.latestVersion}`);
     }
 
     async installMatchZy(instanceId: string | number): Promise<void> {
@@ -629,14 +783,63 @@ class ServerManager {
 
     async uninstallSimpleAdmin(instanceId: string | number): Promise<void> {
         const id = instanceId.toString();
-        // Path: game/csgo/addons/counterstrikesharp/plugins/CS2-SimpleAdmin
-        const simpleAdminDir = path.join(this.installDir, id, 'game', 'csgo', 'addons', 'counterstrikesharp', 'plugins', 'CS2-SimpleAdmin');
+        const basePluginsDir = path.join(this.installDir, id, 'game', 'csgo', 'addons', 'counterstrikesharp', 'plugins');
+        const sharedDir = path.join(this.installDir, id, 'game', 'csgo', 'addons', 'counterstrikesharp', 'shared');
 
-        console.log(`Uninstalling CS2-SimpleAdmin for instance ${id}...`);
-        if (fs.existsSync(simpleAdminDir)) {
-             fs.rmSync(simpleAdminDir, { recursive: true, force: true });
-             console.log(`CS2-SimpleAdmin directory removed for instance ${id}`);
+        console.log(`Uninstalling CS2-SimpleAdmin and dependencies for instance ${id}...`);
+
+        const pluginsToRemove = [
+            'CS2-SimpleAdmin',
+            'CS2-SimpleAdmin_FunCommands',
+            'CS2-SimpleAdmin_StealthModule',
+            'MenuManagerCore',
+            'PlayerSettings'
+        ];
+
+        // 1. Remove Plugin Folders
+        for (const plugin of pluginsToRemove) {
+            const pluginDir = path.join(basePluginsDir, plugin);
+            if (fs.existsSync(pluginDir)) {
+                 fs.rmSync(pluginDir, { recursive: true, force: true });
+                 console.log(`Removed plugin directory: ${plugin}`);
+            }
         }
+
+        // 2. Remove Shared Libraries
+        const sharedLibsToRemove = [
+            'AnyBaseLib',
+            'CS2-SimpleAdminApi',
+            'MenuManagerApi',
+            'PlayerSettingsApi'
+        ];
+
+        for (const lib of sharedLibsToRemove) {
+            const libDir = path.join(sharedDir, lib);
+            if (fs.existsSync(libDir)) {
+                fs.rmSync(libDir, { recursive: true, force: true });
+                console.log(`Removed shared library: ${lib}`);
+            }
+        }
+
+        // 3. Remove Configs (game/csgo/addons/counterstrikesharp/configs/plugins/...)
+        const configsPluginsDir = path.join(this.installDir, id, 'game', 'csgo', 'addons', 'counterstrikesharp', 'configs', 'plugins');
+        const configsToRemove = [
+             'CS2-SimpleAdmin',
+             'CS2-SimpleAdmin_FunCommands',
+             'CS2-SimpleAdmin_StealthModule',
+             'MenuManagerCore',
+             'PlayerSettings'
+        ];
+
+        for (const config of configsToRemove) {
+            const configDir = path.join(configsPluginsDir, config);
+            if (fs.existsSync(configDir)) {
+                fs.rmSync(configDir, { recursive: true, force: true });
+                console.log(`Removed config directory: ${config}`);
+            }
+        }
+
+        console.log(`CS2-SimpleAdmin and all traces uninstalled successfully for instance ${id}`);
     }
 
     async getPluginStatus(instanceId: string | number): Promise<{ metamod: boolean, cssharp: boolean, matchzy: boolean, simpleadmin: boolean }> {

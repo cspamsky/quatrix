@@ -14,14 +14,17 @@ import {
   Download,
   FolderOpen
 } from 'lucide-react'
+import { useNotification } from '../contexts/NotificationContext'
 
 type TabType = 'General' | 'Security' | 'Notifications' | 'API Keys' | 'Activity Log' | 'Server Engine'
 
 const Settings = () => {
+  const { showNotification } = useNotification()
   const [activeTab, setActiveTab] = useState<TabType>('General')
   const [panelName, setPanelName] = useState('CS2 Server Manager')
   const [defaultPort, setDefaultPort] = useState('27015')
   const [autoBackup, setAutoBackup] = useState(true)
+  const [autoPluginUpdates, setAutoPluginUpdates] = useState(false)
 
   // Server Engine Settings
   const [steamCmdPath, setSteamCmdPath] = useState('')
@@ -30,6 +33,14 @@ const Settings = () => {
   const [engineMessage, setEngineMessage] = useState({ type: '', text: '' })
 
   const tabs: TabType[] = ['General', 'Server Engine', 'Security', 'Notifications', 'API Keys', 'Activity Log']
+
+  useEffect(() => {
+    // Load settings from localStorage
+    const savedAutoPluginUpdates = localStorage.getItem('autoPluginUpdates');
+    if (savedAutoPluginUpdates !== null) {
+      setAutoPluginUpdates(savedAutoPluginUpdates === 'true');
+    }
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'Server Engine') {
@@ -188,7 +199,29 @@ const Settings = () => {
                         <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                       </label>
                     </div>
-                    <button className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-primary/20 active:scale-95" type="button">
+                    <div className="flex items-center justify-between p-5 bg-[#0d1624] rounded-2xl border border-gray-800/50">
+                      <div>
+                        <p className="text-sm font-bold text-white">Auto Plugin Updates</p>
+                        <p className="text-xs text-gray-500 mt-1">Automatically update MatchZy & SimpleAdmin when new versions are available</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="sr-only peer" 
+                          checked={autoPluginUpdates}
+                          onChange={(e) => setAutoPluginUpdates(e.target.checked)}
+                        />
+                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                      </label>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        localStorage.setItem('autoPluginUpdates', autoPluginUpdates.toString());
+                        showNotification('success', 'Settings saved successfully!');
+                      }}
+                      className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-primary/20 active:scale-95" 
+                      type="button"
+                    >
                       <Save size={18} />
                       Save Changes
                     </button>

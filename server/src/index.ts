@@ -454,6 +454,31 @@ try {
     }
   });
 
+  app.get("/api/servers/:id/plugins/updates", authenticateToken, async (req: any, res) => {
+    const { id } = req.params;
+    try {
+      const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+      if (!server) return res.status(404).json({ message: "Server not found" });
+
+      // Check all plugins for updates
+      const updates = await Promise.all([
+        serverManager.checkPluginUpdate('metamod'),
+        serverManager.checkPluginUpdate('cssharp'),
+        serverManager.checkPluginUpdate('matchzy'),
+        serverManager.checkPluginUpdate('simpleadmin')
+      ]);
+
+      res.json({
+        metamod: updates[0],
+        cssharp: updates[1],
+        matchzy: updates[2],
+        simpleadmin: updates[3]
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.post("/api/servers/:id/plugins/install-matchzy", authenticateToken, async (req: any, res) => {
     const { id } = req.params;
     try {
@@ -509,6 +534,34 @@ try {
         res.status(500).json({ message: error.message });
       }
     });
+
+  app.post("/api/servers/:id/plugins/update-matchzy", authenticateToken, async (req: any, res) => {
+    const { id } = req.params;
+    try {
+      const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+      if (!server) return res.status(404).json({ message: "Server not found" });
+
+      await serverManager.updatePlugin(id, 'matchzy');
+      res.json({ message: "MatchZy updated successfully" });
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/servers/:id/plugins/update-simpleadmin", authenticateToken, async (req: any, res) => {
+    const { id } = req.params;
+    try {
+      const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+      if (!server) return res.status(404).json({ message: "Server not found" });
+
+      await serverManager.updatePlugin(id, 'simpleadmin');
+      res.json({ message: "CS2-SimpleAdmin updated successfully" });
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ message: error.message });
+    }
+  });
 
   app.post("/api/servers/:id/plugins/install-metamod", authenticateToken, async (req: any, res) => {
     const { id } = req.params;

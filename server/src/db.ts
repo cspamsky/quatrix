@@ -95,5 +95,6 @@ const initializeSetting = (key: string, defaultValue: string) => {
 const defaultDataDir = path.join(__dirname, '../data');
 initializeSetting('steamcmd_path', path.join(defaultDataDir, 'steamcmd/steamcmd.exe'));
 initializeSetting('install_dir', path.join(defaultDataDir, 'servers'));
+initializeSetting('auto_plugin_updates', 'false');
 
 export default db;
