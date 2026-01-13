@@ -692,8 +692,26 @@ try {
   });
 
   // --- Stats & Socket ---
+  let connectedClients = 0;
+  
+  // Track WebSocket connections
+  io.on('connection', (socket: Socket) => {
+    connectedClients++;
+    console.log(`WebSocket client connected. Total clients: ${connectedClients}`);
+    
+    socket.on('disconnect', () => {
+      connectedClients--;
+      console.log(`WebSocket client disconnected. Total clients: ${connectedClients}`);
+    });
+  });
+
   let lastNetworkStats: any = null;
   setInterval(async () => {
+    // Skip stats collection if no clients are connected
+    if (connectedClients === 0) {
+      return;
+    }
+
     try {
       const [cpu, mem, net] = await Promise.all([
         si.currentLoad().catch(() => ({ currentLoad: 0 })),
@@ -730,15 +748,16 @@ try {
     }
   }, 2000);
 
-  // Periodic map check (every 10 seconds) - detects RCON map changes
+  // Periodic map check (every 30 seconds) - detects RCON map changes
   setInterval(async () => {
     try {
       const servers = db.prepare("SELECT id, map FROM servers WHERE status = 'ONLINE'").all() as any[];
       if (servers.length === 0) return;
 
-      console.log(`[MAP CHECK] Checking ${servers.length} online servers...`);
+      console.log(`[MAP CHECK] Checking ${servers.length} online servers in parallel...`);
       
-      for (const server of servers) {
+      // Check all servers in parallel instead of sequentially
+      const checkPromises = servers.map(async (server) => {
         try {
           const currentMap = await serverManager.getCurrentMap(server.id);
           console.log(`[MAP CHECK] Server ${server.id}: DB=${server.map}, Current=${currentMap}`);
@@ -752,7 +771,10 @@ try {
         } catch (error) {
           console.log(`[MAP CHECK] Error checking server ${server.id}:`, error);
         }
-      }
+      });
+
+      // Wait for all checks to complete
+      await Promise.all(checkPromises);
     } catch (error) {
       console.error("Map check error:", error);
     }
