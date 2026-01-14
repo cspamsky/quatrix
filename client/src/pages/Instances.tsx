@@ -1,21 +1,8 @@
 import { 
   Search, 
   Plus, 
-  Users, 
-  Hash, 
-  Play, 
-  Square, 
-  Terminal, 
-  Settings,
   ChevronLeft,
-  ChevronRight,
-  Copy,
-  Check,
-  Trash2,
-  Download,
-  RefreshCw,
-  RotateCcw,
-  FileText
+  ChevronRight
 } from 'lucide-react'
 import { apiFetch } from '../utils/api'
 import { useState, useEffect, useCallback } from 'react'
@@ -23,7 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import socket from '../utils/socket'
 import { useNotification } from '../contexts/NotificationContext'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
-import { getMapImage } from '../utils/mapImages'
+import ServerCard from '../components/ServerCard'
 
 interface Instance {
   id: number
@@ -51,7 +38,7 @@ const Instances = () => {
   const [startingId, setStartingId] = useState<number | null>(null)
   const [stoppingId, setStoppingId] = useState<number | null>(null)
 
-  const fetchSystemInfo = async () => {
+  const fetchSystemInfo = useCallback(async () => {
     try {
       const response = await apiFetch('http://localhost:3001/api/system-info')
       if (response.ok) {
@@ -62,7 +49,7 @@ const Instances = () => {
       console.error('Failed to fetch system info:', error)
       setServerIp(window.location.hostname)
     }
-  }
+  }, [])
 
   const fetchServers = useCallback(async () => {
     try {
@@ -101,9 +88,9 @@ const Instances = () => {
       socket.off('status_update')
       socket.off('server_update')
     }
-  }, [fetchServers])
+  }, [fetchServers, fetchSystemInfo])
 
-  const handleDeleteServer = async (id: number) => {
+  const handleDeleteServer = useCallback(async (id: number) => {
     const confirmed = await showConfirm({
       title: 'Delete Server Instance',
       message: 'Are you sure you want to delete this server instance? All data will be permanently removed.',
@@ -131,9 +118,9 @@ const Instances = () => {
     } finally {
       setDeletingId(null)
     }
-  }
+  }, [showConfirm, showNotification])
 
-  const handleInstall = async (id: number) => {
+  const handleInstall = useCallback(async (id: number) => {
     setInstallingId(id)
     try {
       const response = await apiFetch(`http://localhost:3001/api/servers/${id}/install`, {
@@ -151,9 +138,9 @@ const Instances = () => {
     } finally {
       setInstallingId(null)
     }
-  }
+  }, [navigate])
 
-  const handleStartServer = async (id: number) => {
+  const handleStartServer = useCallback(async (id: number) => {
     setStartingId(id)
     try {
       const response = await apiFetch(`http://localhost:3001/api/servers/${id}/start`, {
@@ -172,9 +159,9 @@ const Instances = () => {
     } finally {
       setStartingId(null)
     }
-  }
+  }, [fetchServers, showNotification])
 
-  const handleStopServer = async (id: number) => {
+  const handleStopServer = useCallback(async (id: number) => {
     setStoppingId(id)
     try {
       const response = await apiFetch(`http://localhost:3001/api/servers/${id}/stop`, {
@@ -193,9 +180,9 @@ const Instances = () => {
     } finally {
       setStoppingId(null)
     }
-  }
+  }, [fetchServers, showNotification])
 
-  const handleRestartServer = async (id: number) => {
+  const handleRestartServer = useCallback(async (id: number) => {
     setRestartingId(id)
     try {
       const response = await apiFetch(`http://localhost:3001/api/servers/${id}/restart`, {
@@ -214,13 +201,26 @@ const Instances = () => {
     } finally {
       setRestartingId(null)
     }
-  }
+  }, [fetchServers, showNotification])
 
-  const copyToClipboard = (text: string, id: string) => {
+  const copyToClipboard = useCallback((text: string, id: string) => {
     navigator.clipboard.writeText(text)
     setCopiedId(id)
     setTimeout(() => setCopiedId(null), 2000)
-  }
+  }, [])
+
+  const handleConsoleNavigate = useCallback((id: number) => {
+      navigate(`/instances/${id}/console`)
+  }, [navigate]);
+
+  const handleSettingsNavigate = useCallback((id: number) => {
+      navigate(`/instances/${id}/settings`)
+  }, [navigate]);
+
+   const handleFilesNavigate = useCallback((id: number) => {
+      navigate(`/instances/${id}/files`)
+  }, [navigate]);
+
 
   return (
     <div className="p-6 min-h-screen flex flex-col">
@@ -267,181 +267,26 @@ const Instances = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {instances.map((instance) => (
-            <div 
-              key={instance.id} 
-              className={`bg-[#111827] rounded-xl border border-gray-800/50 overflow-hidden flex flex-col group hover:border-primary/50 transition-all duration-300 ${
-                instance.status === 'OFFLINE' ? 'opacity-70 grayscale-[0.5]' : ''
-              }`}
-            >
-              <div className="relative h-32 overflow-hidden bg-gray-900">
-                <img 
-                  alt={`Map ${instance.map}`} 
-                  className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-500" 
-                  src={getMapImage(instance.map)}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#111827] to-transparent"></div>
-                
-                <div className="absolute top-3 left-3 flex items-center">
-                  {instance.status === 'ONLINE' && (
-                    <div className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-500/10 text-green-500 border border-green-500/20 flex items-center backdrop-blur-md shadow-sm">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 animate-pulse"></span>
-                      ONLINE
-                    </div>
-                  )}
-                  {instance.status === 'OFFLINE' && (
-                    <div className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-500/10 text-gray-400 border border-gray-500/20 flex items-center backdrop-blur-md shadow-sm">
-                      <span className="w-1.5 h-1.5 rounded-full bg-gray-500 mr-1.5"></span>
-                      OFFLINE
-                    </div>
-                  )}
-                  {instance.status === 'STARTING' && (
-                     <div className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 flex items-center backdrop-blur-md shadow-sm">
-                      <div className="w-2 h-2 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin mr-1.5"></div>
-                      STARTING
-                    </div>
-                  )}
-                  {instance.status === 'INSTALLING' && (
-                     <div className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-orange-500/10 text-orange-500 border border-orange-500/20 flex items-center backdrop-blur-md shadow-sm">
-                      <div className="w-2 h-2 border-2 border-orange-500 border-t-transparent rounded-full animate-spin mr-1.5"></div>
-                      INSTALLING
-                    </div>
-                  )}
-                </div>
-
-                <div className="absolute bottom-3 left-3">
-                  <p className="text-white text-[10px] font-bold tracking-widest uppercase opacity-80">{instance.map}</p>
-                </div>
-              </div>
-
-              <div className="p-5 flex-1 flex flex-col">
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="font-bold text-white truncate text-sm">{instance.name}</h3>
-                  <span className="text-[10px] text-gray-500 font-mono">ID: {instance.id}</span>
-                </div>
-                
-                <div className="space-y-3 mb-6">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-400 flex items-center">
-                      <Users className="w-3.5 h-3.5 mr-2 opacity-70" /> Players
-                    </span>
-                    <span className="text-white font-medium">{instance.current_players} / {instance.max_players}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-400 flex items-center">
-                      <Hash className="w-3.5 h-3.5 mr-2 opacity-70" /> IP Address
-                    </span>
-                    <button
-                      type="button"
-                      aria-label="Copy server address"
-                      title="Copy server address"
-                      className="flex items-center gap-1.5 text-primary hover:text-blue-400 transition-colors group/ip bg-transparent border-0 p-0"
-                      onClick={() => copyToClipboard(`${serverIp}:${instance.port}`, instance.id.toString())}
-                    >
-                      <span className="font-mono">{serverIp || 'Detecting...'}{serverIp ? `:${instance.port}` : ''}</span>
-                      {copiedId === instance.id.toString() ? (
-                        <Check size={12} />
-                      ) : (
-                        <Copy
-                          size={12}
-                          className="opacity-0 group-hover/ip:opacity-100 group-focus-visible/ip:opacity-100 transition-opacity"
-                        />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-auto flex items-center gap-2 pt-4 border-t border-gray-800/60">
-                  {!instance.isInstalled ? (
-                    <button 
-                      onClick={() => handleInstall(instance.id)}
-                      disabled={installingId === instance.id || instance.status === 'INSTALLING'}
-                      className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center shadow-lg shadow-orange-500/10 disabled:opacity-50"
-                    >
-                      {installingId === instance.id || instance.status === 'INSTALLING' ? (
-                        <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
-                      ) : (
-                        <Download className="w-3 h-3 mr-1.5" />
-                      )}
-                      {instance.status === 'INSTALLING' ? 'Installing...' : 'Install Server'}
-                    </button>
-                  ) : (
-                    <>
-                      {instance.status === 'OFFLINE' ? (
-                        <button 
-                          onClick={() => handleStartServer(instance.id)}
-                          disabled={startingId === instance.id}
-                          className="flex-1 bg-primary hover:bg-blue-600 text-white py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center shadow-lg shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {startingId === instance.id ? (
-                            <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
-                          ) : (
-                            <Play className="w-3 h-3 mr-1.5" />
-                          )}
-                          {startingId === instance.id ? 'Starting...' : 'Start'}
-                        </button>
-                      ) : (
-                        <>
-                          <button 
-                            onClick={() => handleStopServer(instance.id)}
-                            disabled={stoppingId === instance.id}
-                            className="flex-1 bg-gray-800/40 hover:bg-red-500/10 hover:text-red-500 py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center border border-gray-800/40 disabled:opacity-50"
-                          >
-                            {stoppingId === instance.id ? (
-                              <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
-                            ) : (
-                              <Square className="w-3 h-3 mr-1.5 fill-current" />
-                            )}
-                            {stoppingId === instance.id ? 'Stopping...' : 'Stop'}
-                          </button>
-                          <button 
-                            onClick={() => handleRestartServer(instance.id)}
-                            disabled={restartingId === instance.id}
-                            className="p-2 bg-gray-800/40 hover:bg-amber-500/10 hover:text-amber-500 rounded transition-all border border-gray-800/40 disabled:opacity-50"
-                            title="Restart Server"
-                            aria-label="Restart Server"
-                          >
-                            <RotateCcw className={`w-3.5 h-3.5 ${restartingId === instance.id ? 'animate-spin' : ''}`} />
-                          </button>
-                        </>
-                      )}
-                      <button 
-                        onClick={() => navigate(`/instances/${instance.id}/console`)}
-                        className="flex-1 bg-gray-800/40 hover:bg-primary/10 hover:text-primary py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center border border-gray-800/40"
-                      >
-                        <Terminal className="w-3 h-3 mr-1.5" /> Console
-                      </button>
-                    </>
-                  )}
-                  <button 
-                    aria-label="Server settings"
-                    onClick={() => navigate(`/instances/${instance.id}/settings`)}
-                    className="p-2 bg-gray-800/40 hover:bg-gray-700/40 rounded transition-all border border-gray-800/40 text-gray-400 hover:text-white"
-                  >
-                    <Settings className="w-3.5 h-3.5" />
-                  </button>
-                  <button 
-                    aria-label="File Manager"
-                    onClick={() => navigate(`/instances/${instance.id}/files`)}
-                    disabled={!instance.isInstalled}
-                    className="p-2 bg-gray-800/40 hover:bg-gray-700/40 rounded transition-all border border-gray-800/40 text-gray-400 hover:text-white disabled:opacity-30"
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                  </button>
-                  <button 
-                    aria-label="Delete server"
-                    onClick={() => handleDeleteServer(instance.id)}
-                    disabled={deletingId === instance.id}
-                    className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded transition-all border border-red-500/20 text-red-500 flex items-center justify-center disabled:opacity-50"
-                  >
-                    {deletingId === instance.id ? (
-                      <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-                    ) : (
-                      <Trash2 className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
+              <ServerCard
+                key={instance.id}
+                instance={instance}
+                serverIp={serverIp}
+                copiedId={copiedId}
+                installingId={installingId}
+                startingId={startingId}
+                stoppingId={stoppingId}
+                restartingId={restartingId}
+                deletingId={deletingId}
+                onInstall={handleInstall}
+                onStart={handleStartServer}
+                onStop={handleStopServer}
+                onRestart={handleRestartServer}
+                onDelete={handleDeleteServer}
+                onCopy={copyToClipboard}
+                onConsole={handleConsoleNavigate}
+                onSettings={handleSettingsNavigate}
+                onFiles={handleFilesNavigate}
+              />
             ))}
           </div>
         )}

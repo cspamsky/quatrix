@@ -46,11 +46,11 @@ const Layout = ({ children }: LayoutProps) => {
     <div className="flex h-screen overflow-hidden bg-[#0F172A] text-gray-100 font-display">
       {/* Sidebar */}
       <aside className="w-60 bg-[#001529] text-gray-400 flex flex-col border-r border-gray-800 shrink-0">
-        <div className="p-6 flex items-center gap-3">
-          <div className="bg-[#1890ff] p-2 rounded-lg">
+        <div className="p-4 flex items-center gap-3">
+          <div className="bg-[#1890ff] p-2 rounded-lg shrink-0">
             <LayoutDashboard className="text-white w-6 h-6" />
           </div>
-          <span className="text-xl font-bold text-white tracking-tight">Quatrix Manager</span>
+          <span className="text-lg font-bold text-white tracking-tight whitespace-nowrap">Quatrix Manager</span>
         </div>
         
         <nav className="flex-1 px-4 space-y-1">

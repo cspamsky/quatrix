@@ -2,51 +2,26 @@ import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
 import db from './db.js';
 import AdmZip from 'adm-zip';
+import { pluginRegistry, type PluginId } from './config/plugins.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 class ServerManager {
     private runningServers: Map<string, any> = new Map();
-    private pluginRegistry = {
-        metamod: {
-            name: 'Metamod:Source',
-            currentVersion: '2.0-git1380',
-            githubRepo: null, // Not on GitHub, uses AlliedMods
-            downloadUrl: 'https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1380-windows.zip',
-            customVersionCheck: null // Manual version check if needed
-        },
-        cssharp: {
-            name: 'CounterStrikeSharp',
-            currentVersion: 'v1.0.355',
-            githubRepo: 'roflmuffin/CounterStrikeSharp',
-            downloadUrlPattern: 'https://github.com/roflmuffin/CounterStrikeSharp/releases/download/{version}/counterstrikesharp-with-runtime-windows-{version_clean}.zip',
-            assetNamePattern: 'counterstrikesharp-with-runtime-windows-*.zip'
-        },
-        matchzy: {
-            name: 'MatchZy',
-            currentVersion: '0.8.15',
-            githubRepo: 'shobhit-pathak/MatchZy',
-            downloadUrlPattern: 'https://github.com/shobhit-pathak/MatchZy/releases/download/{version}/MatchZy-{version}.zip',
-            assetNamePattern: 'MatchZy-*.zip'
-        },
-        simpleadmin: {
-            name: 'CS2-SimpleAdmin',
-            currentVersion: 'v1.7.8-beta-8',
-            githubRepo: 'daffyyyy/CS2-SimpleAdmin',
-            downloadUrlPattern: 'https://github.com/daffyyyy/CS2-SimpleAdmin/releases/download/{version}/CS2-SimpleAdmin-{version}.zip',
-            assetNamePattern: 'CS2-SimpleAdmin-*.zip'
-        }
-    };
+    private pluginRegistry = pluginRegistry;
+
 
     private getSetting(key: string): string {
         const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as { value: string };
         return row ? row.value : '';
     }
 
-    async checkPluginUpdate(pluginId: 'metamod' | 'cssharp' | 'matchzy' | 'simpleadmin'): Promise<{
+    async checkPluginUpdate(pluginId: PluginId): Promise<{
         name: string;
         currentVersion: string;
         latestVersion: string | null;
@@ -123,8 +98,11 @@ class ServerManager {
         }
     }
 
+    private rconConnections: Map<string, any> = new Map();
+
     private logToFile(instanceId: string | number, message: string) {
         const logDir = path.join(this.installDir, instanceId.toString(), 'logs');
+        // This can remain sync for now as it's a simple append, but ideally should be asyncstream
         if (!fs.existsSync(logDir)) {
             fs.mkdirSync(logDir, { recursive: true });
         }
@@ -133,29 +111,33 @@ class ServerManager {
         fs.appendFileSync(logFile, `[${timestamp}] ${message}\n`);
     }
 
-    getLastLogs(instanceId: string | number, limit: number = 200): string[] {
+    async getLastLogs(instanceId: string | number, limit: number = 200): Promise<string[]> {
         const logFile = path.join(this.installDir, instanceId.toString(), 'logs', 'console.log');
-        if (!fs.existsSync(logFile)) return [];
+        
+        try {
+            await fs.promises.access(logFile);
+        } catch {
+            return [];
+        }
 
-        const bufferSize = 4096; // Read in 4KB chunks
+        const bufferSize = 4096;
         const buffer = Buffer.alloc(bufferSize);
-        let fd: number | null = null;
+        let fd: fs.promises.FileHandle | null = null;
 
         try {
-            fd = fs.openSync(logFile, 'r');
-            const stats = fs.statSync(logFile);
+            fd = await fs.promises.open(logFile, 'r');
+            const stats = await fd.stat();
             const fileSize = stats.size;
             let position = fileSize;
             let lines: string[] = [];
             let leftOver = '';
 
-            // ⚡ Bolt: Read file backwards in chunks to avoid loading entire file into memory
             while (position > 0 && lines.length <= limit) {
                 const readSize = Math.min(position, bufferSize);
                 position -= readSize;
 
-                fs.readSync(fd, buffer, 0, readSize, position);
-                const chunk = buffer.toString('utf8', 0, readSize);
+                const { bytesRead } = await fd.read(buffer, 0, readSize, position);
+                const chunk = buffer.toString('utf8', 0, bytesRead);
                 const content = chunk + leftOver;
                 const chunkLines = content.split('\n');
 
@@ -168,7 +150,6 @@ class ServerManager {
                 for (let i = chunkLines.length - 1; i >= 0; i--) {
                     const lineChunk = chunkLines[i];
                     if (lineChunk === undefined) continue;
-                    // Only skip empty lines (like the original implementation), but preserve indentation
                     if (lineChunk.trim()) {
                         lines.unshift(lineChunk);
                         if (lines.length >= limit) break;
@@ -185,9 +166,7 @@ class ServerManager {
             console.error(`Error reading logs for instance ${instanceId}:`, error);
             return [];
         } finally {
-            if (fd !== null) {
-                fs.closeSync(fd);
-            }
+            if (fd) await fd.close();
         }
     }
 
@@ -329,26 +308,57 @@ class ServerManager {
 
     async sendCommand(instanceId: string | number, command: string): Promise<string> {
         const id = instanceId.toString();
+        
+        // 1. Check if server is theoretically running locally
+        if (!this.isServerRunning(id)) {
+             // If we have a lingering RCON connection, clean it up
+             if (this.rconConnections.has(id)) {
+                 try {
+                     await this.rconConnections.get(id).end();
+                 } catch {}
+                 this.rconConnections.delete(id);
+             }
+             throw new Error("Server is not running");
+        }
+
         const server: any = db.prepare("SELECT * FROM servers WHERE id = ?").get(id);
         if (!server || !server.rcon_password) throw new Error("Server not found or RCON password not set");
 
-        if (!this.isServerRunning(id)) throw new Error("Server is not running");
-    
         const { Rcon } = await import('rcon-client');
         
+        let rcon = this.rconConnections.get(id);
+
         try {
-            const rcon = await Rcon.connect({
-                host: '127.0.0.1',
-                port: server.port,
-                password: server.rcon_password,
-                timeout: 5000
-            });
+            if (!rcon) {
+                // Not connected, establish new connection
+                // console.log(`[RCON] Establishing new connection for server ${id}`);
+                rcon = await Rcon.connect({
+                    host: '127.0.0.1',
+                    port: server.port,
+                    password: server.rcon_password,
+                    timeout: 5000
+                });
+                
+                rcon.on('error', (err: any) => {
+                    console.error(`[RCON Connection Error ${id}]:`, err);
+                    this.rconConnections.delete(id);
+                });
+
+                rcon.on('end', () => {
+                    // console.log(`[RCON] Connection closed for server ${id}`);
+                    this.rconConnections.delete(id);
+                });
+
+                this.rconConnections.set(id, rcon);
+            }
 
             const response = await rcon.send(command);
-            await rcon.end();
             return response;
+
         } catch (error: any) {
-            console.error(`[RCON ERROR Instance ${id}]`, error);
+            console.error(`[RCON ERROR Instance ${id}]`, error.message);
+            // If error occurs, assume connection is dead and remove it
+            this.rconConnections.delete(id);
             throw new Error(`RCON Error: ${error.message}`);
         }
     }
@@ -474,8 +484,19 @@ class ServerManager {
         this.runningServers.set(id, serverProcess);
     }
 
-    stopServer(instanceId: string | number): boolean {
+    async stopServer(instanceId: string | number): Promise<boolean> {
         const id = instanceId.toString();
+        
+        // Clean up RCON connection
+        if (this.rconConnections.has(id)) {
+            try {
+                await this.rconConnections.get(id).end();
+            } catch (e) {
+                // Ignore error on close
+            }
+            this.rconConnections.delete(id);
+        }
+
         const process = this.runningServers.get(id);
         if (process) {
             process.kill();
@@ -518,15 +539,43 @@ class ServerManager {
             throw new Error("Access denied: Path outside of server directory");
         }
         
-        if (!fs.existsSync(serverPath)) return [];
+        try {
+            await fs.promises.access(serverPath);
+        } catch {
+            return [];
+        }
         
-        const entries = fs.readdirSync(serverPath, { withFileTypes: true });
-        return entries.map(entry => ({
-            name: entry.name,
-            isDirectory: entry.isDirectory(),
-            size: entry.isFile() ? fs.statSync(path.join(serverPath, entry.name)).size : 0,
-            mtime: fs.statSync(path.join(serverPath, entry.name)).mtime
-        }));
+        try {
+            const entries = await fs.promises.readdir(serverPath, { withFileTypes: true });
+            
+            const statsPromises = entries.map(async (entry) => {
+                const entryPath = path.join(serverPath, entry.name);
+                let size = 0;
+                let mtime = new Date();
+                
+                if (entry.isFile()) {
+                    try {
+                        const stats = await fs.promises.stat(entryPath);
+                        size = stats.size;
+                        mtime = stats.mtime;
+                    } catch (e) {
+                        // Ignore stat errors (file might be deleted/locked)
+                    }
+                }
+                
+                return {
+                    name: entry.name,
+                    isDirectory: entry.isDirectory(),
+                    size,
+                    mtime
+                };
+            });
+
+            return await Promise.all(statsPromises);
+        } catch (error) {
+            console.error(`Error listing files:`, error);
+            throw error;
+        }
     }
 
     async readFile(instanceId: string | number, filePath: string): Promise<string> {
@@ -539,8 +588,13 @@ class ServerManager {
             throw new Error("Access denied: Path outside of server directory");
         }
 
-        if (!fs.existsSync(absolutePath)) throw new Error("File not found");
-        return fs.readFileSync(absolutePath, 'utf8');
+        try {
+            await fs.promises.access(absolutePath);
+        } catch {
+            throw new Error("File not found");
+        }
+
+        return fs.promises.readFile(absolutePath, 'utf8');
     }
 
     async writeFile(instanceId: string | number, filePath: string, content: string): Promise<void> {
@@ -552,7 +606,7 @@ class ServerManager {
             throw new Error("Access denied: Path outside of server directory");
         }
 
-        fs.writeFileSync(absolutePath, content);
+        await fs.promises.writeFile(absolutePath, content);
     }
     async downloadAndExtract(url: string, targetDir: string): Promise<void> {
         if (!fs.existsSync(targetDir)) {
@@ -560,20 +614,30 @@ class ServerManager {
         }
 
         const zipPath = path.join(targetDir, 'temp_plugin.zip');
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`Failed to download from ${url}: ${response.statusText}`);
         
-        const arrayBuffer = await response.arrayBuffer();
-        fs.writeFileSync(zipPath, Buffer.from(arrayBuffer));
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to download from ${url}: ${response.statusText}`);
+            if (!response.body) throw new Error(`Response body is empty for ${url}`);
+            
+            // ⚡ Bolt: Stream download to disk to avoid OOM on large files
+            // @ts-ignore - Readable.fromWeb matches standard Web Streams
+            await pipeline(Readable.fromWeb(response.body), fs.createWriteStream(zipPath));
 
-        const zip = new AdmZip(zipPath);
-        const zipEntries = zip.getEntries();
-        console.log(`Extracting ${zipEntries.length} files from ${url}`);
-        // Log first few entries to see structure
-        zipEntries.slice(0, 5).forEach(entry => console.log(`Entry: ${entry.entryName}`));
-        
-        zip.extractAllTo(targetDir, true);
-        fs.unlinkSync(zipPath);
+            const zip = new AdmZip(zipPath);
+            const zipEntries = zip.getEntries();
+            console.log(`Extracting ${zipEntries.length} files from ${url}`);
+            // Log first few entries to see structure
+            zipEntries.slice(0, 5).forEach(entry => console.log(`Entry: ${entry.entryName}`));
+            
+            // AdmZip extractAllTo is synchronous, nothing we can do about that easily without switching lib
+            // but the biggest memory issue was the download buffer.
+            zip.extractAllTo(targetDir, true);
+        } finally {
+            if (fs.existsSync(zipPath)) {
+                await fs.promises.unlink(zipPath);
+            }
+        }
     }
 
     async installMetamod(instanceId: string | number): Promise<void> {
@@ -673,7 +737,7 @@ class ServerManager {
         }
     }
 
-    async updatePlugin(instanceId: string | number, pluginId: 'matchzy' | 'simpleadmin'): Promise<void> {
+    async updatePlugin(instanceId: string | number, pluginId: PluginId): Promise<void> {
         const id = instanceId.toString();
         console.log(`Updating ${pluginId} for instance ${id}...`);
 

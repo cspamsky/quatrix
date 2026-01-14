@@ -119,14 +119,14 @@ try {
     }
   });
 
-  app.delete("/api/servers/:id", authenticateToken, (req: any, res) => {
+  app.delete("/api/servers/:id", authenticateToken, async (req: any, res) => {
     const { id } = req.params;
     try {
       const server = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
       if (!server) return res.status(404).json({ message: "Server not found" });
 
       // Stop the server if running
-      serverManager.stopServer(id as string);
+      await serverManager.stopServer(id as string);
       
       // Delete server files from disk
       try {
@@ -202,7 +202,7 @@ try {
     }
   });
 
-  app.post("/api/servers/:id/stop", authenticateToken, (req: any, res) => {
+  app.post("/api/servers/:id/stop", authenticateToken, async (req: any, res) => {
     const id = req.params.id;
     if (!id) return res.status(400).json({ message: "Server ID is required" });
 
@@ -210,7 +210,7 @@ try {
       const server = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
       if (!server) return res.status(404).json({ message: "Server not found" });
 
-      serverManager.stopServer(id as string);
+      await serverManager.stopServer(id as string);
       db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id);
       io.emit('status_update', { serverId: parseInt(id), status: 'OFFLINE' });
       res.json({ message: "Server stopped" });
