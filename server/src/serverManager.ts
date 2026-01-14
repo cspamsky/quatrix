@@ -53,6 +53,14 @@ class ServerManager {
         return this.installDir;
     }
 
+    getSteamCmdDir(): string {
+        return this.steamCmdDir;
+    }
+
+    getSteamCmdExe(): string {
+        return this.steamCmdExe;
+    }
+
 
     private getSetting(key: string): string {
         const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as { value: string };
@@ -532,18 +540,21 @@ class ServerManager {
         return this.runningServers.has(instanceId.toString());
     }
 
-    deleteServerFiles(instanceId: string | number): void {
+    async deleteServerFiles(instanceId: string | number): Promise<void> {
         const serverDir = path.join(this.installDir, instanceId.toString());
         
-        if (fs.existsSync(serverDir)) {
+        try {
+            await fs.promises.access(serverDir);
             try {
-                // Recursively delete the entire server directory
-                fs.rmSync(serverDir, { recursive: true, force: true });
+                // Recursively delete the entire server directory asynchronously
+                await fs.promises.rm(serverDir, { recursive: true, force: true });
                 console.log(`Deleted server files for instance ${instanceId} at ${serverDir}`);
             } catch (error) {
                 console.error(`Failed to delete server files for instance ${instanceId}:`, error);
                 throw new Error(`Failed to delete server files: ${error}`);
             }
+        } catch {
+            // Directory doesn't exist, nothing to do
         }
     }
 

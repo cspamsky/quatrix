@@ -103,33 +103,6 @@ try {
     }
   });
 
-  app.put("/api/servers/:id", authenticateToken, (req: any, res) => {
-    const { id } = req.params;
-    const { name, map, max_players, port, password, rcon_password, gslt_token, steam_api_key, vac_enabled } = req.body;
-    try {
-      const server = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
-      if (!server) return res.status(404).json({ message: "Server not found" });
-
-      db.prepare(`
-        UPDATE servers SET 
-          name = ?, 
-          map = ?, 
-          max_players = ?, 
-          port = ?, 
-          password = ?, 
-          rcon_password = ?, 
-          gslt_token = ?, 
-          steam_api_key = ?, 
-          vac_enabled = ?
-        WHERE id = ?
-      `).run(name, map, max_players, port, password, rcon_password, gslt_token, steam_api_key, vac_enabled ? 1 : 0, id);
-
-      res.json({ message: "Server updated successfully" });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
-    }
-  });
-
   app.delete("/api/servers/:id", authenticateToken, async (req: any, res) => {
     const { id } = req.params;
     try {
@@ -141,7 +114,7 @@ try {
       
       // Delete server files from disk
       try {
-        serverManager.deleteServerFiles(id as string);
+        await serverManager.deleteServerFiles(id as string);
       } catch (fileError) {
         console.error("Error deleting server files:", fileError);
         // Continue with database deletion even if file deletion fails
@@ -173,7 +146,7 @@ try {
       res.json({ id: result.lastInsertRowid, ...validatedData, status: 'OFFLINE' });
     } catch (error: any) {
       if (error instanceof z.ZodError) {
-          return res.status(400).json({ message: (error as any).errors.map((e: any) => e.message).join(", ") });
+          return res.status(400).json({ message: (error as any).issues.map((e: any) => e.message).join(", ") });
       }
       res.status(500).json({ message: "Failed to create server" });
     }
@@ -648,17 +621,49 @@ try {
 
   app.post("/api/settings/steamcmd/download", authenticateToken, async (req: any, res) => {
     try {
-        // Force safe path, ignore user input
-        const safePath = path.resolve(process.cwd(), 'steamcmd'); 
-        console.log(`[SECURITY] Enforcing safe SteamCMD path: ${safePath}`);
+        const { path: userPath } = req.body;
         
-        await serverManager.downloadSteamCmd(safePath);
+        // 1. Determine target path (User provided -> Stored Setting -> Default)
+        let targetPath = userPath || serverManager.getSteamCmdDir();
+        if (!targetPath) {
+            targetPath = path.resolve(process.cwd(), 'steamcmd');
+        }
+
+        // 2. SECURITY VALIDATION
+        // Check if absolute
+        if (!path.isAbsolute(targetPath)) {
+            return res.status(400).json({ message: "Target path must be an absolute path." });
+        }
+
+        // Prevent System Root writes (e.g. C:\ or /)
+        const pathInfo = path.parse(targetPath);
+        if (targetPath === pathInfo.root) {
+            return res.status(400).json({ message: "Security Risk: Cannot install SteamCMD directly to the drive root." });
+        }
+
+        // Prevent System directory writes (Basic check)
+        const systemDirs = ['C:\\Windows', 'C:\\Program Files', '/etc', '/bin', '/usr'];
+        if (systemDirs.some(dir => targetPath.toLowerCase().startsWith(dir.toLowerCase()))) {
+             return res.status(400).json({ message: "Security Risk: Selected path is a protected system directory." });
+        }
+
+        // Prevent RCE: Path must not be inside server instances directory
+        const installDir = serverManager.getInstallDir();
+        if (targetPath.toLowerCase().includes(installDir.toLowerCase())) {
+            return res.status(400).json({ message: "Security Risk: SteamCMD cannot be located inside the Server Instances directory." });
+        }
+
+        console.log(`[STEAMCMD] Downloading to user-selected path: ${targetPath}`);
         
-        // Update DB with the safe path
-        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run('steamcmd_path', safePath);
+        await serverManager.downloadSteamCmd(targetPath);
         
-        res.json({ message: "SteamCMD download started", path: safePath });
+        // Update DB and ServerManager with the validated path
+        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run('steamcmd_path', targetPath);
+        serverManager.refreshSettings();
+        
+        res.json({ message: "SteamCMD download started", path: targetPath });
     } catch (error: any) {
+        console.error("SteamCMD download error:", error);
         res.status(500).json({ message: error.message });
     }
   });
