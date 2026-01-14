@@ -4,42 +4,14 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import db from './db.js';
 import AdmZip from 'adm-zip';
+import { PLUGIN_REGISTRY } from './config/plugins.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 class ServerManager {
     private runningServers: Map<string, any> = new Map();
-    private pluginRegistry = {
-        metamod: {
-            name: 'Metamod:Source',
-            currentVersion: '2.0-git1380',
-            githubRepo: null, // Not on GitHub, uses AlliedMods
-            downloadUrl: 'https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1380-windows.zip',
-            customVersionCheck: null // Manual version check if needed
-        },
-        cssharp: {
-            name: 'CounterStrikeSharp',
-            currentVersion: 'v1.0.355',
-            githubRepo: 'roflmuffin/CounterStrikeSharp',
-            downloadUrlPattern: 'https://github.com/roflmuffin/CounterStrikeSharp/releases/download/{version}/counterstrikesharp-with-runtime-windows-{version_clean}.zip',
-            assetNamePattern: 'counterstrikesharp-with-runtime-windows-*.zip'
-        },
-        matchzy: {
-            name: 'MatchZy',
-            currentVersion: '0.8.15',
-            githubRepo: 'shobhit-pathak/MatchZy',
-            downloadUrlPattern: 'https://github.com/shobhit-pathak/MatchZy/releases/download/{version}/MatchZy-{version}.zip',
-            assetNamePattern: 'MatchZy-*.zip'
-        },
-        simpleadmin: {
-            name: 'CS2-SimpleAdmin',
-            currentVersion: 'v1.7.8-beta-8',
-            githubRepo: 'daffyyyy/CS2-SimpleAdmin',
-            downloadUrlPattern: 'https://github.com/daffyyyy/CS2-SimpleAdmin/releases/download/{version}/CS2-SimpleAdmin-{version}.zip',
-            assetNamePattern: 'CS2-SimpleAdmin-*.zip'
-        }
-    };
+    private pluginRegistry = PLUGIN_REGISTRY;
 
     private getSetting(key: string): string {
         const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as { value: string };
@@ -87,16 +59,8 @@ class ServerManager {
             // Find matching asset
             let downloadUrl = null;
             if (data.assets && Array.isArray(data.assets)) {
-                const asset = data.assets.find((a: any) => {
-                    if (pluginId === 'cssharp') {
-                        return a.name.includes('counterstrikesharp-with-runtime-windows');
-                    } else if (pluginId === 'matchzy') {
-                        return a.name.startsWith('MatchZy-') && a.name.endsWith('.zip');
-                    } else if (pluginId === 'simpleadmin') {
-                        return a.name.startsWith('CS2-SimpleAdmin-') && a.name.endsWith('.zip');
-                    }
-                    return false;
-                });
+                const matcher = plugin.matchAsset;
+                const asset = data.assets.find((a: any) => matcher ? matcher(a) : false);
                 downloadUrl = asset?.browser_download_url || null;
             }
 
@@ -616,8 +580,10 @@ class ServerManager {
     async installCounterStrikeSharp(instanceId: string | number): Promise<void> {
         const id = instanceId.toString();
         const csgoDir = path.join(this.installDir, id, 'game', 'csgo');
-        const cssUrl = this.pluginRegistry.cssharp.downloadUrlPattern.replace('{version}', this.pluginRegistry.cssharp.currentVersion).replace('{version_clean}', this.pluginRegistry.cssharp.currentVersion.replace('v', ''));
-        if (!cssUrl) throw new Error("CounterStrikeSharp URL not found");
+        const cssPattern = this.pluginRegistry.cssharp.downloadUrlPattern;
+        if (!cssPattern) throw new Error("CounterStrikeSharp URL pattern not found");
+
+        const cssUrl = cssPattern.replace('{version}', this.pluginRegistry.cssharp.currentVersion).replace('{version_clean}', this.pluginRegistry.cssharp.currentVersion.replace('v', ''));
 
         console.log(`Installing CounterStrikeSharp for instance ${id}...`);
         await this.downloadAndExtract(cssUrl, csgoDir);
