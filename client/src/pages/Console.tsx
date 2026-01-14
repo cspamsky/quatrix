@@ -66,20 +66,24 @@ const Console = () => {
 
         if (response.ok) {
           const rawLogs = await response.json();
-          const processedLogs = rawLogs.map((log: string) => {
+          // Safety check: ensure rawLogs is an array
+          const safeLogs = Array.isArray(rawLogs) ? rawLogs : [];
+          
+          const processedLogs = safeLogs.map((log: string) => {
             const match = log.match(/^\[(.*?)\] (.*)/);
+
             if (match) {
               return {
                 id: crypto.randomUUID(),
                 timestamp: new Date(match[1]).toLocaleTimeString(),
-                type: "RAW",
+                type: "RAW" as const,
                 message: match[2],
               };
             }
             return {
               id: crypto.randomUUID(),
               timestamp: "",
-              type: "RAW",
+              type: "RAW" as const,
               message: log,
             };
           });

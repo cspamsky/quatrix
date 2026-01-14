@@ -18,9 +18,43 @@ class ServerManager {
     private steamCmdDir!: string;
     private steamCmdExe!: string;
     private rconConnections: Map<string, any> = new Map();
+    private isWindows = process.platform === 'win32';
+
+    recoverOrphanedServers() {
+        console.log("🔍 [STEWARDSHIP] Checking for orphaned game processes...");
+        const servers = db.prepare("SELECT id, pid, status FROM servers WHERE status != 'OFFLINE'").all() as { id: number, pid: number | null, status: string }[];
+        
+        let recovered = 0;
+        let cleaned = 0;
+
+        for (const server of servers) {
+            let isAlive = false;
+            
+            if (server.pid) {
+                try {
+                    process.kill(server.pid, 0); 
+                    isAlive = true;
+                } catch (e) {
+                    isAlive = false;
+                }
+            }
+
+            if (isAlive) {
+                console.log(`✨ [RECOVERY] Server ${server.id} is still running with PID ${server.pid}. Marked as managed.`);
+                recovered++;
+            } else {
+                console.log(`🧹 [CLEANUP] Server ${server.id} was marked ${server.status} but PID ${server.pid} is dead. Resetting to OFFLINE.`);
+                db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id = ?").run(server.id);
+                cleaned++;
+            }
+        }
+        
+        console.log(`✅ [STEWARDSHIP] Complete: ${recovered} running, ${cleaned} cleaned.`);
+    }
 
     constructor() {
-        this.refreshSettings(); // Load initial settings
+        this.refreshSettings(); 
+        this.recoverOrphanedServers();
     }
 
     refreshSettings() {
@@ -28,20 +62,17 @@ class ServerManager {
         const steamCmdPath = this.getSetting('steamcmd_path');
         
         if (steamCmdPath) {
-             // If user pointed to directory, append executable. If file, use as is.
-             // But simpler logic: assume it is the DIRECTORY as per our new safety standard?
-             // Actually Index.ts validation allows both but ensures it is OUTSIDE installDir.
-             // Let's assume it's the executable path OR directory.
+             // Use user provided path logic
              if (steamCmdPath.endsWith('.exe') || steamCmdPath.endsWith('.sh')) {
                  this.steamCmdExe = steamCmdPath;
                  this.steamCmdDir = path.dirname(steamCmdPath);
              } else {
                  this.steamCmdDir = steamCmdPath;
-                 this.steamCmdExe = path.join(steamCmdPath, 'steamcmd.exe');
+                 this.steamCmdExe = path.join(steamCmdPath, this.isWindows ? 'steamcmd.exe' : 'steamcmd.sh');
              }
         } else {
             this.steamCmdDir = path.resolve(process.cwd(), 'steamcmd');
-            this.steamCmdExe = path.join(this.steamCmdDir, 'steamcmd.exe');
+            this.steamCmdExe = path.join(this.steamCmdDir, this.isWindows ? 'steamcmd.exe' : 'steamcmd.sh');
         }
 
         if (!fs.existsSync(this.installDir)) {
@@ -422,31 +453,106 @@ class ServerManager {
         }
 
         const serverPath = path.join(this.installDir, id);
-        const cs2Exe = path.join(serverPath, 'game', 'bin', 'win64', 'cs2.exe');
+
+        
+        // Platform specific binary path
+        let relativeBinPath = '';
+        if (this.isWindows) {
+            relativeBinPath = path.join('game', 'bin', 'win64', 'cs2.exe');
+        } else {
+            // Linux path
+            relativeBinPath = path.join('game', 'bin', 'linuxsteamrt64', 'cs2');
+        }
+
+        const cs2Exe = path.join(serverPath, relativeBinPath);
         const binDir = path.dirname(cs2Exe);
 
         if (!fs.existsSync(cs2Exe)) {
-            throw new Error('CS2 executable not found.');
+            // Try fallback for linux
+            if (!this.isWindows) {
+               // unexpected path?
+            }
+            throw new Error(`CS2 executable not found at ${cs2Exe}`);
         }
 
         // --- Steamworks SDK Fixes ---
-        // 1. Ensure steamclient64.dll is in binDir
         const steamCmdDir = path.dirname(this.steamCmdExe);
-        const sourceDll = path.join(steamCmdDir, 'steamclient64.dll');
-        const targetDll = path.join(binDir, 'steamclient64.dll');
 
-        if (fs.existsSync(sourceDll) && !fs.existsSync(targetDll)) {
-            console.log(`Copying steamclient64.dll to ${binDir}...`);
-            fs.copyFileSync(sourceDll, targetDll);
+        if (this.isWindows) {
+            // 1. Ensure steamclient64.dll is in binDir (Windows Only)
+            const sourceDll = path.join(steamCmdDir, 'steamclient64.dll');
+            const targetDll = path.join(binDir, 'steamclient64.dll');
+
+            if (fs.existsSync(sourceDll) && !fs.existsSync(targetDll)) {
+                console.log(`Copying steamclient64.dll to ${binDir}...`);
+                fs.copyFileSync(sourceDll, targetDll);
+            }
+        } else {
+             // Linux: Might need to link steamclient.so from steamcmd to game/bin/linuxsteamrt64
+             // For now let's assume SteamCMD handled deps, or user has LD_LIBRARY_PATH set.
+             // We can check and copy if needed later.
+             const steamCmdDir = path.dirname(this.steamCmdExe);
+             const sourceSo = path.join(steamCmdDir, 'linux64', 'steamclient.so');
+             const targetSo = path.join(binDir, 'steamclient.so'); // Check if CS2 needs .so in binDir
+             
+             if (fs.existsSync(sourceSo) && !fs.existsSync(targetSo)) {
+                  try {
+                      fs.copyFileSync(sourceSo, targetSo);
+                  } catch (e) {
+                      // ignore permission errors
+                  }
+             }
         }
 
         // 2. Create steam_appid.txt
         fs.writeFileSync(path.join(binDir, 'steam_appid.txt'), '730');
         fs.writeFileSync(path.join(serverPath, 'steam_appid.txt'), '730');
 
+        // 3. Secure Configuration (Prevent CLI Leakage)
+        const cfgDir = path.join(serverPath, 'game', 'csgo', 'cfg');
+        if (!fs.existsSync(cfgDir)) {
+             fs.mkdirSync(cfgDir, { recursive: true });
+        }
+        
+        
+        const serverCfgPath = path.join(cfgDir, 'server.cfg');
+        let cfgContent = '';
+        
+        if (fs.existsSync(serverCfgPath)) {
+            cfgContent = fs.readFileSync(serverCfgPath, 'utf8');
+        }
+
+        // Helper to update/add config key
+        const updateConfigKey = (content: string, key: string, value: string) => {
+            const regex = new RegExp(`^${key}\\s+.*$`, 'm');
+            const newLine = `${key} "${value}"`;
+            if (regex.test(content)) {
+                return content.replace(regex, newLine);
+            } else {
+                return content + `\n${newLine}`;
+            }
+        };
+
+        if (options.password) {
+            cfgContent = updateConfigKey(cfgContent, 'sv_password', options.password);
+        } else {
+            // If no password, ensure it's cleared
+            cfgContent = updateConfigKey(cfgContent, 'sv_password', '');
+        }
+
+        if (options.rcon_password) {
+            cfgContent = updateConfigKey(cfgContent, 'rcon_password', options.rcon_password);
+        }
+        
+        // Write to server.cfg
+        fs.writeFileSync(serverCfgPath, cfgContent, 'utf8');
+        console.log(`[SECURE] Wrote configuration to ${serverCfgPath}`);
+
+
         const args = [
             '-dedicated',
             '+map', options.map || 'de_dust2',
+            '-maxplayers', (options.max_players || 64).toString(),
             '-port', (options.port || 27015).toString(),
             '-nosteamclient',
             '-noconsole'
@@ -458,16 +564,20 @@ class ServerManager {
             args.push('-insecure', '+sv_lan', '1');
         }
 
-        if (options.gslt_token) {
-            args.push('+sv_setsteamaccount', options.gslt_token);
+        if (options.gslt_token && options.gslt_token.length > 5) {
+             args.push('+sv_setsteamaccount', options.gslt_token);
         } else {
             args.push('+sv_setsteamaccount', 'anonymous');
         }
 
-        if (options.password) args.push('+sv_password', options.password);
-        if (options.rcon_password) args.push('+rcon_password', options.rcon_password);
         if (options.name) args.push('+hostname', options.name);
+        
+        if (options.steam_api_key && options.steam_api_key.length > 10) {
+            args.push('-authkey', options.steam_api_key);
+        }
+
         args.push('+ip', '0.0.0.0');
+
 
         console.log(`Starting CS2 Server ${id}...`);
 
@@ -508,10 +618,20 @@ class ServerManager {
         serverProcess.on('exit', (code) => {
             console.log(`[CS2 ${id}]: Process exited with code ${code}`);
             this.runningServers.delete(id);
-            db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id);
+            db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id = ?").run(id);
         });
 
         this.runningServers.set(id, serverProcess);
+        
+        // Save PID to database for process stewardship
+        if (serverProcess.pid) {
+             try {
+                db.prepare("UPDATE servers SET pid = ? WHERE id = ?").run(serverProcess.pid, id);
+                console.log(`[CS2 ${id}]: PID ${serverProcess.pid} tracked in database.`);
+             } catch (err) {
+                 console.error(`[CS2 ${id}]: Failed to track PID in database:`, err);
+             }
+        }
     }
 
     async stopServer(instanceId: string | number): Promise<boolean> {
@@ -527,13 +647,42 @@ class ServerManager {
             this.rconConnections.delete(id);
         }
 
-        const process = this.runningServers.get(id);
-        if (process) {
-            process.kill();
+        let stopped = false;
+
+        // 1. Try stopping via in-memory ChildProcess
+        const proc = this.runningServers.get(id);
+        if (proc) {
+            proc.kill();
             this.runningServers.delete(id);
-            return true;
+            stopped = true;
         }
-        return false;
+
+        // 2. Try stopping via Database PID (Zombie/Recovery handling)
+        if (!stopped) {
+             try {
+                const server = db.prepare("SELECT pid FROM servers WHERE id = ?").get(id) as { pid: number | null };
+                if (server && server.pid) {
+                    try {
+                        process.kill(server.pid);
+                        console.log(`[CS2 ${id}]: Killed orphan process with PID ${server.pid}`);
+                        stopped = true;
+                    } catch (e: any) {
+                        if (e.code === 'ESRCH') {
+                            // Process doesn't exist anymore
+                        } else {
+                            console.error(`[CS2 ${id}]: Failed to kill process ${server.pid}:`, e);
+                        }
+                    }
+                }
+             } catch (dbError) {
+                 console.error(`[CS2 ${id}]: DB Error during stop:`, dbError);
+             }
+        }
+
+        // 3. Always ensure DB state is clean
+        db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id = ?").run(id);
+
+        return stopped;
     }
 
     isServerRunning(instanceId: string | number): boolean {

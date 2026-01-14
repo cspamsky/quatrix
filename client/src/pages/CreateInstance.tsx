@@ -53,9 +53,13 @@ const CreateInstance = () => {
         body: JSON.stringify({
           name: formData.serverName,
           map: formData.initialMap,
-          max_players: formData.maxPlayers,
-          port: parseInt(formData.port),
+          max_players: parseInt(String(formData.maxPlayers)),
+          port: parseInt(String(formData.port)),
           rcon_password: formData.rconPassword || null,
+          password: formData.serverPassword || null,
+          gslt_token: formData.glstToken || null,
+          steam_api_key: formData.steamApiKey || null,
+          vac_enabled: formData.vac ? 1 : 0,
         }),
       })
 

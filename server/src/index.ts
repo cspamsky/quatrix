@@ -16,7 +16,13 @@ import { apiLimiter, strictLimiter, createServerLimiter } from "./middleware/rat
 const createServerSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters").max(50, "Name must be less than 50 characters").regex(/^[a-zA-Z0-9\s\-_]+$/, "Name can only contain letters, numbers, spaces, hyphens and underscores"),
   port: z.number().int().min(1024, "Port must be >= 1024").max(65535, "Port must be <= 65535"),
-  rcon_password: z.string().min(6, "RCON Password must be at least 6 characters")
+  rcon_password: z.string().min(6, "RCON Password must be at least 6 characters"),
+  map: z.string().default("de_dust2"),
+  max_players: z.number().int().min(1).max(64).default(10),
+  password: z.string().nullable().optional(),
+  gslt_token: z.string().nullable().optional(),
+  steam_api_key: z.string().nullable().optional(),
+  vac_enabled: z.number().min(0).max(1).default(1)
 });
 
 // Global cache for public IP
@@ -45,13 +51,13 @@ const fetchPublicIp = async () => {
 };
 fetchPublicIp();
 
-// Reset all server statuses to OFFLINE on startup since no processes are running yet
-try {
-  db.prepare("UPDATE servers SET status = 'OFFLINE'").run();
-  console.log("Database: All server statuses reset to OFFLINE.");
-} catch (err) {
-  console.error("Database reset error:", err);
-}
+// DEPRECATED: ServerManager handles cleanup and recovery intelligently now.
+// try {
+//   db.prepare("UPDATE servers SET status = 'OFFLINE'").run();
+//   console.log("Database: All server statuses reset to OFFLINE.");
+// } catch (err) {
+//   console.error("Database reset error:", err);
+// }
 
 try {
   console.log("Loading environment variables...");
@@ -134,15 +140,29 @@ try {
     try {
       // Input Validation
       const validatedData = createServerSchema.parse(req.body);
-      
+
       // Check for port conflict
       const existing = db.prepare("SELECT id FROM servers WHERE port = ?").get(validatedData.port);
       if (existing) {
           return res.status(400).json({ message: `Port ${validatedData.port} is already in use by another server instance.` });
       }
 
-      const result = db.prepare("INSERT INTO servers (user_id, name, port, rcon_password, status) VALUES (?, ?, ?, ?, 'OFFLINE')")
-        .run(req.user.id, validatedData.name, validatedData.port, validatedData.rcon_password);
+      const result = db.prepare(`
+        INSERT INTO servers (
+          user_id, name, port, rcon_password, map, max_players, password, gslt_token, steam_api_key, vac_enabled, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OFFLINE')
+      `).run(
+        req.user.id, 
+        validatedData.name, 
+        validatedData.port, 
+        validatedData.rcon_password, 
+        validatedData.map, 
+        validatedData.max_players, 
+        validatedData.password, 
+        validatedData.gslt_token, 
+        validatedData.steam_api_key, 
+        validatedData.vac_enabled
+      );
       res.json({ id: result.lastInsertRowid, ...validatedData, status: 'OFFLINE' });
     } catch (error: any) {
       if (error instanceof z.ZodError) {

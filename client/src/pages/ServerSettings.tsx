@@ -249,7 +249,7 @@ const ServerSettings = () => {
                 <input
                   type="checkbox"
                   id="vac"
-                  checked={server.vac_enabled}
+                  checked={Boolean(server.vac_enabled)}
                   onChange={(e) => setServer({ ...server, vac_enabled: e.target.checked })}
                   className="w-4 h-4 text-primary bg-[#0d1421] border-gray-800 rounded focus:ring-primary focus:ring-2"
                 />

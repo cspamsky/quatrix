@@ -6,10 +6,11 @@
   "scripts": {
     "setup": "node setup.js",
     "install-all": "npm run setup && npm install --prefix client && npm install --prefix server",
-    "dev": "npx concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "dev": "npx concurrently \"npm run dev --prefix server\" \"npx wait-on tcp:3001 && npm run dev --prefix client\"",
     "fix-client": "taskkill /F /IM node.exe /T && cd client && rm -r -Force node_modules && npm install"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "wait-on": "^9.0.3"
   }
 }

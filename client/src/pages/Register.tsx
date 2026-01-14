@@ -61,7 +61,7 @@ const Register = () => {
         </div>
 
 
-        <div className="bg-[#111827] border border-gray-800/50 rounded-2xl p-8 shadow-2xl">
+        <div className="bg-[#111827] border border-gray-800/50 rounded-2xl p-8 shadow-xl">
           <div className="mb-8">
             <h2 className="text-xl font-semibold text-white">Create Account</h2>
             <p className="text-sm text-gray-400">Join the community and manage your servers.</p>
