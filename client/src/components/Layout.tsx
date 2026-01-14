@@ -50,7 +50,7 @@ const Layout = ({ children }: LayoutProps) => {
       <aside className="w-60 bg-[#001529] text-gray-400 flex flex-col border-r border-gray-800 shrink-0">
         <div className="p-4 flex items-center gap-3">
           <div className="bg-[#1890ff]/10 p-2 rounded-lg shrink-0">
-            <Logo size={24} className="text-[#1890ff]" />
+            <Logo size={24} className="text-[#1890ff]" withBackground={false} />
           </div>
           <span className="text-lg font-bold text-white tracking-tight whitespace-nowrap">Quatrix Manager</span>
         </div>

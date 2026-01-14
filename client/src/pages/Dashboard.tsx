@@ -47,16 +47,37 @@ const Dashboard = () => {
       .then(data => setServerStats(data))
       .catch(err => console.error('Failed to fetch server stats:', err))
 
-    socket.on('connect', () => setIsConnected(true))
-    socket.on('disconnect', () => setIsConnected(false))
-    socket.on('stats', (data: any) => setStats(data))
+    // Socket Connection Handlers
+    const onConnect = () => {
+      setIsConnected(true)
+    }
+
+    const onDisconnect = () => {
+      setIsConnected(false)
+    }
+
+    const onStats = (data: any) => {
+      setStats(data)
+    }
+
+    // Attach listeners
+    socket.on('connect', onConnect)
+    socket.on('disconnect', onDisconnect)
+    socket.on('stats', onStats)
+
+    // Check initial state (in case we missed the event)
+    if (socket.connected) {
+      setIsConnected(true)
+    }
+
 
     return () => {
-      socket.off('connect')
-      socket.off('disconnect')
-      socket.off('stats')
+      socket.off('connect', onConnect)
+      socket.off('disconnect', onDisconnect)
+      socket.off('stats', onStats)
     }
   }, [])
+
 
   const user = JSON.parse(localStorage.getItem('user') || '{"username": "User"}')
   const displayName = user.fullname || user.username || 'User'
