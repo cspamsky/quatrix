@@ -6,11 +6,10 @@ import dotenv from "dotenv";
 import si from "systeminformation";
 import path from "path";
 import fs from "fs";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import db from "./db.js";
 import { serverManager } from "./serverManager.js";
-import { rateLimiter } from "./rateLimiter.js";
+import { authenticateToken } from "./middleware/auth.js";
+import authRouter from "./routes/auth.js";
 
 // Global cache for public IP
 let cachedPublicIp = '127.0.0.1';
@@ -68,98 +67,9 @@ try {
   app.use(express.json());
 
   // --- Auth & Middlewares ---
-  const authLimiter = rateLimiter({
-    windowMs: 60 * 1000, // 1 minute
-    max: 10, // Limit each IP to 10 requests per window
-    message: "Too many login/register attempts, please try again later"
-  });
-
-  const authenticateToken = (req: any, res: any, next: any) => {
-    if (!process.env.JWT_SECRET) {
-      console.error("CRITICAL: JWT_SECRET is not defined.");
-      return res.status(500).json({ message: "Server configuration error" });
-    }
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.status(401).json({ message: "Authentication required" });
-    jwt.verify(token, process.env.JWT_SECRET, (err: any, user: any) => {
-      if (err) return res.status(403).json({ message: "Invalid or expired token" });
-      req.user = user;
-      next();
-    });
-  };
 
   // --- Auth Routes ---
-  app.post("/api/register", authLimiter, async (req, res) => {
-    if (!process.env.JWT_SECRET) {
-      return res.status(500).json({ message: "Server configuration error" });
-    }
-    const { username, password } = req.body;
-    if (!username || !password) {
-      return res.status(400).json({ message: "Missing required fields" });
-    }
-
-    try {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const result = db.prepare(
-        "INSERT INTO users (username, password) VALUES (?, ?)"
-      ).run(username, hashedPassword);
-
-      const token = jwt.sign(
-        { id: result.lastInsertRowid, username },
-        process.env.JWT_SECRET,
-        { expiresIn: '24h' }
-      );
-
-      res.status(201).json({
-        token,
-        user: { id: result.lastInsertRowid, username }
-      });
-    } catch (error: any) {
-      if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-        return res.status(409).json({ message: "Username or email already exists" });
-      }
-      res.status(500).json({ message: "Registration failed" });
-    }
-  });
-
-  app.post("/api/login", authLimiter, async (req, res) => {
-    if (!process.env.JWT_SECRET) {
-      return res.status(500).json({ message: "Server configuration error" });
-    }
-    const { identity, password } = req.body;
-    if (!identity || !password) {
-      return res.status(400).json({ message: "Missing credentials" });
-    }
-
-    try {
-      const user: any = db.prepare(
-        "SELECT * FROM users WHERE username = ?"
-      ).get(identity);
-
-      if (!user) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      const validPassword = await bcrypt.compare(password, user.password);
-      if (!validPassword) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      const token = jwt.sign(
-        { id: user.id, username: user.username },
-        process.env.JWT_SECRET,
-        { expiresIn: '24h' }
-      );
-
-      res.json({
-        token,
-        user: { id: user.id, username: user.username }
-      });
-    } catch (error) {
-      res.status(500).json({ message: "Login failed" });
-    }
-  });
+  app.use('/api', authRouter);
 
   // --- API Endpoints ---
   app.get("/api/servers", authenticateToken, (req: any, res) => {
