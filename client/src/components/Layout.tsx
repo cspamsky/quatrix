@@ -9,6 +9,8 @@ import {
   Terminal
 } from 'lucide-react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
+import Logo from './Logo'
+
 
 interface LayoutProps {
   children: React.ReactNode
@@ -47,11 +49,12 @@ const Layout = ({ children }: LayoutProps) => {
       {/* Sidebar */}
       <aside className="w-60 bg-[#001529] text-gray-400 flex flex-col border-r border-gray-800 shrink-0">
         <div className="p-4 flex items-center gap-3">
-          <div className="bg-[#1890ff] p-2 rounded-lg shrink-0">
-            <LayoutDashboard className="text-white w-6 h-6" />
+          <div className="bg-[#1890ff]/10 p-2 rounded-lg shrink-0">
+            <Logo size={24} className="text-[#1890ff]" />
           </div>
           <span className="text-lg font-bold text-white tracking-tight whitespace-nowrap">Quatrix Manager</span>
         </div>
+
         
         <nav className="flex-1 px-4 space-y-1">
           {navItems.map((item) => {

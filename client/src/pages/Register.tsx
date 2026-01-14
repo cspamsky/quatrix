@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Server, UserPlus, User, Lock, Eye, EyeOff } from 'lucide-react'
+import { UserPlus, User, Lock, Eye, EyeOff } from 'lucide-react'
 import { apiFetch } from '../utils/api'
+import Logo from '../components/Logo'
 
 
 const Register = () => {
@@ -50,13 +51,15 @@ const Register = () => {
       </div>
 
       <div className="w-full max-w-md">
+
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-xl mb-4 shadow-lg shadow-primary/20 text-white">
-            <Server size={36} />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-xl mb-4 shadow-lg shadow-primary/10">
+            <Logo size={48} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">CS2 Manager</h1>
-          <p className="text-gray-400 mt-1">Server Administration Panel</p>
+          <h1 className="text-2xl font-bold tracking-tight text-white">Quatrix Manager</h1>
+          <p className="text-gray-400 mt-1">Create your account</p>
         </div>
+
 
         <div className="bg-[#111827] border border-gray-800/50 rounded-2xl p-8 shadow-2xl">
           <div className="mb-8">
