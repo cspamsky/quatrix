@@ -14,6 +14,44 @@ const __dirname = path.dirname(__filename);
 class ServerManager {
     private runningServers: Map<string, any> = new Map();
     private pluginRegistry = pluginRegistry;
+    private installDir!: string;
+    private steamCmdDir!: string;
+    private steamCmdExe!: string;
+    private rconConnections: Map<string, any> = new Map();
+
+    constructor() {
+        this.refreshSettings(); // Load initial settings
+    }
+
+    refreshSettings() {
+        this.installDir = this.getSetting('install_dir') || path.resolve(__dirname, '../../instances');
+        const steamCmdPath = this.getSetting('steamcmd_path');
+        
+        if (steamCmdPath) {
+             // If user pointed to directory, append executable. If file, use as is.
+             // But simpler logic: assume it is the DIRECTORY as per our new safety standard?
+             // Actually Index.ts validation allows both but ensures it is OUTSIDE installDir.
+             // Let's assume it's the executable path OR directory.
+             if (steamCmdPath.endsWith('.exe') || steamCmdPath.endsWith('.sh')) {
+                 this.steamCmdExe = steamCmdPath;
+                 this.steamCmdDir = path.dirname(steamCmdPath);
+             } else {
+                 this.steamCmdDir = steamCmdPath;
+                 this.steamCmdExe = path.join(steamCmdPath, 'steamcmd.exe');
+             }
+        } else {
+            this.steamCmdDir = path.resolve(process.cwd(), 'steamcmd');
+            this.steamCmdExe = path.join(this.steamCmdDir, 'steamcmd.exe');
+        }
+
+        if (!fs.existsSync(this.installDir)) {
+            fs.mkdirSync(this.installDir, { recursive: true });
+        }
+    }
+
+    getInstallDir(): string {
+        return this.installDir;
+    }
 
 
     private getSetting(key: string): string {
@@ -98,7 +136,7 @@ class ServerManager {
         }
     }
 
-    private rconConnections: Map<string, any> = new Map();
+
 
     private logToFile(instanceId: string | number, message: string) {
         const logDir = path.join(this.installDir, instanceId.toString(), 'logs');
@@ -170,23 +208,7 @@ class ServerManager {
         }
     }
 
-    get steamCmdExe() {
-        return this.getSetting('steamcmd_path');
-    }
 
-    get installDir() {
-        return this.getSetting('install_dir');
-    }
-
-    constructor() {
-        this.ensureDirectories();
-    }
-
-    private ensureDirectories() {
-        if (!fs.existsSync(this.installDir)) {
-            fs.mkdirSync(this.installDir, { recursive: true });
-        }
-    }
 
     async ensureSteamCMD(): Promise<boolean> {
         const steamcmdExe = this.steamCmdExe;

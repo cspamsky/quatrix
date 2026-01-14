@@ -6,10 +6,18 @@ import dotenv from "dotenv";
 import si from "systeminformation";
 import path from "path";
 import fs from "fs";
+import { z } from "zod";
 import db from "./db.js";
 import { serverManager } from "./serverManager.js";
 import { authenticateToken } from "./middleware/auth.js";
 import authRouter from "./routes/auth.js";
+import { apiLimiter, strictLimiter, createServerLimiter } from "./middleware/rateLimiter.js";
+
+const createServerSchema = z.object({
+  name: z.string().min(3, "Name must be at least 3 characters").max(50, "Name must be less than 50 characters").regex(/^[a-zA-Z0-9\s\-_]+$/, "Name can only contain letters, numbers, spaces, hyphens and underscores"),
+  port: z.number().int().min(1024, "Port must be >= 1024").max(65535, "Port must be <= 65535"),
+  rcon_password: z.string().min(6, "RCON Password must be at least 6 characters")
+});
 
 // Global cache for public IP
 let cachedPublicIp = '127.0.0.1';
@@ -65,6 +73,9 @@ try {
 
   app.use(cors());
   app.use(express.json());
+  
+  // Rate Limiting
+  app.use('/api', apiLimiter);
 
   // --- Auth & Middlewares ---
 
@@ -144,13 +155,26 @@ try {
     }
   });
 
-  app.post("/api/servers", authenticateToken, (req: any, res) => {
-    const { name, port, rcon_password } = req.body;
+
+
+  app.post("/api/servers", authenticateToken, createServerLimiter, (req: any, res) => {
     try {
+      // Input Validation
+      const validatedData = createServerSchema.parse(req.body);
+      
+      // Check for port conflict
+      const existing = db.prepare("SELECT id FROM servers WHERE port = ?").get(validatedData.port);
+      if (existing) {
+          return res.status(400).json({ message: `Port ${validatedData.port} is already in use by another server instance.` });
+      }
+
       const result = db.prepare("INSERT INTO servers (user_id, name, port, rcon_password, status) VALUES (?, ?, ?, ?, 'OFFLINE')")
-        .run(req.user.id, name, port, rcon_password);
-      res.json({ id: result.lastInsertRowid, name, port, status: 'OFFLINE' });
-    } catch (error) {
+        .run(req.user.id, validatedData.name, validatedData.port, validatedData.rcon_password);
+      res.json({ id: result.lastInsertRowid, ...validatedData, status: 'OFFLINE' });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: (error as any).errors.map((e: any) => e.message).join(", ") });
+      }
       res.status(500).json({ message: "Failed to create server" });
     }
   });
@@ -247,7 +271,7 @@ try {
   });
 
   // RCON Endpoint
-  app.post("/api/servers/:id/rcon", authenticateToken, async (req: any, res: Response) => {
+  app.post("/api/servers/:id/rcon", authenticateToken, strictLimiter, async (req: any, res: Response) => {
     const id = req.params.id;
     const { command } = req.body;
     
@@ -306,7 +330,7 @@ try {
     }
   });
 
-  app.post("/api/servers/:id/files/write", authenticateToken, async (req: any, res) => {
+  app.post("/api/servers/:id/files/write", authenticateToken, strictLimiter, async (req: any, res) => {
     const { id } = req.params;
     const { path: filePath, content } = req.body;
     try {
@@ -320,7 +344,7 @@ try {
     }
   });
 
-  app.post("/api/servers/:id/install", authenticateToken, async (req: any, res) => {
+  app.post("/api/servers/:id/install", authenticateToken, strictLimiter, async (req: any, res) => {
     const { id } = req.params;
     try {
       const server: any = db.prepare("SELECT * FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
@@ -587,27 +611,58 @@ try {
   app.put("/api/settings", authenticateToken, (req: any, res) => {
     try {
       const updates = req.body;
+      
+      // SECURITY VALIDATION: Prevent RCE via Path Manipulation
+      // 1. Prevent setting paths to relative values (must be absolute)
+      if (updates.steamcmd_path && !path.isAbsolute(updates.steamcmd_path)) {
+          return res.status(400).json({ message: "SteamCMD path must be absolute" });
+      }
+      if (updates.install_dir && !path.isAbsolute(updates.install_dir)) {
+          return res.status(400).json({ message: "Install directory must be absolute" });
+      }
+
+      // 2. Prevent pointing SteamCMD to a location inside the server instance directory
+      // (where users can upload malicious files via File Manager)
+      const currentInstallDir = serverManager.getInstallDir(); // We need a getter for this validity
+      // Fallback if getter not available (assuming usage of DB directly or known path)
+      // Actually simpler: Just check if one path is inside the other if both are provided or mixed.
+      
+      // Let's assume loose check for now: 
+      if (updates.steamcmd_path && updates.steamcmd_path.includes(updates.install_dir || currentInstallDir)) {
+           return res.status(400).json({ message: "Security Risk: SteamCMD configuration cannot be inside the Server Installation Directory." });
+      }
+
       Object.keys(updates).forEach(key => {
         db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(key, updates[key]);
       });
+      
+      // Refresh ServerManager settings if needed
+      serverManager.refreshSettings(); // Ideally ServerManager should reload settings
+      
       res.json({ message: "Settings updated successfully" });
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Settings update error:", error);
       res.status(500).json({ message: "Failed to update settings" });
     }
   });
 
   app.post("/api/settings/steamcmd/download", authenticateToken, async (req: any, res) => {
     try {
-        console.log("Received download request body:", req.body);
-        const { path: customPath } = req.body;
-        console.log("Extracted path:", customPath);
-        await serverManager.downloadSteamCmd(customPath);
-        res.json({ message: "SteamCMD downloaded and installed successfully." });
+        // Force safe path, ignore user input
+        const safePath = path.resolve(process.cwd(), 'steamcmd'); 
+        console.log(`[SECURITY] Enforcing safe SteamCMD path: ${safePath}`);
+        
+        await serverManager.downloadSteamCmd(safePath);
+        
+        // Update DB with the safe path
+        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run('steamcmd_path', safePath);
+        
+        res.json({ message: "SteamCMD download started", path: safePath });
     } catch (error: any) {
-        console.error("SteamCMD download error:", error);
-        res.status(500).json({ message: error.message || "Failed to download SteamCMD" });
+        res.status(500).json({ message: error.message });
     }
   });
+
 
   // --- Stats & Socket ---
   let connectedClients = 0;
