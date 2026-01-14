@@ -370,7 +370,7 @@ const Instances = () => {
                         <button 
                           onClick={() => handleStartServer(instance.id)}
                           disabled={startingId === instance.id}
-                          className="flex-1 bg-primary hover:bg-blue-600 text-white py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center shadow-lg shadow-primary/10 disabled:opacity-50"
+                          className="flex-1 bg-primary hover:bg-blue-600 text-white py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center shadow-lg shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {startingId === instance.id ? (
                             <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
