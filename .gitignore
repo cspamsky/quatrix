@@ -7,8 +7,11 @@ pnpm-lock.yaml
 # Build Outputs
 dist/
 build/
-out/
+server/dist/
+client/dist/
+client/dist-ssr/
 coverage/
+*.tsbuildinfo
 
 # Environment Variables
 .env
@@ -16,42 +19,28 @@ coverage/
 !.env.example
 
 # IDE & OS Files
-.vscode/
 .idea/
 *.swp
 *.swo
 .DS_Store
 Thumbs.db
+.vscode/
 
 # Logs
 *.log
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
-# Server Specific
+# Application Specific
 server/database.sqlite
 server/database.sqlite-journal
 server/data/
-server/logs/
-
-# Client Specific (Vite/React)
-client/dist/
-client/dist-ssr/
-client/.eslintcache
-*.local
-
-# TypeScript
-*.tsbuildinfo
-
-# Preservation
-!.gitkeep
-!assets/
-!assets/*.png
+server/steamcmd/
+steamcmd/
 
 # Misc
 *.tmp
 *.bak
 
-# Jules
-.Jules/
+# Assets Persistence
+!.gitkeep
+!assets/
