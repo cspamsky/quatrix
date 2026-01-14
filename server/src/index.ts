@@ -195,6 +195,7 @@ try {
       });
 
       db.prepare("UPDATE servers SET status = 'ONLINE' WHERE id = ?").run(id);
+      io.emit('status_update', { serverId: parseInt(id), status: 'ONLINE' });
       res.json({ message: "Server starting..." });
     } catch (error: any) {
       res.status(500).json({ message: error.message });

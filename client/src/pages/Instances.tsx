@@ -48,6 +48,7 @@ const Instances = () => {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [installingId, setInstallingId] = useState<number | null>(null)
   const [restartingId, setRestartingId] = useState<number | null>(null)
+  const [startingId, setStartingId] = useState<number | null>(null)
 
   const fetchSystemInfo = async () => {
     try {
@@ -152,6 +153,7 @@ const Instances = () => {
   }
 
   const handleStartServer = async (id: number) => {
+    setStartingId(id)
     try {
       const response = await apiFetch(`http://localhost:3001/api/servers/${id}/start`, {
         method: 'POST'
@@ -166,6 +168,8 @@ const Instances = () => {
     } catch (error) {
       console.error('Start server error:', error)
       showNotification('error', 'Connection Error', 'Unable to reach the server')
+    } finally {
+      setStartingId(null)
     }
   }
 
@@ -360,9 +364,15 @@ const Instances = () => {
                       {instance.status === 'OFFLINE' ? (
                         <button 
                           onClick={() => handleStartServer(instance.id)}
-                          className="flex-1 bg-primary hover:bg-blue-600 text-white py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center shadow-lg shadow-primary/10"
+                          disabled={startingId === instance.id}
+                          className="flex-1 bg-primary hover:bg-blue-600 text-white py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center shadow-lg shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <Play className="w-3 h-3 mr-1.5" /> Start
+                          {startingId === instance.id ? (
+                            <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
+                          ) : (
+                            <Play className="w-3 h-3 mr-1.5" />
+                          )}
+                          {startingId === instance.id ? 'Starting...' : 'Start'}
                         </button>
                       ) : (
                         <>
