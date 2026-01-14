@@ -41,7 +41,8 @@ router.post("/register", authLimiter, async (req, res) => {
     if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
       return res.status(409).json({ message: "Username or email already exists" });
     }
-    res.status(500).json({ message: "Registration failed" });
+    console.error("Registration error:", error);
+    res.status(500).json({ message: "Registration failed", error: error.message });
   }
 });
 
@@ -79,7 +80,8 @@ router.post("/login", authLimiter, async (req, res) => {
       user: { id: user.id, username: user.username }
     });
   } catch (error) {
-    res.status(500).json({ message: "Login failed" });
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Login failed", error: error instanceof Error ? error.message : String(error) });
   }
 });
 

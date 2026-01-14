@@ -18,11 +18,45 @@ db.exec(`
   )
 `);
 
-// Add username column if it doesn't exist (migration for existing databases)
+// Migration to remove fullname and email columns if they exist
 try {
-  db.exec(`ALTER TABLE users ADD COLUMN username TEXT UNIQUE`);
+  const tableInfo = db.pragma('table_info(users)') as any[];
+  const hasFullname = tableInfo.some(col => col.name === 'fullname');
+  const hasEmail = tableInfo.some(col => col.name === 'email');
+
+  if (hasFullname || hasEmail) {
+    console.log("Migrating users table to remove fullname and email...");
+    
+    db.exec('BEGIN TRANSACTION');
+    
+    // 1. Create new table with desired schema
+    db.exec(`
+      CREATE TABLE users_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // 2. Copy data
+    db.exec(`
+      INSERT INTO users_new (id, username, password, created_at)
+      SELECT id, username, password, created_at FROM users
+    `);
+
+    // 3. Drop old table
+    db.exec('DROP TABLE users');
+
+    // 4. Rename new table
+    db.exec('ALTER TABLE users_new RENAME TO users');
+
+    db.exec('COMMIT');
+    console.log("Migration complete.");
+  }
 } catch (error) {
-  // Column already exists, ignore error
+  console.error("Migration failed:", error);
+  if (db.inTransaction) db.exec('ROLLBACK');
 }
 
 // Create servers table

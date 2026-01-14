@@ -504,12 +504,17 @@ class ServerManager {
         }
     }
 
+    private isPathSafe(baseDir: string, targetPath: string): boolean {
+        const relative = path.relative(baseDir, targetPath);
+        return !relative.startsWith('..') && !path.isAbsolute(relative);
+    }
+
     async listFiles(instanceId: string | number, subDir: string = ''): Promise<any[]> {
         const id = instanceId.toString();
         const baseDir = path.join(this.installDir, id, 'game', 'csgo');
         const serverPath = path.resolve(baseDir, subDir);
 
-        if (!serverPath.startsWith(baseDir)) {
+        if (!this.isPathSafe(baseDir, serverPath)) {
             throw new Error("Access denied: Path outside of server directory");
         }
         
@@ -530,7 +535,7 @@ class ServerManager {
         const baseDir = path.join(this.installDir, id, 'game', 'csgo');
         const absolutePath = path.resolve(baseDir, filePath);
         
-        if (!absolutePath.startsWith(baseDir)) {
+        if (!this.isPathSafe(baseDir, absolutePath)) {
             throw new Error("Access denied: Path outside of server directory");
         }
 
@@ -543,7 +548,7 @@ class ServerManager {
         const baseDir = path.join(this.installDir, id, 'game', 'csgo');
         const absolutePath = path.resolve(baseDir, filePath);
         
-        if (!absolutePath.startsWith(baseDir)) {
+        if (!this.isPathSafe(baseDir, absolutePath)) {
             throw new Error("Access denied: Path outside of server directory");
         }
 
