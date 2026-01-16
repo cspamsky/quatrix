@@ -49,24 +49,6 @@ class ServerManager {
         return row ? row.value : '';
     }
 
-    // --- SteamManager Delegation ---
-    async ensureSteamCMD() { return steamManager.ensureSteamCMD(this.steamCmdExe); }
-    async downloadSteamCmd(customPath?: string) { return steamManager.downloadSteamCmd(customPath || path.dirname(this.steamCmdExe)); }
-    async installOrUpdateServer(id: string | number, onLog?: any) { return steamManager.installOrUpdateServer(id, this.steamCmdExe, this.installDir, onLog); }
-
-    // --- PluginManager Delegation ---
-    async getPluginStatus(id: string | number) { return pluginManager.getPluginStatus(this.installDir, id); }
-    async checkPluginUpdate(pluginId: PluginId) { return pluginManager.checkPluginUpdate(pluginId); }
-    async installMetamod(id: string | number) { return pluginManager.installMetamod(this.installDir, id); }
-    async uninstallMetamod(id: string | number) { return pluginManager.uninstallMetamod(this.installDir, id); }
-    async installCounterStrikeSharp(id: string | number) { return pluginManager.installCounterStrikeSharp(this.installDir, id); }
-    async uninstallCounterStrikeSharp(id: string | number) { return pluginManager.uninstallCounterStrikeSharp(this.installDir, id); }
-    async installMatchZy(id: string | number) { return pluginManager.installMatchZy(this.installDir, id); }
-    async uninstallMatchZy(id: string | number) { return pluginManager.uninstallMatchZy(this.installDir, id); }
-    async installSimpleAdmin(id: string | number) { return pluginManager.installSimpleAdmin(this.installDir, id); }
-    async uninstallSimpleAdmin(id: string | number) { return pluginManager.uninstallSimpleAdmin(this.installDir, id); }
-    async updatePlugin(id: string | number, pluginId: PluginId) { return pluginManager.updatePlugin(this.installDir, id, pluginId); }
-
     // --- Core Management ---
     recoverOrphanedServers() {
         const servers = db.prepare("SELECT id, pid, status FROM servers WHERE status != 'OFFLINE'").all() as any[];
@@ -209,6 +191,40 @@ class ServerManager {
     getLogs(id: string | number) { return this.logBuffers.get(id.toString()) || []; }
     getInstallDir() { return this.installDir; }
     getSteamCmdDir() { return path.dirname(this.steamCmdExe); }
+
+    // --- Plugin Management Wrappers ---
+    async getPluginRegistry() {
+        return pluginManager.getRegistry();
+    }
+
+    async getPluginStatus(instanceId: string | number) {
+        return pluginManager.getPluginStatus(this.installDir, instanceId);
+    }
+
+    async checkPluginUpdate(pluginId: PluginId) {
+        return pluginManager.checkPluginUpdate(pluginId);
+    }
+
+    async installPlugin(instanceId: string | number, pluginId: PluginId) {
+        return pluginManager.installPlugin(this.installDir, instanceId, pluginId);
+    }
+
+    async uninstallPlugin(instanceId: string | number, pluginId: PluginId) {
+        return pluginManager.uninstallPlugin(this.installDir, instanceId, pluginId);
+    }
+
+    async updatePlugin(instanceId: string | number, pluginId: PluginId) {
+        return pluginManager.updatePlugin(this.installDir, instanceId, pluginId);
+    }
+
+    // --- Steam/Server Installation ---
+    async ensureSteamCMD() {
+        return steamManager.ensureSteamCMD(this.getSteamCmdDir());
+    }
+
+    async installOrUpdateServer(id: string | number, onLog?: any) {
+        return steamManager.installOrUpdateServer(id, this.steamCmdExe, this.installDir, onLog);
+    }
     
     async getSystemHealth(): Promise<any> {
         const result: any = {

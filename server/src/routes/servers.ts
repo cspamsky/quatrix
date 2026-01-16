@@ -33,21 +33,6 @@ router.get("/", (req: any, res) => {
   }
 });
 
-// GET /api/stats - Global dashboard stats
-router.get("/stats", (req: any, res) => {
-    try {
-        const servers: any[] = db.prepare("SELECT status, current_players FROM servers WHERE user_id = ?").all(req.user.id);
-        const stats = {
-            totalServers: servers.length,
-            activeServers: servers.filter(s => s.status === 'ONLINE').length,
-            totalPlayers: servers.reduce((acc, s) => acc + (s.current_players || 0), 0)
-        };
-        res.json(stats);
-    } catch (error) {
-        res.status(500).json({ message: "Failed to fetch stats" });
-    }
-});
-
 // GET /api/servers/:id
 router.get("/:id", (req: any, res) => {
   try {

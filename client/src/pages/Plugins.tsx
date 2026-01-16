@@ -1,14 +1,15 @@
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
   Cpu, 
   Zap, 
   Server as ServerIcon,
   Download,
-  ShieldCheck,
-  AlertCircle,
   Loader2,
-  Trash2
+  Trash2,
+  Box,
+  Layers,
+  ChevronRight
 } from 'lucide-react'
 import { apiFetch } from '../utils/api'
 import { useNotification } from '../contexts/NotificationContext'
@@ -20,16 +21,39 @@ interface Instance {
     status: string;
 }
 
+interface PluginInfo {
+    name: string;
+    githubRepo?: string;
+    category: 'core' | 'metamod' | 'cssharp';
+    description?: string;
+}
+
 const Plugins = () => {
   const navigate = useNavigate()
   const { showNotification } = useNotification()
   const { showConfirm } = useConfirmDialog()
   const [instances, setInstances] = useState<Instance[]>([])
   const [selectedServer, setSelectedServer] = useState<string | null>(null)
-  const [pluginStatus, setPluginStatus] = useState<{ metamod: boolean, cssharp: boolean, matchzy: boolean, simpleadmin: boolean }>({ metamod: false, cssharp: false, matchzy: false, simpleadmin: false })
+  const [registry, setRegistry] = useState<Record<string, PluginInfo>>({})
+  const [pluginStatus, setPluginStatus] = useState<Record<string, boolean>>({})
   const [pluginUpdates, setPluginUpdates] = useState<any>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [registryLoading, setRegistryLoading] = useState(true)
+
+  const fetchRegistry = async () => {
+      try {
+          setRegistryLoading(true);
+          const res = await apiFetch('/api/servers/plugins/registry');
+          const data = await res.json();
+          setRegistry(data);
+      } catch (e) { 
+          console.error("Failed to fetch registry", e);
+          showNotification('error', 'Plugin Gallery Error', 'Could not load plugin list from server.');
+      } finally {
+          setRegistryLoading(false);
+      }
+  };
 
   const fetchInstances = useCallback(async () => {
     try {
@@ -41,9 +65,6 @@ const Plugins = () => {
             if (data.length > 0 && !selectedServer) {
                 setSelectedServer(data[0].id.toString());
             }
-        } else {
-            console.error('Expected array from /api/servers, got:', typeof data, data);
-            setInstances([]);
         }
     } catch (error) {
         console.error('Failed to fetch instances:', error);
@@ -59,9 +80,7 @@ const Plugins = () => {
             const data = await response.json();
             setPluginStatus(data);
         }
-    } catch (error) {
-        console.error('Failed to fetch plugin status:', error);
-    }
+    } catch (error) { console.error('Failed to fetch plugin status:', error); }
   }, []);
 
   const fetchPluginUpdates = useCallback(async (id: string) => {
@@ -71,9 +90,11 @@ const Plugins = () => {
             const data = await response.json();
             setPluginUpdates(data);
         }
-    } catch (error) {
-        console.error('Failed to fetch plugin updates:', error);
-    }
+    } catch (error) { console.error('Failed to fetch plugin updates:', error); }
+  }, []);
+
+  useEffect(() => {
+    fetchRegistry();
   }, []);
 
   useEffect(() => {
@@ -84,453 +105,241 @@ const Plugins = () => {
     if (selectedServer) {
         fetchPluginStatus(selectedServer);
         fetchPluginUpdates(selectedServer);
+
+        // Automatic polling for status every 15 seconds
+        const interval = setInterval(() => {
+            fetchPluginStatus(selectedServer);
+        }, 15000);
+        
+        return () => clearInterval(interval);
     }
   }, [selectedServer, fetchPluginStatus, fetchPluginUpdates]);
 
-  // Auto-update plugins if enabled
-  useEffect(() => {
-    const autoUpdateEnabled = localStorage.getItem('autoPluginUpdates') === 'true';
-    if (!autoUpdateEnabled || !pluginUpdates || !selectedServer) return;
-
-    // Check if any plugin has updates and auto-update them
-    const updatePlugins = async () => {
-      if (pluginUpdates.matchzy?.hasUpdate && pluginStatus.matchzy) {
-        console.log('Auto-updating MatchZy...');
-        await handleUpdate('matchzy');
-      }
-      if (pluginUpdates.simpleadmin?.hasUpdate && pluginStatus.simpleadmin) {
-        console.log('Auto-updating SimpleAdmin...');
-        await handleUpdate('simpleadmin');
-      }
-    };
-
-    updatePlugins();
-  }, [pluginUpdates]); // Only run when updates are fetched
-
-  const handleUpdate = async (plugin: 'matchzy' | 'simpleadmin') => {
+  const handleAction = async (plugin: string, action: 'install' | 'uninstall' | 'update') => {
     if (!selectedServer) return;
 
-    const pluginName = plugin === 'matchzy' ? 'MatchZy' : 'CS2-SimpleAdmin';
-    
+    const pluginInfo = registry[plugin];
+    const pluginName = pluginInfo?.name || plugin;
+
+    // Logic guards
+    if (action === 'install') {
+        if (pluginInfo.category === 'cssharp' && !pluginStatus.metamod) {
+            return showNotification('warning', 'Requirement Missing', 'Metamod:Source is required before installing C# plugins.');
+        }
+        if (pluginInfo.category === 'cssharp' && plugin !== 'cssharp' && !pluginStatus.cssharp) {
+            return showNotification('warning', 'Requirement Missing', 'CounterStrikeSharp is required first.');
+        }
+    }
+
     const confirmed = await showConfirm({
-      title: `Update ${pluginName}?`,
-      message: `This will uninstall the current version and install the latest version from GitHub. The server will need to be restarted.`,
-      confirmText: 'Update Now',
-      type: 'warning'
+      title: `${action.charAt(0).toUpperCase() + action.slice(1)} ${pluginName}?`,
+      message: `Are you sure you want to ${action} ${pluginName}? Sub-dependencies will be handled automatically. ${action === 'uninstall' ? 'This may impact other plugins.' : 'The server should be OFFLINE for a safe installation.'}`,
+      confirmText: `${action.charAt(0).toUpperCase() + action.slice(1)} Now`,
+      type: action === 'uninstall' ? 'danger' : 'warning'
     });
 
     if (!confirmed) return;
 
     setActionLoading(plugin);
     try {
-      const response = await apiFetch(`/api/servers/${selectedServer}/plugins/update-${plugin}`, {
-        method: 'POST'
-      });
+      const response = await apiFetch(`/api/servers/${selectedServer}/plugins/${plugin}/${action}`, { method: 'POST' });
+      const data = await response.json();
 
       if (response.ok) {
-        showNotification('success', `${pluginName} updated successfully!`);
+        showNotification('success', 'Operation Successful', `${pluginName} ${action}ed successfully!`);
         await fetchPluginStatus(selectedServer);
         await fetchPluginUpdates(selectedServer);
       } else {
-        const data = await response.json();
-        showNotification('error', data.message || 'Update failed');
+        showNotification('error', 'Operation Failed', data.message || 'Action failed');
       }
     } catch (error) {
-      showNotification('error', 'Failed to update plugin');
+      showNotification('error', 'Critical Error', 'Network or Server failure.');
     } finally {
       setActionLoading(null);
     }
   };
 
-  const handleAction = async (plugin: 'metamod' | 'cssharp' | 'matchzy' | 'simpleadmin', action: 'install' | 'uninstall') => {
-    if (!selectedServer) return;
+  const renderUnifiedPluginTable = () => {
+    const sections = [
+        { id: 'core', name: 'Core Foundations', icon: <Layers size={14} className="text-primary" /> },
+        { id: 'metamod', name: 'Metamod Plugin', icon: <Cpu size={14} className="text-primary" /> },
+        { id: 'cssharp', name: 'CounterStrikeSharp Plugin', icon: <Zap size={14} className="text-primary" /> }
+    ];
 
-    let pluginName = '';
-    switch(plugin) {
-        case 'metamod': pluginName = 'Metamod:Source'; break;
-        case 'cssharp': pluginName = 'CounterStrikeSharp'; break;
-        case 'matchzy': pluginName = 'MatchZy'; break;
-        case 'simpleadmin': pluginName = 'CS2-SimpleAdmin'; break;
-    }
+    return (
+      <div className="bg-[#111827]/40 border border-gray-800/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden max-h-[calc(100vh-250px)]">
+        <div className="overflow-y-auto scrollbar-hide">
+          <table className="w-full text-left border-collapse">
+            <thead className="sticky top-0 z-30 bg-[#0c1424] border-b border-gray-800/80">
+              <tr>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Plugin</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 hidden lg:table-cell">Description</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Version</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-800/20">
+            {sections.map(section => {
+              const sectionPlugins = Object.entries(registry).filter(([_, info]) => info.category === section.id);
+              if (sectionPlugins.length === 0) return null;
 
-    // Check requirements for install
-    if (action === 'install') {
-        if (plugin === 'cssharp' && !pluginStatus.metamod) {
-            showNotification('warning', 'Requirement Missing', 'Metamod required before installing CounterStrikeSharp');
-            return;
-        }
-        if ((plugin === 'matchzy' || plugin === 'simpleadmin') && !pluginStatus.cssharp) {
-            showNotification('warning', 'Requirement Missing', 'CounterStrikeSharp required before installing this plugin');
-            return;
-        }
-    }
+              return (
+                <React.Fragment key={section.id}>
+                  {/* Category Header Row */}
+                  <tr className="bg-primary/[0.03] border-y border-gray-800/40">
+                    <td colSpan={4} className="px-6 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center border border-primary/20">
+                          {section.icon}
+                        </div>
+                        <span className="text-[11px] font-black text-gray-300 uppercase tracking-[0.2em]">{section.name}</span>
+                        {section.id === 'metamod' && !pluginStatus['metamod'] && (
+                            <span className="text-[8px] font-bold text-yellow-500/60 bg-yellow-500/5 px-2 py-0.5 rounded border border-yellow-500/10 uppercase ml-2">Req. Metamod:Source</span>
+                        )}
+                        {section.id === 'cssharp' && !pluginStatus['cssharp'] && (
+                            <span className="text-[8px] font-bold text-yellow-500/60 bg-yellow-500/5 px-2 py-0.5 rounded border border-yellow-500/10 uppercase ml-2">Req. CounterStrikeSharp</span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                  
+                  {/* Plugin Rows */}
+                  {sectionPlugins.map(([pid, info]) => {
+                    const isInstalled = pluginStatus[pid];
+                    const hasUpdate = pluginUpdates?.[pid]?.hasUpdate;
+                    const isLoading = actionLoading === pid;
+                    const updates = pluginUpdates?.[pid];
 
-    const isConfirmed = await showConfirm({
-        title: `${action === 'install' ? 'Install' : 'Uninstall'} ${pluginName}`,
-        message: `Are you sure you want to ${action} ${pluginName}? ${action === 'uninstall' ? 'This might affect other dependent plugins.' : 'The server should be OFFLINE for a safe installation.'}`,
-        confirmText: `${action === 'install' ? 'Install' : 'Uninstall'} Now`,
-        type: action === 'uninstall' ? 'danger' : 'warning'
-    });
-
-    if (!isConfirmed) return;
-
-    setActionLoading(plugin);
-    try {
-        const endpoint = `/api/servers/${selectedServer}/plugins/${action}-${plugin}`;
-        const response = await apiFetch(endpoint, {
-            method: 'POST'
-        });
-        
-        if (response.ok) {
-            showNotification('success', 'Operation Successful', `${pluginName} ${action}ed successfully!`);
-            fetchPluginStatus(selectedServer);
-        } else {
-            const err = await response.json();
-            showNotification('error', 'Operation Failed', err.message);
-        }
-    } catch (error) {
-        console.error(`Failed to ${action} plugin:`, error);
-        showNotification('error', 'Error', `An error occurred during ${action}.`);
-    } finally {
-        setActionLoading(null);
-    }
+                    return (
+                      <tr key={pid} className="group hover:bg-primary/[0.01] transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-4">
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${isInstalled ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-gray-800/40 text-gray-500 border border-gray-800/40'}`}>
+                              {pid === 'metamod' || info.category === 'metamod' ? <Cpu size={18} /> : 
+                               pid === 'cssharp' || info.category === 'cssharp' ? <Zap size={18} /> : 
+                               <Layers size={18} />}
+                            </div>
+                            <div>
+                              <div className="text-sm font-bold text-white group-hover:text-primary transition-colors">{info.name}</div>
+                              <span className={`text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded mt-1 inline-block ${isInstalled ? 'bg-green-500/10 text-green-500' : 'bg-gray-800/60 text-gray-500'}`}>
+                                {isInstalled ? 'Installed' : 'Not Loaded'}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 hidden lg:table-cell">
+                          <p className="text-xs text-gray-500 max-w-sm line-clamp-1">
+                            {info.description || `High-performance module.`}
+                          </p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col">
+                            <span className="text-[11px] font-mono font-bold text-gray-400">
+                              {isInstalled ? `v${updates?.currentVersion || '?.?.?'}` : '--'}
+                            </span>
+                            {hasUpdate && isInstalled && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <span className="text-[9px] font-black text-yellow-500 animate-pulse uppercase">Update</span>
+                                <span className="text-[9px] text-yellow-500/50 font-medium">→ v{updates.latestVersion}</span>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            {isInstalled ? (
+                              <>
+                                {hasUpdate && (
+                                  <button 
+                                    disabled={actionLoading !== null}
+                                    onClick={() => handleAction(pid, 'update')}
+                                    className="p-1.5 bg-green-500/10 text-green-500 rounded-lg hover:bg-green-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                                  </button>
+                                )}
+                                <button 
+                                  disabled={actionLoading !== null}
+                                  onClick={() => handleAction(pid, 'uninstall')}
+                                  className="p-1.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                </button>
+                              </>
+                            ) : (
+                              <button 
+                                disabled={
+                                  actionLoading !== null || 
+                                  (pid !== 'metamod' && !pluginStatus['metamod']) || 
+                                  (info.category === 'cssharp' && pid !== 'cssharp' && !pluginStatus['cssharp'])
+                                }
+                                onClick={() => handleAction(pid, 'install')}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-primary text-white text-[10px] font-black uppercase tracking-wider rounded-lg hover:bg-blue-600 transition-all active:scale-95 shadow-lg shadow-primary/10 disabled:bg-gray-800/50 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed"
+                              >
+                                {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                                Install
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+        </div>
+      </div>
+    );
   };
 
-  if (loading && instances.length === 0) {
+  if ((loading || registryLoading) && instances.length === 0) {
     return (
         <div className="p-6 flex flex-col items-center justify-center min-h-[60vh]">
             <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-            <p className="text-gray-400 font-bold animate-pulse">Synchronizing with server...</p>
-        </div>
-    );
-  }
-
-  if (instances.length === 0 && !loading) {
-    return (
-        <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] text-center">
-            <div className="w-20 h-20 bg-gray-800/50 rounded-full flex items-center justify-center mb-6 border border-gray-700">
-                <ServerIcon size={40} className="text-gray-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-2">No Servers Found</h2>
-            <p className="text-gray-400 max-w-md mb-8">You need to create at least one server instance before you can manage addons and plugins.</p>
-            <button 
-                onClick={() => navigate('/instances')}
-                className="bg-primary hover:bg-blue-600 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary/20"
-            >
-                Create First Instance
-            </button>
+            <p className="text-gray-400 font-bold animate-pulse uppercase tracking-[0.2em] text-xs">Synchronizing Galaxy...</p>
         </div>
     );
   }
 
   return (
-    <div className="p-6 font-display overflow-y-auto max-h-[calc(100vh-64px)]">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div className="p-6 font-display overflow-y-auto max-h-[calc(100vh-64px)] scrollbar-hide">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Addons & Plugins</h2>
-          <p className="text-sm text-gray-400 mt-1">Enhance your CS2 server with professional management tools</p>
+            <h2 className="text-2xl font-bold text-white tracking-tight">Plugin Galaxy</h2>
+            <p className="text-sm text-gray-400 mt-1">One-click deployment for professional CS2 server environments</p>
         </div>
         
-        <div className="flex items-center space-x-4 bg-[#111827] border border-gray-800 p-1.5 rounded-xl shadow-inner">
-            <div className="flex items-center px-3 text-gray-500 border-r border-gray-800">
-                <ServerIcon size={16} className="mr-2" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Target Server</span>
+        <div className="flex items-center space-x-4 bg-[#0c1424] border border-gray-800/50 p-2 rounded-2xl shadow-2xl">
+            <div className="flex items-center px-4 py-2 text-gray-400 bg-gray-900/50 rounded-xl border border-gray-800">
+                <ServerIcon size={16} className="mr-3 text-primary" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Target Node:</span>
             </div>
             <select 
-                className="bg-transparent text-white text-sm font-bold outline-none px-3 py-1 cursor-pointer pr-8"
+                className="bg-transparent text-white text-sm font-bold outline-none px-4 py-2 cursor-pointer appearance-none min-w-[150px]"
                 value={selectedServer || ''}
                 onChange={(e) => setSelectedServer(e.target.value)}
             >
-                {Array.isArray(instances) && instances.map((inst: Instance) => (
-                    <option key={inst.id} value={inst.id} className="bg-[#111827]">{inst.name}</option>
+                {instances.map((inst: Instance) => (
+                    <option key={inst.id} value={inst.id} className="bg-[#0c1424]">{inst.name}</option>
                 ))}
             </select>
+            <ChevronRight size={16} className="text-gray-600 mr-2" />
         </div>
       </header>
 
-      {/* Core Frameworks Section */}
-      <section className="mb-12">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-6 uppercase tracking-wider text-[13px]">
-            <Zap className="text-primary w-5 h-5" />
-            Core Frameworks
-        </h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Metamod Card */}
-            <div className={`bg-[#111827] border ${pluginStatus.metamod ? 'border-primary/30 bg-primary/5' : 'border-gray-800'} rounded-2xl p-6 transition-all relative overflow-hidden group`}>
-                <div className="absolute top-0 right-0 p-8 opacity-5 -mr-4 -mt-4 transform group-hover:scale-110 transition-transform">
-                    <Cpu size={120} />
-                </div>
-                
-                <div className="flex items-start justify-between relative z-10">
-                    <div className="flex items-center space-x-4">
-                        <div className={`w-14 h-14 rounded-2xl ${pluginStatus.metamod ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-gray-800 text-gray-400'} flex items-center justify-center transition-all`}>
-                            <Cpu size={28} />
-                        </div>
-                        <div>
-                            <h4 className="text-xl font-bold text-white">Metamod:Source</h4>
-                            <p className="text-sm text-gray-500">Essential base framework</p>
-                        </div>
-                    </div>
-                    {pluginStatus.metamod ? (
-                        <span className="px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-[10px] font-black uppercase tracking-widest border border-green-500/20">Installed</span>
-                    ) : (
-                        <span className="px-3 py-1 rounded-full bg-gray-800 text-gray-500 text-[10px] font-black uppercase tracking-widest">Not Detected</span>
-                    )}
-                </div>
-                
-                <p className="mt-6 text-gray-400 text-sm leading-relaxed relative z-10">
-                    The core framework required for almost all CS2 server extensions. It handles plugin orchestration and low-level engine hooks.
-                </p>
-                
-                <div className="mt-8 flex items-center justify-between relative z-10">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-gray-600">Version 2.0 (Source 2)</div>
-                    <div className="flex gap-2">
-                        {pluginStatus.metamod ? (
-                            <button 
-                                disabled={actionLoading !== null}
-                                onClick={() => handleAction('metamod', 'uninstall')}
-                                className="flex items-center px-4 py-2 rounded-lg text-xs font-bold transition-all bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
-                            >
-                                {actionLoading === 'metamod' ? (
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                ) : (
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                )}
-                                Uninstall
-                            </button>
-                        ) : (
-                            <button 
-                                disabled={actionLoading !== null}
-                                onClick={() => handleAction('metamod', 'install')}
-                                className="flex items-center px-4 py-2 rounded-lg text-xs font-bold transition-all bg-primary text-white hover:bg-blue-600 shadow-lg shadow-primary/20 active:scale-95"
-                            >
-                                {actionLoading === 'metamod' ? (
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                ) : (
-                                    <Download className="w-4 h-4 mr-2" />
-                                )}
-                                Install Framework
-                            </button>
-                        )}
-                    </div>
-                </div>
-            </div>
+      {renderUnifiedPluginTable()}
 
-            {/* CS Sharp Card */}
-            <div className={`bg-[#111827] border ${pluginStatus.cssharp ? 'border-primary/30 bg-primary/5' : 'border-gray-800'} rounded-2xl p-6 transition-all relative overflow-hidden group`}>
-                <div className="absolute top-0 right-0 p-8 opacity-5 -mr-4 -mt-4 transform group-hover:scale-110 transition-transform">
-                    <Zap size={120} />
-                </div>
-                
-                <div className="flex items-start justify-between relative z-10">
-                    <div className="flex items-center space-x-4">
-                        <div className={`w-14 h-14 rounded-2xl ${pluginStatus.cssharp ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-gray-800 text-gray-400'} flex items-center justify-center transition-all`}>
-                            <Zap size={28} />
-                        </div>
-                        <div>
-                            <h4 className="text-xl font-bold text-white">CounterStrikeSharp</h4>
-                            <p className="text-sm text-gray-500">C# Scripting Platform</p>
-                        </div>
-                    </div>
-                    {pluginStatus.cssharp ? (
-                        <span className="px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-[10px] font-black uppercase tracking-widest border border-green-500/20">Installed</span>
-                    ) : (
-                        <span className="px-3 py-1 rounded-full bg-gray-800 text-gray-500 text-[10px] font-black uppercase tracking-widest">Not Detected</span>
-                    )}
-                </div>
-                
-                <p className="mt-6 text-gray-400 text-sm leading-relaxed relative z-10">
-                    A powerful platform for creating server-side plugins using C#. It provides a modern API for gameplay modification and admin tools.
-                </p>
-                
-                <div className="mt-8 flex items-center justify-between relative z-10">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-gray-600">Requires Metamod</div>
-                    <div className="flex gap-2">
-                        {pluginStatus.cssharp ? (
-                            <button 
-                                disabled={actionLoading !== null}
-                                onClick={() => handleAction('cssharp', 'uninstall')}
-                                className="flex items-center px-4 py-2 rounded-lg text-xs font-bold transition-all bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
-                            >
-                                {actionLoading === 'cssharp' ? (
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                ) : (
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                )}
-                                Uninstall
-                            </button>
-                        ) : (
-                            <button 
-                                disabled={actionLoading !== null}
-                                onClick={() => handleAction('cssharp', 'install')}
-                                className="flex items-center px-4 py-2 rounded-lg text-xs font-bold transition-all bg-primary text-white hover:bg-blue-600 shadow-lg shadow-primary/20 active:scale-95"
-                            >
-                                {actionLoading === 'cssharp' ? (
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                ) : (
-                                    <Download className="w-4 h-4 mr-2" />
-                                )}
-                                Install Platform
-                            </button>
-                        )}
-                    </div>
-                </div>
-            </div>
+      {instances.length === 0 && !loading && (
+        <div className="flex flex-col items-center justify-center py-20 bg-gray-900/30 rounded-3xl border-2 border-dashed border-gray-800">
+            <Box size={60} className="text-gray-700 mb-6" />
+            <h3 className="text-xl font-bold text-gray-400">Atmosphere is Empty</h3>
+            <p className="text-sm text-gray-500 mt-2 mb-8">Create your first server instance to begin modding.</p>
+            <button onClick={() => navigate('/instances')} className="bg-primary text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:scale-105 transition-all">Command Center</button>
         </div>
-      </section>
-
-      {/* Featured Plugins Section */}
-      <section className="mb-12">
-        <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2 uppercase tracking-wider text-[13px]">
-                <ShieldCheck className="text-primary w-5 h-5" />
-                One-Click Plugin Gallery
-            </h3>
-            <div className="flex items-center space-x-2 bg-blue-500/10 text-primary px-3 py-1 rounded-lg border border-primary/20">
-                <AlertCircle size={14} />
-                <span className="text-[10px] font-bold">Requires CounterStrikeSharp</span>
-            </div>
-        </div>
-
-        <div className="bg-[#111827] rounded-2xl border border-gray-800 overflow-hidden shadow-2xl">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-800/50 text-left">
-              <thead>
-                <tr className="bg-[#0c1424]">
-                  <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-gray-500">Plugin Name</th>
-                  <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-gray-500">Author</th>
-                  <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-gray-500">Description</th>
-                  <th className="py-4 px-6 text-right text-[10px] font-black uppercase tracking-widest text-gray-500">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-800/30">
-                <tr className="hover:bg-white/[0.02] transition-colors group">
-                    <td className="py-4 px-6">
-                        <div className="font-bold text-white text-sm">MatchZy</div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-[11px] text-gray-500">v0.8.15</span>
-                            {pluginUpdates?.matchzy?.hasUpdate && (
-                                <span className="px-2 py-0.5 bg-green-500/10 text-green-500 rounded text-[9px] font-bold border border-green-500/20 animate-pulse">
-                                    {pluginUpdates.matchzy.latestVersion} Available
-                                </span>
-                            )}
-                        </div>
-                    </td>
-                    <td className="py-4 px-6 text-xs text-gray-400">shobhit-pathak</td>
-                    <td className="py-4 px-6 text-xs text-gray-400">Competitive match & practice system for CS2 servers.</td>
-                    <td className="py-4 px-6 text-right">
-                        <div className="flex items-center gap-2 justify-end">
-                            {pluginStatus.matchzy ? (
-                                <>
-                                    {pluginUpdates?.matchzy?.hasUpdate && (
-                                        <button 
-                                            disabled={actionLoading !== null}
-                                            onClick={() => handleUpdate('matchzy')}
-                                            className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded hover:bg-green-500/20 border border-green-500/20 transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2"
-                                        >
-                                            {actionLoading === 'matchzy' ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-                                            Update
-                                        </button>
-                                    )}
-                                    <button 
-                                        disabled={actionLoading !== null}
-                                        onClick={() => handleAction('matchzy', 'uninstall')}
-                                        className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 border border-red-500/20 transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2"
-                                    >
-                                        {actionLoading === 'matchzy' ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                                        Uninstall
-                                    </button>
-                                </>
-                            ) : (
-                                <button 
-                                    disabled={actionLoading !== null || !pluginStatus.cssharp}
-                                    onClick={() => handleAction('matchzy', 'install')}
-                                    className={`px-3 py-1.5 rounded transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ${
-                                        !pluginStatus.cssharp 
-                                        ? 'bg-gray-800 text-gray-500 cursor-not-allowed' 
-                                        : 'bg-gray-800 text-gray-300 hover:bg-primary hover:text-white'
-                                    }`}
-                                    title={!pluginStatus.cssharp ? "Requires CounterStrikeSharp" : ""}
-                                >
-                                    {actionLoading === 'matchzy' ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-                                    Install
-                                </button>
-                            )}
-                        </div>
-                    </td>
-                </tr>
-                <tr className="hover:bg-white/[0.02] transition-colors group">
-                    <td className="py-4 px-6">
-                        <div className="font-bold text-white text-sm">Puddin's Skin Changer</div>
-                        <div className="text-[11px] text-gray-500">v1.2.0</div>
-                    </td>
-                    <td className="py-4 px-6 text-xs text-gray-400">Pudding</td>
-                    <td className="py-4 px-6 text-xs text-gray-400">Advanced weapon skin and knife changer for CS2.</td>
-                    <td className="py-4 px-6 text-right">
-                        <button className="px-3 py-1.5 bg-gray-800 text-gray-300 rounded hover:bg-primary hover:text-white transition-all text-[10px] font-bold uppercase tracking-widest">Install</button>
-                    </td>
-                </tr>
-                <tr className="hover:bg-white/[0.02] transition-colors group">
-                    <td className="py-4 px-6">
-                        <div className="font-bold text-white text-sm">CS2 SimpleAdmin</div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-[11px] text-gray-500">v1.7.8-beta-8</span>
-                            {pluginUpdates?.simpleadmin?.hasUpdate && (
-                                <span className="px-2 py-0.5 bg-green-500/10 text-green-500 rounded text-[9px] font-bold border border-green-500/20 animate-pulse">
-                                    {pluginUpdates.simpleadmin.latestVersion} Available
-                                </span>
-                            )}
-                        </div>
-                    </td>
-                    <td className="py-4 px-6 text-xs text-gray-400">daffyyyy</td>
-                    <td className="py-4 px-6 text-xs text-gray-400">Essential admin commands (kick, ban, map) and player management.</td>
-                    <td className="py-4 px-6 text-right">
-                        <div className="flex items-center gap-2 justify-end">
-                            {pluginStatus.simpleadmin ? (
-                                <>
-                                    {pluginUpdates?.simpleadmin?.hasUpdate && (
-                                        <button 
-                                            disabled={actionLoading !== null}
-                                            onClick={() => handleUpdate('simpleadmin')}
-                                            className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded hover:bg-green-500/20 border border-green-500/20 transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2"
-                                        >
-                                            {actionLoading === 'simpleadmin' ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-                                            Update
-                                        </button>
-                                    )}
-                                    <button 
-                                        disabled={actionLoading !== null}
-                                        onClick={() => handleAction('simpleadmin', 'uninstall')}
-                                        className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 border border-red-500/20 transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2"
-                                    >
-                                        {actionLoading === 'simpleadmin' ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                                        Uninstall
-                                    </button>
-                                </>
-                            ) : (
-                                <button 
-                                    disabled={actionLoading !== null || !pluginStatus.cssharp}
-                                    onClick={() => handleAction('simpleadmin', 'install')}
-                                    className={`px-3 py-1.5 rounded transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ${
-                                        !pluginStatus.cssharp 
-                                        ? 'bg-gray-800 text-gray-500 cursor-not-allowed' 
-                                        : 'bg-gray-800 text-gray-300 hover:bg-primary hover:text-white'
-                                    }`}
-                                    title={!pluginStatus.cssharp ? "Requires CounterStrikeSharp" : ""}
-                                >
-                                    {actionLoading === 'simpleadmin' ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-                                    Install
-                                </button>
-                            )}
-                        </div>
-                    </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
+      )}
     </div>
   )
 }

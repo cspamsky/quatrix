@@ -137,4 +137,16 @@ initializeSetting('steamcmd_path', path.join(defaultDataDir, 'steamcmd/steamcmd.
 initializeSetting('install_dir', path.join(defaultDataDir, 'servers'));
 initializeSetting('auto_plugin_updates', 'false');
 
+// Create server_plugins table to track installed versions
+db.exec(`
+  CREATE TABLE IF NOT EXISTS server_plugins (
+    server_id INTEGER NOT NULL,
+    plugin_id TEXT NOT NULL,
+    version TEXT,
+    installed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (server_id, plugin_id),
+    FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
+  )
+`);
+
 export default db;

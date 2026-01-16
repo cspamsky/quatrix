@@ -2,10 +2,17 @@ import { Router } from "express";
 import db from "../db.js";
 import { serverManager } from "../serverManager.js";
 import { authenticateToken } from "../middleware/auth.js";
+import { pluginRegistry, type PluginId } from "../config/plugins.js";
 
 const router = Router();
 
 router.use(authenticateToken);
+
+// GET /api/servers/plugins/registry
+router.get("/plugins/registry", async (req: any, res) => {
+    const registry = await serverManager.getPluginRegistry();
+    res.json(registry);
+});
 
 // GET /api/servers/:id/plugins/status
 router.get("/:id/plugins/status", async (req: any, res) => {
@@ -25,61 +32,44 @@ router.get("/:id/plugins/status", async (req: any, res) => {
 router.get("/:id/plugins/updates", async (req: any, res) => {
     const { id } = req.params;
     try {
-        const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
-        if (!server) return res.status(404).json({ message: "Server not found" });
+        const updateChecks = await Promise.all(
+            (Object.keys(pluginRegistry) as PluginId[]).map(pid => serverManager.checkPluginUpdate(pid))
+        );
 
-        const updates = await Promise.all([
-            serverManager.checkPluginUpdate('metamod'),
-            serverManager.checkPluginUpdate('cssharp'),
-            serverManager.checkPluginUpdate('matchzy'),
-            serverManager.checkPluginUpdate('simpleadmin')
-        ]);
-
-        res.json({
-            metamod: updates[0],
-            cssharp: updates[1],
-            matchzy: updates[2],
-            simpleadmin: updates[3]
+        const updates: Record<string, any> = {};
+        (Object.keys(pluginRegistry) as PluginId[]).forEach((pid, index) => {
+            updates[pid] = updateChecks[index];
         });
+
+        res.json(updates);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 });
 
-// Generic Install/Uninstall Action Handler
+// Generic Plugin Action (Install/Uninstall/Update)
 router.post("/:id/plugins/:plugin/:action", async (req: any, res) => {
     const { id, plugin, action } = req.params;
     try {
         const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
         if (!server) return res.status(404).json({ message: "Server not found" });
 
-        // Normalize action function names
-        let methodName = '';
+        const registry = await serverManager.getPluginRegistry();
+        const pluginId = plugin as PluginId;
+        
+        if (!registry[pluginId]) {
+            return res.status(400).json({ message: "Invalid plugin" });
+        }
+
         if (action === 'install') {
-            if (plugin === 'matchzy') methodName = 'installMatchZy';
-            else if (plugin === 'simpleadmin') methodName = 'installSimpleAdmin';
-            else if (plugin === 'metamod') methodName = 'installMetamod';
-            else if (plugin === 'cssharp') methodName = 'installCounterStrikeSharp';
+            await serverManager.installPlugin(id, pluginId);
         } else if (action === 'uninstall') {
-            if (plugin === 'matchzy') methodName = 'uninstallMatchZy';
-            else if (plugin === 'simpleadmin') methodName = 'uninstallSimpleAdmin';
-            else if (plugin === 'metamod') methodName = 'uninstallMetamod';
-            else if (plugin === 'cssharp') methodName = 'uninstallCounterStrikeSharp';
+            await serverManager.uninstallPlugin(id, pluginId);
         } else if (action === 'update') {
-             methodName = 'updatePlugin';
+            await serverManager.updatePlugin(id, pluginId);
         }
 
-        if (!methodName || !(serverManager as any)[methodName]) {
-            return res.status(400).json({ message: "Invalid plugin or action" });
-        }
-
-        if (action === 'update') {
-            await serverManager.updatePlugin(id, plugin);
-        } else {
-            await (serverManager as any)[methodName](id);
-        }
-
-        res.json({ message: `${plugin} ${action}ed successfully` });
+        res.json({ message: `${registry[pluginId].name} ${action}ed successfully` });
     } catch (error: any) {
         console.error(`Plugin ${action} error:`, error);
         res.status(500).json({ message: error.message });
