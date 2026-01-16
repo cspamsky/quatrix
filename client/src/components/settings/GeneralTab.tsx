@@ -1,0 +1,122 @@
+import React from 'react'
+import { Settings as SettingsIcon, Save } from 'lucide-react'
+
+interface GeneralTabProps {
+  panelName: string
+  setPanelName: (val: string) => void
+  defaultPort: string
+  setDefaultPort: (val: string) => void
+  autoBackup: boolean
+  setAutoBackup: (val: boolean) => void
+  autoPluginUpdates: boolean
+  setAutoPluginUpdates: (val: boolean) => void
+  onSave: () => void
+}
+
+const GeneralTab: React.FC<GeneralTabProps> = ({
+  panelName,
+  setPanelName,
+  defaultPort,
+  setDefaultPort,
+  autoBackup,
+  setAutoBackup,
+  autoPluginUpdates,
+  setAutoPluginUpdates,
+  onSave
+}) => {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className="space-y-8">
+        <div>
+          <div className="flex items-center gap-2 mb-6">
+            <SettingsIcon className="text-primary w-5 h-5" />
+            <h3 className="text-lg font-bold text-white tracking-tight">General Configuration</h3>
+          </div>
+          <form className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-2">Panel Name</label>
+              <input 
+                className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600" 
+                type="text" 
+                value={panelName}
+                onChange={(e) => setPanelName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-2">Default Server Port</label>
+              <input 
+                className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600" 
+                type="number" 
+                value={defaultPort}
+                onChange={(e) => setDefaultPort(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center justify-between p-5 bg-[#0d1624] rounded-2xl border border-gray-800/50">
+              <div>
+                <p className="text-sm font-bold text-white">Automatic Backups</p>
+                <p className="text-xs text-gray-500 mt-1">Backup server data every 24 hours</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="sr-only peer" 
+                  checked={autoBackup}
+                  onChange={(e) => setAutoBackup(e.target.checked)}
+                />
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+              </label>
+            </div>
+            <div className="flex items-center justify-between p-5 bg-[#0d1624] rounded-2xl border border-gray-800/50">
+              <div>
+                <p className="text-sm font-bold text-white">Auto Plugin Updates</p>
+                <p className="text-xs text-gray-500 mt-1">Automatically update MatchZy & SimpleAdmin when new versions are available</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="sr-only peer" 
+                  checked={autoPluginUpdates}
+                  onChange={(e) => setAutoPluginUpdates(e.target.checked)}
+                />
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+              </label>
+            </div>
+            <button 
+              onClick={onSave}
+              className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-primary/20 active:scale-95" 
+              type="button"
+            >
+              <Save size={18} />
+              Save Changes
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div className="space-y-10">
+        <div>
+          <div className="flex items-center gap-2 mb-6">
+            <SettingsIcon className="text-primary w-5 h-5" aria-hidden="true" />
+            <h3 className="text-lg font-bold text-white tracking-tight">System Information</h3>
+          </div>
+          <div className="p-6 bg-[#0d1624] rounded-2xl border border-gray-800/50 space-y-4">
+             <div className="flex justify-between text-sm">
+               <span className="text-gray-500">Node.js Version</span>
+               <span className="text-gray-300 font-mono">v18.17.0</span>
+             </div>
+             <div className="flex justify-between text-sm">
+               <span className="text-gray-500">Panel Version</span>
+               <span className="text-gray-300 font-mono">1.0.0-stable</span>
+             </div>
+             <div className="flex justify-between text-sm">
+               <span className="text-gray-500">OS</span>
+               <span className="text-gray-300">Linux / Ubuntu 22.04</span>
+             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default GeneralTab
