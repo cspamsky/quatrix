@@ -210,7 +210,15 @@ export class PluginManager {
         if (fs.existsSync(gameinfo)) {
             let content = fs.readFileSync(gameinfo, 'utf8');
             if (!content.includes('csgo/addons/metamod')) {
-                content = content.replace(/(SearchPaths\s*\{)/, '$1\n\t\t\tGame\tcsgo/addons/metamod');
+                // Target the specific line requested by the user
+                const targetLine = /Game_LowViolence\s+csgo_lv\s+\/\/\s+Perfect World content override/i;
+                
+                if (targetLine.test(content)) {
+                    content = content.replace(targetLine, '$&\n\t\t\tGame\tcsgo/addons/metamod');
+                } else {
+                    // Fallback injection point
+                    content = content.replace(/(SearchPaths\s*\{)/, '$1\n\t\t\tGame\tcsgo/addons/metamod');
+                }
                 fs.writeFileSync(gameinfo, content);
             }
         }
