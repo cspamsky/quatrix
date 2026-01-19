@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, type ReactNode } from 'react'
 import { CheckCircle, XCircle, AlertCircle, Info, X } from 'lucide-react'
 
+import { generateUUID } from '../utils/uuid'
+
 type NotificationType = 'success' | 'error' | 'warning' | 'info'
 
 interface Notification {
@@ -34,7 +36,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     message?: string,
     duration: number = 5000
   ) => {
-    const id = crypto.randomUUID()
+    const id = generateUUID()
     const notification: Notification = { id, type, title, message, duration }
 
     setNotifications(prev => [...prev, notification])

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useParams } from "react-router-dom";
 import socket from '../utils/socket'
+import { generateUUID } from "../utils/uuid";
 
 interface LogEntry {
   id: string;
@@ -29,7 +30,7 @@ const Console = () => {
   const [server, setServer] = useState<Server | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([
     {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       timestamp: new Date().toLocaleTimeString(),
       type: "INFO",
       message: id
@@ -74,14 +75,14 @@ const Console = () => {
 
             if (match) {
               return {
-                id: crypto.randomUUID(),
+                id: generateUUID(),
                 timestamp: new Date(match[1]).toLocaleTimeString(),
                 type: "RAW" as const,
                 message: match[2],
               };
             }
             return {
-              id: crypto.randomUUID(),
+              id: generateUUID(),
               timestamp: "",
               type: "RAW" as const,
               message: log,
@@ -137,7 +138,7 @@ const Console = () => {
         } else {
           newLogs = [
             ...prev,
-            { id: crypto.randomUUID(), timestamp, type, message },
+            { id: generateUUID(), timestamp, type, message },
           ];
         }
 
@@ -207,7 +208,7 @@ const Console = () => {
         setLogs((prev) => [
           ...prev,
           {
-            id: crypto.randomUUID(),
+            id: generateUUID(),
             timestamp: new Date().toLocaleTimeString(),
             type: "INFO",
             message: data.message || `Action ${action} initiated`,
@@ -243,7 +244,7 @@ const Console = () => {
       setLogs((prev) => [
         ...prev,
         {
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           timestamp: new Date().toLocaleTimeString(),
           type: "ERROR",
           message: `Connection error: ${error}`,
@@ -284,7 +285,7 @@ const Console = () => {
         setLogs((prev) => [
           ...prev,
           {
-            id: crypto.randomUUID(),
+            id: generateUUID(),
             timestamp: new Date().toLocaleTimeString(),
             type: "INFO",
             message: "Force update/validation started...",
