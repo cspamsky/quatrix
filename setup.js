@@ -31,8 +31,22 @@ async function runSetup() {
         // 1. Environment Check
         const nodeVersion = process.versions.node;
         log(C.blue, "CHECK", `Node.js Version: ${C.bright}${nodeVersion}${C.reset}`);
-        
-        // 2. Secret Generation (.env)
+
+        // 2. Linux Dependency Check (SteamCMD requirements)
+        if (process.platform === 'linux') {
+            log(C.cyan, "SYSTEM", "Detected Linux environment. Checking for SteamCMD dependencies...");
+            try {
+                log(C.magenta, "DEPS", "Attempting to install 32-bit libraries (requires sudo)...");
+                // This will prompt for password if needed because of stdio: inherit
+                execSync('sudo apt-get update && sudo apt-get install -y lib32gcc-s1 lib32stdc++6 libc6-i386 lib32z1', { stdio: 'inherit' });
+                log(C.green, "SUCCESS", "Linux dependencies are ready.");
+            } catch (err) {
+                log(C.yellow, "WARNING", "Could not install dependencies automatically.");
+                log(C.yellow, "TIP", "Please run: sudo apt-get update && sudo apt-get install -y lib32gcc-s1 lib32stdc++6 libc6-i386 lib32z1");
+            }
+        }
+
+        // 3. Secret Generation (.env)
         const serverEnvPath = path.join(__dirname, 'server', '.env');
         const serverEnvExamplePath = path.join(__dirname, 'server', '.env.example');
 
