@@ -46,26 +46,29 @@ async function runSetup() {
             }
         }
 
-        // 3. Secret Generation (.env)
-        const serverEnvPath = path.join(__dirname, 'server', '.env');
-        const serverEnvExamplePath = path.join(__dirname, 'server', '.env.example');
+        // 3. Environment Configuration (.env)
+        const rootDir = path.join(__dirname, '..');
+        const envPath = path.join(rootDir, '.env');
+        const envExamplePath = path.join(rootDir, '.env.example');
 
-        if (!fs.existsSync(serverEnvPath)) {
-            log(C.magenta, "CONFIG", "Creating server/.env configuration...");
-            if (fs.existsSync(serverEnvExamplePath)) {
-                let envContent = fs.readFileSync(serverEnvExamplePath, 'utf8');
+        if (!fs.existsSync(envPath)) {
+            log(C.magenta, "CONFIG", "Creating .env configuration...");
+            if (fs.existsSync(envExamplePath)) {
+                let envContent = fs.readFileSync(envExamplePath, 'utf8');
                 const randomSecret = crypto.randomBytes(32).toString('hex');
-                envContent = envContent.replace('your_super_secret_jwt_key_here', randomSecret);
-                fs.writeFileSync(serverEnvPath, envContent);
-                log(C.green, "SUCCESS", "Generated server/.env with secure JWT_SECRET.");
+                envContent = envContent.replace('your_super_secret_jwt_key_here_change_this_in_production', randomSecret);
+                fs.writeFileSync(envPath, envContent);
+                log(C.green, "SUCCESS", "Generated .env with secure JWT_SECRET.");
+                log(C.yellow, "NOTE", "Please add your STEAM_API_KEY to .env file");
+                log(C.cyan, "INFO", "Get your key from: https://steamcommunity.com/dev/apikey");
             } else {
-                throw new Error("server/.env.example not found!");
+                throw new Error(".env.example not found!");
             }
         } else {
-            log(C.blue, "INFO", "server/.env already exists, skipping...");
+            log(C.blue, "INFO", ".env already exists, skipping...");
         }
 
-        // 3. Dependency Installation (Faster if only needed)
+        // 4. Dependency Installation (Faster if only needed)
         const install = (dir, name) => {
             log(C.magenta, "INSTALL", `Installing dependencies for ${C.bright}${name}${C.reset}...`);
             const targetDir = path.join(__dirname, dir);
