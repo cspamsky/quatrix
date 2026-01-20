@@ -287,35 +287,57 @@ export class PluginManager {
         console.log(`[PLUGIN] Uninstalling ${info.name}...`);
 
         const folderName = info.folderName || info.name.replace(/[^a-zA-Z0-9]/g, '');
-        const pathsToDelete: string[] = [];
+        const pathsToDelete: Set<string> = new Set();
 
-        if (info.category === 'metamod') {
-            pathsToDelete.push(path.join(addonsDir, `${pluginId}.vdf`));
-            pathsToDelete.push(path.join(addonsDir, `${folderName}.vdf`));
-            pathsToDelete.push(path.join(addonsDir, folderName));
-        } else if (info.category === 'cssharp') {
-            const cssPluginsDir = path.join(addonsDir, 'counterstrikesharp', 'plugins');
-            // Delete the main folder/file
-            pathsToDelete.push(path.join(cssPluginsDir, pluginId));
-            pathsToDelete.push(path.join(cssPluginsDir, folderName));
-            
-            // Aggressive Cleanup: Delete anything starting with the name/folderName
-            if (fs.existsSync(cssPluginsDir)) {
-                const items = fs.readdirSync(cssPluginsDir);
-                items.forEach(item => {
-                    const lowerItem = item.toLowerCase();
-                    if (lowerItem.startsWith(pluginId.toLowerCase() + "_") || 
-                        lowerItem.startsWith(folderName.toLowerCase() + "_")) {
-                        pathsToDelete.push(path.join(cssPluginsDir, item));
-                    }
-                });
-            }
-        }
+        const searchDirs = [
+            addonsDir,
+            csgoDir,
+            path.join(addonsDir, 'counterstrikesharp', 'plugins'),
+            path.join(addonsDir, 'counterstrikesharp', 'configs', 'plugins'),
+            path.join(csgoDir, 'cfg'),
+            path.join(csgoDir, 'configs'),
+            path.join(csgoDir, 'materials'),
+            path.join(csgoDir, 'models'),
+            path.join(csgoDir, 'particles'),
+            path.join(csgoDir, 'sound'),
+            path.join(csgoDir, 'soundevents'),
+            path.join(csgoDir, 'translations')
+        ];
+
+        searchDirs.forEach(dir => {
+            if (!fs.existsSync(dir)) return;
+            const items = fs.readdirSync(dir);
+            items.forEach(item => {
+                const lowerItem = item.toLowerCase();
+                const lowerPluginId = pluginId.toLowerCase();
+                const lowerFolderName = folderName.toLowerCase();
+                
+                const isMatch = lowerItem === lowerPluginId || 
+                                lowerItem === lowerFolderName ||
+                                lowerItem === lowerPluginId + ".vdf" ||
+                                lowerItem === lowerFolderName + ".vdf" ||
+                                lowerItem === lowerPluginId + ".dll" ||
+                                lowerItem === lowerFolderName + ".dll" ||
+                                (lowerPluginId.length > 3 && lowerItem.includes(lowerPluginId)) ||
+                                (lowerFolderName.length > 3 && lowerItem.includes(lowerFolderName));
+                
+                if (isMatch) {
+                    pathsToDelete.add(path.join(dir, item));
+                }
+            });
+        });
+
+        // Special case: CS2Fixes often has multiple folders/files. 
+        // We already added basic ones, but we can add more if needed.
 
         pathsToDelete.forEach(p => {
-            if (fs.existsSync(p)) {
-                fs.rmSync(p, { recursive: true, force: true });
-                console.log(`[PLUGIN] Deleted: ${p}`);
+            try {
+                if (fs.existsSync(p)) {
+                    fs.rmSync(p, { recursive: true, force: true });
+                    console.log(`[PLUGIN] Deep Deleted: ${p}`);
+                }
+            } catch (err) {
+                console.error(`[PLUGIN] Failed to delete ${p}:`, err);
             }
         });
 
