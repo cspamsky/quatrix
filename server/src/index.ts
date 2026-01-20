@@ -120,13 +120,34 @@ setInterval(async () => {
 setInterval(async () => {
   try {
     const servers = db.prepare("SELECT id, map FROM servers WHERE status = 'ONLINE'").all() as any[];
-    await Promise.all(servers.map(async (server) => {
+    if (servers.length === 0) return;
+
+    // First, fetch current maps via RCON (Parallel/Network bound)
+    const updateTasks = await Promise.all(servers.map(async (server) => {
       const currentMap = await serverManager.getCurrentMap(server.id);
       if (currentMap && currentMap !== server.map) {
-        db.prepare("UPDATE servers SET map = ? WHERE id = ?").run(currentMap, server.id);
-        io.emit('server_update', { serverId: server.id });
+        return { id: server.id, map: currentMap };
       }
+      return null;
     }));
+
+    const validUpdates = updateTasks.filter((u): u is { id: any, map: string } => u !== null);
+
+    // Then, flush all changes to DB in a SINGLE write transaction
+    if (validUpdates.length > 0) {
+      const updateStmt = db.prepare("UPDATE servers SET map = ? WHERE id = ?");
+      const batchUpdate = db.transaction((data) => {
+        for (const update of data) {
+          updateStmt.run(update.map, update.id);
+        }
+      });
+
+      batchUpdate(validUpdates);
+      
+      // Notify clients
+      validUpdates.forEach(u => io.emit('server_update', { serverId: u.id }));
+      console.log(`[SYNC] Synced maps for ${validUpdates.length} servers.`);
+    }
   } catch (err) { /* silent map sync fail */ }
 }, 30000);
 

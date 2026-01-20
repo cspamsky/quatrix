@@ -20,6 +20,15 @@ class ServerManager {
     private installDir!: string;
     private steamCmdExe!: string;
 
+    // Prepared statements for performance
+    private flushCheckStmt = db.prepare("SELECT steam_id FROM player_identities WHERE name = ?");
+    private flushUpdateStmt = db.prepare("UPDATE player_identities SET steam_id = ?, last_seen = CURRENT_TIMESTAMP WHERE name = ?");
+    private flushInsertStmt = db.prepare("INSERT INTO player_identities (name, steam_id, first_seen, last_seen) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
+    private getSettingStmt = db.prepare("SELECT value FROM settings WHERE key = ?");
+    private updateStatusStmt = db.prepare("UPDATE servers SET status = ?, pid = ? WHERE id = ?");
+    private getServerStmt = db.prepare("SELECT * FROM servers WHERE id = ?");
+    private getOrphanedStmt = db.prepare("SELECT id, pid, status FROM servers WHERE status != 'OFFLINE'");
+
     constructor() {
         // Async initialization - call init() after construction
         this.installDir = '';
@@ -58,14 +67,14 @@ class ServerManager {
     }
 
     private getSetting(key: string): string {
-        const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as { value: string };
+        const row = this.getSettingStmt.get(key) as { value: string };
         return row ? row.value : '';
     }
 
     // --- Core Management ---
     recoverOrphanedServers() {
         interface ServerRow { id: number; pid: number | null; status: string; }
-        const servers = db.prepare("SELECT id, pid, status FROM servers WHERE status != 'OFFLINE'").all() as ServerRow[];
+        const servers = this.getOrphanedStmt.all() as ServerRow[];
         
         const deadServerIds: number[] = [];
         
@@ -86,16 +95,19 @@ class ServerManager {
 
         if (deadServerIds.length > 0) {
             console.log(`[SYSTEM] Recovering ${deadServerIds.length} orphaned servers...`);
-            const updateStmt = db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id = ?");
             
-            // Execute all updates in a single transaction for maximum SQLite performance
-            const performBatchUpdate = db.transaction((ids: number[]) => {
-                for (const id of ids) {
-                    updateStmt.run(id);
+            // Execute updates in batches for maximum SQLite performance (Batch size 900 to stay under SQLITE_LIMIT_VARIABLE_NUMBER)
+            const BATCH_SIZE = 900;
+            const transaction = db.transaction((ids: number[]) => {
+                for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+                    const chunk = ids.slice(i, i + BATCH_SIZE);
+                    const placeholders = chunk.map(() => '?').join(',');
+                    const stmt = db.prepare(`UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id IN (${placeholders})`);
+                    stmt.run(...chunk);
                 }
             });
 
-            performBatchUpdate(deadServerIds);
+            transaction(deadServerIds);
         }
     }
 
@@ -107,18 +119,14 @@ class ServerManager {
 
         console.log(`[DB] Batch flushing ${identities.length} player identities...`);
 
-        const checkStmt = db.prepare("SELECT steam_id FROM player_identities WHERE name = ?");
-        const updateStmt = db.prepare("UPDATE player_identities SET steam_id = ?, last_seen = CURRENT_TIMESTAMP WHERE name = ?");
-        const insertStmt = db.prepare("INSERT INTO player_identities (name, steam_id, first_seen, last_seen) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
-
         try {
             const transaction = db.transaction((data) => {
                 for (const [name, steamId64] of data) {
-                    const existing = checkStmt.get(name);
+                    const existing = this.flushCheckStmt.get(name);
                     if (existing) {
-                        updateStmt.run(steamId64, name);
+                        this.flushUpdateStmt.run(steamId64, name);
                     } else {
-                        insertStmt.run(name, steamId64);
+                        this.flushInsertStmt.run(name, steamId64);
                     }
                 }
             });
@@ -143,15 +151,15 @@ class ServerManager {
             throw new Error(`CS2 binary not found at ${cs2Exe}`);
         }
 
-        // steam_appid.txt is required for initialization
-        await fs.promises.writeFile(path.join(binDir, 'steam_appid.txt'), '730');
-
+        // Parallel Initialization: Writing steam_appid.txt and creating cfg directory concurrently
         const cfgDir = path.join(serverPath, 'game', 'csgo', 'cfg');
-        try {
-            await fs.promises.mkdir(cfgDir, { recursive: true });
-        } catch (error: any) {
-            if (error.code !== 'EEXIST') throw error;
-        }
+        
+        await Promise.all([
+            fs.promises.writeFile(path.join(binDir, 'steam_appid.txt'), '730'),
+            fs.promises.mkdir(cfgDir, { recursive: true }).catch(error => {
+                if (error.code !== 'EEXIST') throw error;
+            })
+        ]);
         const serverCfgPath = path.join(cfgDir, 'server.cfg');
         
         // Handle server.cfg generation for secrets (ASYNC)
@@ -259,7 +267,8 @@ class ServerManager {
                     const nameMatch = line.match(/['"](.+?)['"]/);
                     if (nameMatch) {
                         const name = nameMatch[1];
-                        cache?.set(name, steamId64);
+                        // Namespaced cache to prevent ID spoofing
+                        cache?.set(`n:${name}`, steamId64);
                         
                         // Performance: Buffer the identity instead of writing to DB on every single log line
                         this.playerIdentityBuffer.set(name, steamId64);
@@ -286,13 +295,13 @@ class ServerManager {
             const exitMsg = `[SYSTEM] Process exited with code ${code} and signal ${signal}`;
             console.log(`[SERVER] Instance ${id} ${exitMsg}`);
             this.runningServers.delete(id);
-            db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id = ?").run(id);
+            this.updateStatusStmt.run('OFFLINE', null, id);
             
             if (onLog) onLog(exitMsg);
         });
 
         this.runningServers.set(id, serverProcess);
-        if (serverProcess.pid) db.prepare("UPDATE servers SET pid = ? WHERE id = ?").run(serverProcess.pid, id);
+        if (serverProcess.pid) this.updateStatusStmt.run('ONLINE', serverProcess.pid, id);
     }
 
     async stopServer(id: string | number) {
@@ -304,16 +313,16 @@ class ServerManager {
 
         const proc = this.runningServers.get(idStr);
         if (proc) proc.kill();
-        const server = db.prepare("SELECT pid FROM servers WHERE id = ?").get(idStr) as any;
+        const server = this.getServerStmt.get(idStr) as any;
         if (server?.pid) try { process.kill(server.pid); } catch (e) {}
-        db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id = ?").run(idStr);
+        this.updateStatusStmt.run('OFFLINE', null, idStr);
         this.runningServers.delete(idStr);
         return true;
     }
 
     async sendCommand(id: string | number, command: string, retries = 3): Promise<string> {
         const idStr = id.toString();
-        const server = db.prepare("SELECT * FROM servers WHERE id = ?").get(idStr) as any;
+        const server = this.getServerStmt.get(idStr) as any;
         if (!server) throw new Error("Server not found in database");
 
         const { Rcon } = await import('rcon-client');
@@ -369,170 +378,149 @@ class ServerManager {
 
     async getPlayers(id: string | number): Promise<{ players: any[], averagePing: number }> {
         try {
-            // CS2 için mevcut komutları gönder (dump_player_list CS2'de yok)
             const combinedOutput = await this.sendCommand(id, 'status');
-            const players: any[] = [];
             const lines = combinedOutput.split('\n');
             const idStr = id.toString();
             const cache = this.playerIdentityCache.get(idStr);
-            
-            // 1. Önce CSS_PLAYERS veya DUMP_PLAYER_LIST tablosunu tara
-            for (const line of lines) {
-                const trimmed = line.trim();
-                const steam64Match = trimmed.match(/(\b765611\d{10,12}\b)/);
-                if (steam64Match) {
-                    const steamId64 = steam64Match[1];
-                    const parts = trimmed.split(/\s+/);
-                    if (parts.length >= 2) {
-                        const nameMatch = trimmed.match(/["'](.+)["']/);
-                        const name = nameMatch ? nameMatch[1] : parts[1];
-                        if (!players.find(p => p.steamId === steamId64)) {
-                            const userId = parts[0] ? parts[0].replace(/#/g, '') : '0';
-                            players.push({
-                                userId: userId,
-                                name: name,
-                                steamId: steamId64,
-                                connected: '00:00',
-                                ping: 0,
-                                state: 'active'
-                            });
-                        }
-                    }
-                }
-            }
 
-            // 2. Normal liste tarama ve Derin Kimlik Eşleştirme (Veritabanı + Log desteği)
-            const playerIdentityStmt = db.prepare("SELECT steam_id FROM player_identities WHERE name = ?");
-            
+            const parsedPlayers: any[] = [];
+            const seenNames = new Set<string>();
+            const unresolvedNames = new Set<string>();
+
+            // 1. First Pass: Parse status output and extract basic stats
             for (const line of lines) {
                 const trimmed = line.trim();
                 
-                // Bot satırlarını direkt atla
-                if (trimmed.includes('BOT') || trimmed.includes('<BOT>')) {
+                // Skip bots and non-client lines
+                if (trimmed.includes('BOT') || trimmed.includes('<BOT>') || !trimmed.includes('[Client]')) {
                     continue;
                 }
-                
+
                 const nameMatch = trimmed.match(/["'](.+)["']/);
-                if (nameMatch && nameMatch[1]) {
-                    const name = nameMatch[1];
-                    
-                    // Bot isimlerini filtrele
-                    if (name.length < 2 || name.toUpperCase().includes('BOT')) {
-                        continue;
+                if (!nameMatch) continue;
+                
+                const name = nameMatch[1];
+                if (name === undefined || name === null) continue;
+                if (name.length < 2 || name.toUpperCase().includes('BOT')) continue;
+
+                // De-duplicate immediately
+                if (seenNames.has(name)) continue;
+                seenNames.add(name);
+
+                const parts = trimmed.replace('[Client]', '').trim().split(/\s+/);
+                const idPart = parts[0];
+                if (!idPart || !/^\d+$/.test(idPart) || idPart === '65535') continue;
+
+                // Connection Duration Extraction
+                let connectedTime = '00:00:00';
+                if (parts.length >= 2 && parts[1]?.includes(':')) {
+                    const timeParts = parts[1].split(':');
+                    if (timeParts.length === 2 && timeParts[0] !== undefined && timeParts[1] !== undefined) {
+                        connectedTime = `00:${timeParts[0].padStart(2, '0')}:${timeParts[1].padStart(2, '0')}`;
+                    } else if (timeParts.length === 3 && timeParts[0] !== undefined && timeParts[1] !== undefined && timeParts[2] !== undefined) {
+                        connectedTime = `${timeParts[0].padStart(2, '0')}:${timeParts[1].padStart(2, '0')}:${timeParts[2].padStart(2, '0')}`;
                     }
-                    
-                    // Satırdan ID, time ve ping bilgisini çıkar
-                    // Format: [Client] id time ping 'name'
-                    // Örnek: [Client] 2  0:15  25  'Pamsky'
-                    const parts = trimmed.replace('[Client]', '').trim().split(/\s+/);
-                    const idPart = parts[0];
-                    
-                    // Bağlantı süresini parse et (genellikle 2. sütun: MM:SS veya H:MM:SS)
-                    let connectedTime = '00:00:00';
-                    if (parts.length >= 2 && parts[1] && parts[1].includes(':')) {
-                        const timeParts = parts[1].split(':');
-                        if (timeParts.length === 2 && timeParts[0] && timeParts[1]) {
-                            // MM:SS formatı
-                            const mins = parseInt(timeParts[0]) || 0;
-                            const secs = parseInt(timeParts[1]) || 0;
-                            connectedTime = `00:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                        } else if (timeParts.length === 3 && timeParts[0] && timeParts[1] && timeParts[2]) {
-                            // H:MM:SS formatı
-                            const hours = parseInt(timeParts[0]) || 0;
-                            const mins = parseInt(timeParts[1]) || 0;
-                            const secs = parseInt(timeParts[2]) || 0;
-                            connectedTime = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                        }
-                    }
-                    
-                    // Ping bilgisini bul (genellikle 3. sütun)
-                    let ping = 0;
-                    if (parts.length >= 3 && parts[2]) {
-                        const pingValue = parseInt(parts[2]);
-                        if (!isNaN(pingValue)) {
-                            ping = pingValue;
-                        }
-                    }
-                    
-                    if (idPart && /^\d+$/.test(idPart) && idPart !== '65535' && !players.find(p => p.name === name)) {
-                        // 1. Memory Cache
-                        let steamId = cache?.get(idPart) || cache?.get(name);
-                        
-                        // 2. Log History Taraması (Sadece Steam64)
-                        if (!steamId) {
-                            const buffer = this.logBuffers.get(idStr) || [];
-                            for (const logLine of buffer) {
-                                if (logLine.includes(name)) {
-                                    // Sadece Steam64 formatını ara (76561...)
-                                    const steam64 = logLine.match(/\b(765611\d{10,12})\b/);
-                                    if (steam64 && steam64[1]) {
-                                        steamId = steam64[1];
-                                        if (cache) cache.set(idPart, steamId);
-                                        break;
-                                    }
-                                }
+                }
+
+                // Ping Extraction
+                let ping = 0;
+                if (parts.length >= 3 && parts[2]) {
+                    const pVal = parseInt(parts[2]);
+                    if (!isNaN(pVal)) ping = pVal;
+                }
+
+                // Initial Identity Resolution
+                let steamId = cache?.get(`i:${idPart}`) || cache?.get(`n:${name}`);
+                
+                if (!steamId) {
+                    unresolvedNames.add(name);
+                }
+
+                parsedPlayers.push({
+                    userId: idPart,
+                    name: name,
+                    steamId: steamId || null,
+                    connected: connectedTime,
+                    ping: ping,
+                    state: 'active'
+                });
+            }
+
+            // 2. Batch Resolution (Memory Logs + Database)
+            if (unresolvedNames.size > 0) {
+                const nameArray = Array.from(unresolvedNames);
+                const localResolution = new Map<string, string>();
+
+                // A. Scan logs first (High speed memory scan)
+                const logBuffer = this.logBuffers.get(idStr) || [];
+                for (const name of nameArray) {
+                    for (const logLine of logBuffer) {
+                        if (logLine.includes(name)) {
+                            const match = logLine.match(/\b(765611\d{10,12})\b/);
+                            if (match?.[1]) {
+                                localResolution.set(name, match[1]);
+                                break;
                             }
                         }
-
-                        // 3. Veritabanı Taraması (Sadece SteamID için)
-                        if (!steamId) {
-                            const dbRow = playerIdentityStmt.get(name) as { steam_id: string } | undefined;
-                            if (dbRow) {
-                                steamId = dbRow.steam_id;
-                                if (cache) cache.set(idPart, steamId);
-                            }
-                        }
-
-                        // Bot'ları listeye ekleme (Ekstra kontrol)
-                        if (steamId && steamId.toUpperCase() === 'BOT') {
-                            continue;
-                        }
-
-                        players.push({
-                            userId: idPart,
-                            name: name,
-                            steamId: steamId || 'Hidden/Pending',
-                            connected: connectedTime,
-                            ping: ping,
-                            state: 'active'
-                        });
                     }
+                }
+
+                // B. Batch Database Lookup for remaining
+                const stillUnresolved = nameArray.filter(n => !localResolution.has(n));
+                if (stillUnresolved.length > 0) {
+                    const placeholders = stillUnresolved.map(() => '?').join(',');
+                    const dbResults = db.prepare(`SELECT name, steam_id FROM player_identities WHERE name IN (${placeholders})`).all(...stillUnresolved) as { name: string, steam_id: string }[];
+                    
+                    for (const row of dbResults) {
+                        localResolution.set(row.name, row.steam_id);
+                    }
+                }
+
+                // C. Backfill and Update Cache
+                for (const player of parsedPlayers) {
+                    if (!player.steamId && localResolution.has(player.name)) {
+                        player.steamId = localResolution.get(player.name);
+                        // Update cache with namespaced keys
+                        if (cache) {
+                            cache.set(`i:${player.userId}`, player.steamId!);
+                            cache.set(`n:${player.name}`, player.steamId!);
+                        }
+                    }
+                    if (!player.steamId) player.steamId = 'Hidden/Pending';
+                }
+            } else {
+                // All resolved or no players, just sanitize display IDs
+                for (const player of parsedPlayers) {
+                    if (!player.steamId) player.steamId = 'Hidden/Pending';
                 }
             }
 
-            // Avatar'ları Steam API'den çek
-            const steamIds = players
+            // 3. Avatar Enrichment (Steam API)
+            const steamIds = parsedPlayers
                 .map(p => p.steamId)
-                .filter(id => id && /^\d{17}$/.test(id)); // Sadece geçerli Steam64 ID'leri
-
-            console.log(`[Avatar] Found ${steamIds.length} Steam64 IDs to fetch avatars for`);
+                .filter(sid => sid && /^\d{17}$/.test(sid));
 
             if (steamIds.length > 0) {
                 try {
                     const { getPlayerAvatars } = await import('./utils/steamApi.js');
                     const avatars = await getPlayerAvatars(steamIds);
-                    
-                    console.log(`[Avatar] Successfully fetched ${avatars.size} avatars from Steam API`);
-                    
-                    // Avatar URL'lerini oyunculara ekle
-                    players.forEach(player => {
-                        if (player.steamId && avatars.has(player.steamId)) {
+                    for (const player of parsedPlayers) {
+                        if (avatars.has(player.steamId)) {
                             player.avatar = avatars.get(player.steamId);
-                            console.log(`[Avatar] Added avatar for ${player.name}: ${player.avatar}`);
                         }
-                    });
-                } catch (error) {
-                    console.error('[Avatar] Failed to fetch avatars:', error);
+                    }
+                } catch (err) {
+                    console.error('[Avatar] Enhancement failed:', err);
                 }
             }
 
-            // Ortalama ping hesapla
-            const totalPing = players.reduce((sum, p) => sum + p.ping, 0);
-            const averagePing = players.length > 0 ? Math.round(totalPing / players.length) : 0;
-
-            return { players, averagePing };
+            const totalPing = parsedPlayers.reduce((sum, p) => sum + p.ping, 0);
+            return {
+                players: parsedPlayers,
+                averagePing: parsedPlayers.length > 0 ? Math.round(totalPing / parsedPlayers.length) : 0
+            };
         } catch (e) {
-            console.error(`[RCON] Player fetch failed:`, e);
+            console.error(`[RCON] getPlayers failed:`, e);
             return { players: [], averagePing: 0 };
         }
     }

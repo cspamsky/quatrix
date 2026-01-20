@@ -18,9 +18,11 @@ export class PluginManager {
     public pluginRegistry = pluginRegistry;
     private manifest: any = null;
     private checkAllStmt: any;
+    private checkOneStmt: any;
 
     constructor() {
         this.checkAllStmt = db.prepare("SELECT plugin_id, version FROM server_plugins WHERE server_id = ?");
+        this.checkOneStmt = db.prepare("SELECT version FROM server_plugins WHERE server_id = ? AND plugin_id = ?");
     }
 
     async syncRegistry() {
@@ -62,10 +64,13 @@ export class PluginManager {
         const status: Record<string, boolean> = {};
 
         // PERFORMANCE: Cache directory listings as Promises to prevent "dog-piling" duplicate reads
-        const dirCache = new Map<string, Promise<string[]>>();
-        const getDirItems = (dir: string): Promise<string[]> => {
+        // Also pre-calculate lowercase names to avoid O(M*N) string operations
+        const dirCache = new Map<string, Promise<{raw: string, lower: string}[]>>();
+        const getDirItems = (dir: string): Promise<{raw: string, lower: string}[]> => {
             if (!dirCache.has(dir)) {
-                dirCache.set(dir, fs.promises.readdir(dir).catch(() => []));
+                dirCache.set(dir, fs.promises.readdir(dir).then(items => 
+                    items.map(i => ({ raw: i, lower: i.toLowerCase() }))
+                ).catch(() => []));
             }
             return dirCache.get(dir)!;
         };
@@ -80,15 +85,14 @@ export class PluginManager {
         status.metamod = hasMetaVdf || hasMetaX64Vdf;
         status.cssharp = hasCSS;
 
-        const checkExistsInDir = async (dir: string, name: string) => {
+        const checkExists = async (dir: string, name: string) => {
             const items = await getDirItems(dir);
             const lowerName = name.toLowerCase();
             return items.some(item => {
-                const lowerItem = item.toLowerCase();
-                return lowerItem === lowerName || 
-                       lowerItem === lowerName + ".vdf" || 
-                       lowerItem === lowerName + ".dll" ||
-                       (lowerName.length > 3 && lowerItem.includes(lowerName));
+                return item.lower === lowerName || 
+                       item.lower === lowerName + ".vdf" || 
+                       item.lower === lowerName + ".dll" ||
+                       (lowerName.length > 3 && item.lower.includes(lowerName));
             });
         };
 
@@ -101,13 +105,13 @@ export class PluginManager {
 
             // Check primary locations
             if (info.category === 'metamod') {
-                status[pid] = await checkExistsInDir(addonsDir, pid) || await checkExistsInDir(addonsDir, info.folderName || "") || await checkExistsInDir(addonsDir, info.name);
+                status[pid] = await checkExists(addonsDir, pid) || await checkExists(addonsDir, info.folderName || "") || await checkExists(addonsDir, info.name);
             } else if (info.category === 'cssharp') {
-                status[pid] = await checkExistsInDir(cssPluginsDir, pid) || await checkExistsInDir(cssPluginsDir, info.folderName || "") || await checkExistsInDir(cssPluginsDir, info.name);
+                status[pid] = await checkExists(cssPluginsDir, pid) || await checkExists(cssPluginsDir, info.folderName || "") || await checkExists(cssPluginsDir, info.name);
                 
                 // Fallback check: Did it extract to root game/csgo/ by mistake?
                 if (!status[pid]) {
-                    status[pid] = await checkExistsInDir(csgoDir, pid) || await checkExistsInDir(csgoDir, info.folderName || "") || await checkExistsInDir(csgoDir, info.name);
+                    status[pid] = await checkExists(csgoDir, pid) || await checkExists(csgoDir, info.folderName || "") || await checkExists(csgoDir, info.name);
                 }
             }
         });
@@ -300,8 +304,25 @@ export class PluginManager {
     }
 
     async checkPluginUpdate(instanceId: string | number, pluginId: PluginId): Promise<any> {
-        const updates = await this.checkAllPluginUpdates(instanceId);
-        return updates[pluginId] || { hasUpdate: false };
+        try {
+            const installed = this.checkOneStmt.get(instanceId, pluginId) as { version: string } | undefined;
+            if (!installed) return { hasUpdate: false };
+
+            const info = (this.pluginRegistry as any)[pluginId];
+            if (!info) return { hasUpdate: false };
+
+            const latestVersion = info.currentVersion || 'latest';
+            const hasUpdate = latestVersion !== 'latest' && installed.version !== latestVersion;
+
+            return {
+                hasUpdate,
+                currentVersion: installed.version,
+                latestVersion
+            };
+        } catch (error) {
+            console.error('[PLUGIN] Check update failed:', error);
+            return { hasUpdate: false };
+        }
     }
 
     async updatePlugin(installDir: string, instanceId: string | number, pluginId: PluginId): Promise<void> {
@@ -338,7 +359,8 @@ export class PluginManager {
             path.join(csgoDir, 'translations')
         ];
 
-        for (const dir of searchDirs) {
+        // Multi-Step Deep Search (Parallelized for maximum I/O performance)
+        await Promise.all(searchDirs.map(async (dir) => {
             try {
                 const items = await fs.promises.readdir(dir);
                 for (const item of items) {
@@ -360,7 +382,7 @@ export class PluginManager {
                     }
                 }
             } catch {}
-        }
+        }));
 
         for (const p of pathsToDelete) {
             try {
