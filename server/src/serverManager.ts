@@ -151,14 +151,30 @@ class ServerManager {
                 
                 const buffer = this.logBuffers.get(id) || [];
                 buffer.push(line);
-                if (buffer.length > 100) buffer.shift();
+                if (buffer.length > 200) buffer.shift();
                 this.logBuffers.set(id, buffer);
             }
         });
 
-        serverProcess.on('exit', () => {
+        serverProcess.stderr.on('data', (data) => {
+            const line = `[STDERR] ${data.toString().trim()}`;
+            if (line.trim() === '[STDERR]') return;
+            if (onLog) onLog(line);
+            
+            const buffer = this.logBuffers.get(id) || [];
+            buffer.push(line);
+            if (buffer.length > 200) buffer.shift();
+            this.logBuffers.set(id, buffer);
+            console.error(`[SERVER ${id} STDERR] ${line}`);
+        });
+
+        serverProcess.on('exit', (code, signal) => {
+            const exitMsg = `[SYSTEM] Process exited with code ${code} and signal ${signal}`;
+            console.log(`[SERVER] Instance ${id} ${exitMsg}`);
             this.runningServers.delete(id);
             db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id = ?").run(id);
+            
+            if (onLog) onLog(exitMsg);
         });
 
         this.runningServers.set(id, serverProcess);
