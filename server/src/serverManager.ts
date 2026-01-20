@@ -234,13 +234,17 @@ class ServerManager {
         const { Rcon } = await import('rcon-client');
         let rcon = this.rconConnections.get(idStr);
         
+        // RCON portu: Eğer rcon_port tanımlıysa onu kullan, yoksa game port'u kullan
+        const rconPort = server.rcon_port || server.port;
+        
         try {
             if (!rcon) {
+                console.log(`[RCON] Connecting to server ${id} at 127.0.0.1:${rconPort}`);
                 rcon = await Rcon.connect({ 
                     host: '127.0.0.1', 
-                    port: server.port, 
+                    port: rconPort, 
                     password: server.rcon_password, 
-                    timeout: 3000 // 3s timeout for faster feedback
+                    timeout: 3000
                 });
                 rcon.on('error', () => this.rconConnections.delete(idStr));
                 rcon.on('end', () => this.rconConnections.delete(idStr));
@@ -249,6 +253,7 @@ class ServerManager {
             return await rcon.send(command);
         } catch (error) {
             this.rconConnections.delete(idStr);
+            console.error(`[RCON] Failed to connect to server ${id} at 127.0.0.1:${rconPort} - ${error instanceof Error ? error.message : 'Unknown'}`);
             throw new Error(`RCON Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     }
