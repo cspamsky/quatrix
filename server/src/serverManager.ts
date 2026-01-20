@@ -176,8 +176,18 @@ class ServerManager {
                         const name = nameMatch[1];
                         cache?.set(name, steamId64);
                         try {
-                            db.prepare("INSERT OR REPLACE INTO player_identities (name, steam_id, last_seen) VALUES (?, ?, CURRENT_TIMESTAMP)")
-                              .run(name, steamId64);
+                            // Önce oyuncu var mı kontrol et
+                            const existing = db.prepare("SELECT steam_id FROM player_identities WHERE name = ?").get(name);
+                            
+                            if (existing) {
+                                // Varsa sadece last_seen güncelle
+                                db.prepare("UPDATE player_identities SET steam_id = ?, last_seen = CURRENT_TIMESTAMP WHERE name = ?")
+                                  .run(steamId64, name);
+                            } else {
+                                // Yoksa yeni kayıt oluştur (first_seen ve last_seen aynı anda)
+                                db.prepare("INSERT INTO player_identities (name, steam_id, first_seen, last_seen) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)")
+                                  .run(name, steamId64);
+                            }
                         } catch (e) {}
                         console.log(`[IDENTITY] Steam64 Saved: ${name} -> ${steamId64}`);
                     }
@@ -329,12 +339,25 @@ class ServerManager {
                 if (nameMatch && nameMatch[1]) {
                     const name = nameMatch[1];
                     
-                    // Bot isimlerini filtrele (genelde kısa isimler veya BOT içerir)
+                    // Bot isimlerini filtrele
                     if (name.length < 2 || name.toUpperCase().includes('BOT')) {
                         continue;
                     }
                     
-                    const idPart = trimmed.replace('[Client]', '').trim().split(/\s+/)[0];
+                    // Satırdan ID ve ping bilgisini çıkar
+                    // Format: [Client] id time ping 'name'
+                    const parts = trimmed.replace('[Client]', '').trim().split(/\s+/);
+                    const idPart = parts[0];
+                    
+                    // Ping bilgisini bul (genellikle 3. sütun)
+                    let ping = 0;
+                    if (parts.length >= 3 && parts[2]) {
+                        const pingValue = parseInt(parts[2]);
+                        if (!isNaN(pingValue)) {
+                            ping = pingValue;
+                        }
+                    }
+                    
                     if (idPart && /^\d+$/.test(idPart) && idPart !== '65535' && !players.find(p => p.name === name)) {
                         // 1. Memory Cache
                         let steamId = cache?.get(idPart) || cache?.get(name);
@@ -355,13 +378,26 @@ class ServerManager {
                             }
                         }
 
-                        // 3. Veritabanı Taraması (En güçlü yedek)
+                        // 3. Veritabanı Taraması (SteamID ve bağlantı süresi)
+                        let connectedTime = '00:00:00';
                         if (!steamId) {
-                            const dbRow = db.prepare("SELECT steam_id FROM player_identities WHERE name = ?")
-                                           .get(name) as { steam_id: string } | undefined;
+                            const dbRow = db.prepare("SELECT steam_id, first_seen FROM player_identities WHERE name = ?")
+                                           .get(name) as { steam_id: string; first_seen: string } | undefined;
                             if (dbRow) {
                                 steamId = dbRow.steam_id;
                                 if (cache) cache.set(idPart, steamId);
+                                
+                                // Bağlantı süresini hesapla (HH:MM:SS)
+                                if (dbRow.first_seen) {
+                                    const firstSeen = new Date(dbRow.first_seen);
+                                    const now = new Date();
+                                    const diffMs = now.getTime() - firstSeen.getTime();
+                                    const diffSecs = Math.floor(diffMs / 1000);
+                                    const hours = Math.floor(diffSecs / 3600);
+                                    const mins = Math.floor((diffSecs % 3600) / 60);
+                                    const secs = diffSecs % 60;
+                                    connectedTime = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                                }
                             }
                         }
 
@@ -374,12 +410,29 @@ class ServerManager {
                             userId: idPart,
                             name: name,
                             steamId: steamId || 'Hidden/Pending',
-                            connected: '00:00',
-                            ping: 0,
+                            connected: connectedTime,
+                            ping: ping,
                             state: 'active'
                         });
                     }
                 }
+            }
+
+            // Avatar'ları Steam API'den çek
+            const steamIds = players
+                .map(p => p.steamId)
+                .filter(id => id && /^\d{17}$/.test(id)); // Sadece geçerli Steam64 ID'leri
+
+            if (steamIds.length > 0) {
+                const { getPlayerAvatars } = await import('./utils/steamApi.js');
+                const avatars = await getPlayerAvatars(steamIds);
+                
+                // Avatar URL'lerini oyunculara ekle
+                players.forEach(player => {
+                    if (player.steamId && avatars.has(player.steamId)) {
+                        player.avatar = avatars.get(player.steamId);
+                    }
+                });
             }
 
             return players;

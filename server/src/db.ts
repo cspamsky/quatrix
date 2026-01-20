@@ -140,6 +140,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS player_identities (
     name TEXT,
     steam_id TEXT,
+    avatar_url TEXT,
+    first_seen DATETIME,
     last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (name)
   )

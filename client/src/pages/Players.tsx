@@ -21,6 +21,7 @@ interface Player {
   connected: string
   ping: number
   state: string
+  avatar?: string
 }
 
 interface ServerInfo {
@@ -220,7 +221,19 @@ const Players = () => {
                   <tr key={player.userId} className="hover:bg-white/[0.02] transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-primary font-bold border border-gray-700">
+                        {player.avatar ? (
+                          <img 
+                            src={player.avatar} 
+                            alt={player.name}
+                            className="w-10 h-10 rounded-xl border border-gray-700"
+                            onError={(e) => {
+                              // Avatar yüklenemezse fallback göster
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                        ) : null}
+                        <div className={`w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-primary font-bold border border-gray-700 ${player.avatar ? 'hidden' : ''}`}>
                           {player.name[0].toUpperCase()}
                         </div>
                         <div>
