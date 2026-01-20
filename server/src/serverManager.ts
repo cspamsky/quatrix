@@ -15,6 +15,7 @@ class ServerManager {
     private runningServers: Map<string, any> = new Map();
     private logBuffers: Map<string, string[]> = new Map();
     private rconConnections: Map<string, any> = new Map();
+    private playerIdentityCache: Map<string, Map<string, string>> = new Map();
     private installDir!: string;
     private steamCmdExe!: string;
 
@@ -159,6 +160,32 @@ class ServerManager {
                 buffer.push(line);
                 if (buffer.length > 200) buffer.shift();
                 this.logBuffers.set(id, buffer);
+
+                // --- OYUNCU TAKIBI (SteamID Yakalama) ---
+                // 1. Standart Source/CS2 validated formatı: "Name<2><[U:1:1008325669]><>" STEAM USERID validated
+                const validatedMatch = line.match(/["'](.+)<(\d+)><(\[?U:\d:\d+\]?|STEAM_\d:\d:\d+|BOT)>/i);
+                
+                // 2. Bağlantı anındaki UDP formatı: UDP steamid:76561198968591397@...
+                const udpMatch = line.match(/steamid:(\d{17})/);
+                
+                if (validatedMatch) {
+                    const name = validatedMatch[1].replace('SV:  ', '').trim(); // SV: gibi ön ekleri temizle
+                    const steamId = validatedMatch[3];
+                    
+                    if (!this.playerIdentityCache.has(id.toString())) this.playerIdentityCache.set(id.toString(), new Map());
+                    this.playerIdentityCache.get(id.toString())?.set(name, steamId);
+                    console.log(`[IDENTITY] Validated: ${name} -> ${steamId}`);
+                } else if (udpMatch && line.includes("'")) {
+                    // Örnek: ... steamid:76561198968591397@... 'Pamsky'
+                    const steamId64 = udpMatch[1];
+                    const nameMatch = line.match(/'(.+)'/);
+                    if (nameMatch) {
+                        const name = nameMatch[1];
+                        if (!this.playerIdentityCache.has(id.toString())) this.playerIdentityCache.set(id.toString(), new Map());
+                        this.playerIdentityCache.get(id.toString())?.set(name, steamId64);
+                        console.log(`[IDENTITY] UDP Match: ${name} -> ${steamId64}`);
+                    }
+                }
             }
         });
 
@@ -240,49 +267,76 @@ class ServerManager {
 
     async getPlayers(id: string | number): Promise<any[]> {
         try {
-            const output = await this.sendCommand(id, 'status');
+            // CS2 için en güçlü komut kombinasyonu
+            const combinedOutput = await this.sendCommand(id, 'status; css_players');
             const players: any[] = [];
-            const lines = output.split('\n');
+            const lines = combinedOutput.split('\n');
             
+            // 1. Önce CSS_PLAYERS tablosunu tara (En detaylı veri buradadır)
+            // Format Genellikle: "Slot  Name  SteamID  IP" veya benzeri bir tablo
             for (const line of lines) {
                 const trimmed = line.trim();
-                // We are looking for lines starting with # but not the header
-                if (!trimmed.startsWith('#') || trimmed.includes('userid') || trimmed.length < 10) continue;
-
-                // CS2 status format: # index userid "name" steamid connected ping loss state rate
-                // Example: # 2 1 "Silver" STEAM_1:0:123 01:23 15 0 active 128000
                 
-                const nameMatch = trimmed.match(/"(.+)"/);
-                if (nameMatch) {
-                    const name = nameMatch[1];
-                    const fullMatch = nameMatch[0];
-                    const afterName = trimmed.split(fullMatch)[1]?.trim() || "";
-                    const beforeName = trimmed.split(fullMatch)[0]?.trim() || "";
-                    
-                    const beforeParts = beforeName.split(/\s+/); // [#, index, userid]
-                    const afterParts = afterName.split(/\s+/);   // [steamid, connected, ping, ...]
-
-                    if (afterParts.length >= 2) {
-                        players.push({
-                            userId: beforeParts[beforeParts.length - 1], // Last part before name
-                            name: name,
-                            steamId: afterParts[0],
-                            connected: afterParts[1],
-                            ping: parseInt(afterParts[2] || '0'),
-                            state: 'active'
-                        });
+                // Steam64 (765...) yakala
+                const steam64Match = trimmed.match(/(\b765611\d{10,12}\b)/);
+                if (steam64Match) {
+                    const steamId64 = steam64Match[1];
+                    // Satırı parçalara ayırıp ismi ve ID'yi bulmaya çalışalım
+                    // Genellikle tablo: [ID] [Name] [SteamID]
+                    const parts = trimmed.split(/\s+/);
+                    if (parts.length >= 2) {
+                        // Eğer isim tırnak içindeyse temizle
+                        const nameMatch = trimmed.match(/["'](.+)["']/);
+                        const name = nameMatch ? nameMatch[1] : parts[1];
+                        
+                        if (!players.find(p => p.steamId === steamId64)) {
+                            const userId = (parts[0] || '0').replace(/#/g, '');
+                            players.push({
+                                userId: userId,
+                                name: name,
+                                steamId: steamId64,
+                                connected: '00:00',
+                                ping: 0,
+                                state: 'active'
+                            });
+                        }
                     }
                 }
             }
 
-            if (players.length === 0 && output.includes('# userid')) {
-                console.log(`[RCON] No players parsed, but header found. Raw output snippet:\n${output.substring(0, 500)}`);
+            // 2. Eğer hala oyuncu bulunamadıysa (CSS yüklü değilse), status çıktısına geri dön
+            const idStr = id.toString();
+            const cache = this.playerIdentityCache.get(idStr);
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                const nameMatch = trimmed.match(/["'](.+)["']/);
+                if (nameMatch && nameMatch[1]) {
+                    const name = nameMatch[1];
+                    const idPart = trimmed.replace('[Client]', '').trim().split(/\s+/)[0];
+                    if (idPart && /^\d+$/.test(idPart) && idPart !== '65535') {
+                        // Eğer bu oyuncu zaten eklenmediyse ekle
+                        if (!players.find(p => p.name === name)) {
+                            // Önce cache'de bu isim için bir SteamID var mı bak
+                            const cachedSteamId = (cache && name) ? cache.get(name) : null;
+                            
+                            players.push({
+                                userId: idPart,
+                                name: name,
+                                steamId: cachedSteamId || 'Hidden/Pending',
+                                connected: '00:00',
+                                ping: 0,
+                                state: 'active'
+                            });
+                        }
+                    }
+                }
             }
 
             return players;
         } catch (e) {
-            console.error(`[RCON] Failed to get players for ${id}:`, e);
-            throw e; // Throw so the API can see the error
+            console.error(`[RCON] Player fetch failed:`, e);
+            return [];
         }
     }
 
