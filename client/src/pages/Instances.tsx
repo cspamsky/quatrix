@@ -229,9 +229,32 @@ const Instances = () => {
   }, [fetchServers])
 
   const copyToClipboard = useCallback((text: string, id: string) => {
-    navigator.clipboard.writeText(text)
-    setCopiedId(id)
-    setTimeout(() => setCopiedId(null), 2000)
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopiedId(id)
+        toast.success('Address copied to clipboard')
+        setTimeout(() => setCopiedId(null), 2000)
+      }).catch(err => {
+        console.error('Failed to copy text: ', err)
+        toast.error('Failed to copy to clipboard')
+      })
+    } else {
+      // Fallback for non-secure contexts
+      try {
+        const textArea = document.createElement("textarea")
+        textArea.value = text
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
+        setCopiedId(id)
+        toast.success('Address copied to clipboard')
+        setTimeout(() => setCopiedId(null), 2000)
+      } catch (err) {
+        console.error('Fallback copy failed: ', err)
+        toast.error('Browser does not support copying')
+      }
+    }
   }, [])
 
   const handleConsoleNavigate = useCallback((id: number) => {

@@ -125,6 +125,330 @@ export const pluginRegistry = {
         category: 'cssharp' as const,
         description: 'Basic commands and exploit fixes',
         folderName: 'CS2-Essentials'
+    },
+    botai: {
+        name: 'BotAI',
+        currentVersion: 'V1.3',
+        githubRepo: 'Austinbots/CS2-BotAI',
+        downloadUrl: 'https://github.com/Austinbots/CS2-BotAI/releases/download/V1.3/BotAiV1.3.zip',
+        category: 'cssharp' as const,
+        description: 'Improved Bot AI (prevents knife rushing, smarter behavior)',
+        folderName: 'BotAI'
+    },
+    fixrandomspawn: {
+        name: 'FixRandomSpawn',
+        currentVersion: 'v1.1.4.1',
+        githubRepo: 'qstage/CS2-FixRandomSpawn',
+        downloadUrl: 'https://github.com/qstage/CS2-FixRandomSpawn/releases/download/v1.1.4.1/FixRandomSpawn.zip',
+        category: 'cssharp' as const,
+        description: 'Fixes mp_randomspawn ConVar for any game mode',
+        folderName: 'FixRandomSpawn'
+    },
+    execafter: {
+        name: 'CS2_ExecAfter',
+        currentVersion: 'v1.0.0',
+        githubRepo: 'kus/CS2_ExecAfter',
+        downloadUrl: 'https://github.com/kus/CS2_ExecAfter/releases/download/v1.0.0/CS2_ExecAfter-1.0.0.zip',
+        category: 'cssharp' as const,
+        description: 'Executes commands after server events or delay',
+        folderName: 'CS2_ExecAfter'
+    },
+    removemapweapons: {
+        name: 'CS2 Remove Map Weapons',
+        currentVersion: '1.0.1',
+        githubRepo: 'kus/CS2-Remove-Map-Weapons',
+        downloadUrl: 'https://github.com/kus/CS2-Remove-Map-Weapons/releases/download/v1.0.1/CS2-Remove-Map-Weapons-1.0.1.zip',
+        category: 'cssharp' as const,
+        description: 'Removes manually placed weapons from maps',
+        folderName: 'CS2-Remove-Map-Weapons'
+    },
+    gamemodemanager: {
+        name: 'GameModeManager',
+        currentVersion: 'v1.0.63',
+        githubRepo: 'nickj609/GameModeManager',
+        downloadUrl: 'https://github.com/nickj609/GameModeManager/releases/download/v1.0.63/GameModeManager_v1.0.63.zip',
+        category: 'cssharp' as const,
+        description: 'Manage game modes and map groups easily',
+        folderName: 'GameModeManager'
+    },
+    inventorysim: {
+        name: 'Inventory Simulator',
+        currentVersion: 'v37',
+        githubRepo: 'ianlucas/cs2-css-inventory-simulator',
+        downloadUrl: 'https://github.com/ianlucas/cs2-css-inventory-simulator/releases/download/v37/InventorySimulator-v37.zip',
+        category: 'cssharp' as const,
+        description: 'Skin changer (Skins, Gloves, Agents, etc)',
+        folderName: 'InventorySimulator'
+    },
+    modelchanger: {
+        name: 'PlayerModelChanger',
+        currentVersion: 'v1.8.6',
+        githubRepo: 'samyycX/CS2-PlayerModelChanger',
+        downloadUrl: 'https://github.com/samyycX/CS2-PlayerModelChanger/releases/download/release-v1.8.6/PlayerModelChanger.zip',
+        category: 'cssharp' as const,
+        description: 'Lightweight player model changer',
+        folderName: 'PlayerModelChanger'
+    },
+    mapconfigurator: {
+        name: 'MapConfigurator',
+        currentVersion: '1.0.2',
+        githubRepo: 'ManifestManah/MapConfigurator',
+        downloadUrl: 'https://github.com/ManifestManah/MapConfigurator/archive/refs/heads/main.zip',
+        category: 'cssharp' as const,
+        description: 'Unique configuration files for each map',
+        folderName: 'MapConfigurator'
+    },
+    damageinfo: {
+        name: 'K4-DamageInfo',
+        currentVersion: '2.4.0',
+        githubRepo: 'KitsuneLab-Development/K4-DamageInfo',
+        downloadUrl: 'https://github.com/KitsuneLab-Development/K4-DamageInfo/releases/download/v2.4.0/K4-DamageInfo.zip',
+        category: 'cssharp' as const,
+        description: 'Detailed damage and hit group information',
+        folderName: 'K4-DamageInfo'
+    },
+    cs2rcon: {
+        name: 'CS2Rcon',
+        currentVersion: '1.2.0',
+        githubRepo: 'LordFetznschaedl/CS2Rcon',
+        downloadUrl: 'https://github.com/LordFetznschaedl/CS2Rcon/releases/download/1.2.0/CS2Rcon-1.2.0.zip',
+        category: 'cssharp' as const,
+        description: 'Rudimentary RCON implementation via CSS',
+        folderName: 'CS2Rcon'
+    },
+    sharptimer: {
+        name: 'SharpTimer',
+        currentVersion: 'v0.3.1x',
+        githubRepo: 'Letaryat/poor-sharptimer',
+        downloadUrl: 'https://github.com/Letaryat/poor-sharptimer/releases/download/v0.3.1x/SharpTimer_0.3.1x.zip',
+        category: 'cssharp' as const,
+        description: 'Timer for Surf/KZ/Bhop/MG/Deathrun',
+        folderName: 'SharpTimer'
+    },
+    stfixes: {
+        name: 'STFixes',
+        currentVersion: 'v1.0.5',
+        githubRepo: 'rcnoob/STFixes',
+        downloadUrl: 'https://github.com/rcnoob/STFixes/releases/download/v1.0.5/STFixes_1.0.5.zip',
+        category: 'cssharp' as const,
+        description: 'Common fixes for SharpTimer servers',
+        folderName: 'STFixes'
+    },
+    arenas: {
+        name: 'K4-Arenas',
+        currentVersion: 'v2.0.8',
+        githubRepo: 'KitsuneLab-Development/K4-Arenas',
+        downloadUrl: 'https://github.com/KitsuneLab-Development/K4-Arenas/releases/download/v2.0.8/K4-Arenas.zip',
+        category: 'cssharp' as const,
+        description: 'Multi-arena/Ladder gamemode',
+        folderName: 'K4-Arenas'
+    },
+    instadefuse: {
+        name: 'CS2 Instadefuse',
+        currentVersion: '2.0.0',
+        githubRepo: 'B3none/cs2-instadefuse',
+        downloadUrl: 'https://github.com/B3none/cs2-instadefuse/releases/download/2.0.0/cs2-instadefuse-2.0.0.zip',
+        category: 'cssharp' as const,
+        description: 'Instant bomb defusal when safe',
+        folderName: 'cs2-instadefuse'
+    },
+    retakesallocator: {
+        name: 'CS2 Retakes Allocator',
+        currentVersion: 'v2.4.2',
+        githubRepo: 'yonilerner/cs2-retakes-allocator',
+        downloadUrl: 'https://github.com/yonilerner/cs2-retakes-allocator/releases/download/v2.4.2/cs2-retakes-allocator-v2.4.2.zip',
+        category: 'cssharp' as const,
+        description: 'Advanced weapon allocator for Retakes',
+        folderName: 'cs2-retakes-allocator'
+    },
+    whitelist: {
+        name: 'CS2 Whitelist',
+        currentVersion: '1.0.0',
+        githubRepo: 'PhantomYopta/CS2_WhiteList',
+        downloadUrl: 'https://github.com/PhantomYopta/CS2_WhiteList/releases/download/1.0.0/WhiteList.zip',
+        category: 'cssharp' as const,
+        description: 'Restrict access to specific SteamIDs',
+        folderName: 'WhiteList'
+    },
+    executes: {
+        name: 'CS2 Executes',
+        currentVersion: '1.1.1',
+        githubRepo: 'zwolof/cs2-executes',
+        downloadUrl: 'https://github.com/zwolof/cs2-executes/releases/download/1.1.1/cs2-executes-1.1.1.zip',
+        category: 'cssharp' as const,
+        description: 'Execute site takes gamemode',
+        folderName: 'cs2-executes'
+    },
+    advertisement: {
+        name: 'CS2 Advertisement',
+        currentVersion: 'v1.0.8-recompile',
+        githubRepo: 'partiusfabaa/cs2-advertisement',
+        downloadUrl: 'https://github.com/partiusfabaa/cs2-advertisement/releases/download/v1.0.8-recompile/Advertisement.zip',
+        category: 'cssharp' as const,
+        description: 'Show ads in chat/center/panel',
+        folderName: 'Advertisement'
+    },
+    deathmatch: {
+        name: 'CS2 Deathmatch',
+        currentVersion: 'v1.3.0',
+        githubRepo: 'NockyCZ/CS2-Deathmatch',
+        downloadUrl: 'https://github.com/NockyCZ/CS2-Deathmatch/releases/download/v1.3.0/Deathmatch.zip',
+        category: 'cssharp' as const,
+        description: 'Custom Deathmatch with gun selection',
+        folderName: 'Deathmatch'
+    },
+    prefireprac: {
+        name: 'OpenPrefirePrac',
+        currentVersion: 'v0.1.47',
+        githubRepo: 'lengran/OpenPrefirePrac',
+        downloadUrl: 'https://github.com/lengran/OpenPrefirePrac/releases/download/v0.1.47/OpenPrefirePrac-v0.1.47.zip',
+        category: 'cssharp' as const,
+        description: 'Prefire practice on competitive maps',
+        folderName: 'OpenPrefirePrac'
+    },
+    customvotes: {
+        name: 'CS2-CustomVotes',
+        currentVersion: 'v1.1.4',
+        githubRepo: 'imi-tat0r/CS2-CustomVotes',
+        downloadUrl: 'https://github.com/imi-tat0r/CS2-CustomVotes/releases/download/v1.1.4/CS2-CustomVotes-1.1.4-c494e8a.zip',
+        category: 'cssharp' as const,
+        description: 'Create custom votes for settings',
+        folderName: 'CS2-CustomVotes'
+    },
+    deathrun: {
+        name: 'deathrun-manager',
+        currentVersion: 'V0.5.1',
+        githubRepo: 'leoskiline/cs2-deathrun-manager',
+        downloadUrl: 'https://github.com/leoskiline/cs2-deathrun-manager/releases/download/V0.5.1/cs2-deathrun-manager-0.5.1.zip',
+        category: 'cssharp' as const,
+        description: 'Deathrun gamemode manager',
+        folderName: 'deathrun-manager'
+    },
+    announcement: {
+        name: 'AnnouncementBroadcaster',
+        currentVersion: 'v0.5',
+        githubRepo: 'lengran/CS2AnnouncementBroadcaster',
+        downloadUrl: 'https://github.com/lengran/CS2AnnouncementBroadcaster/releases/download/v0.5/CS2AnnouncementBroadcaster-v0.5.zip',
+        category: 'cssharp' as const,
+        description: 'Conditional messages and timer broadcasts',
+        folderName: 'CS2AnnouncementBroadcaster'
+    },
+    gamemodifiers: {
+        name: 'CS2-GameModifiers',
+        currentVersion: 'v1.0.4',
+        githubRepo: 'vinicius-trev/CS2-GameModifiers-Plugin',
+        downloadUrl: 'https://github.com/vinicius-trev/CS2-GameModifiers-Plugin/releases/download/v1.0.4/GameModifiers-v1.0.4.zip',
+        category: 'cssharp' as const,
+        description: 'Random gameplay modifiers every round',
+        folderName: 'GameModifiers'
+    },
+    funmatch: {
+        name: 'CS2FunMatchPlugin',
+        currentVersion: 'v1.1.1',
+        githubRepo: 'TitaniumLithium/CS2FunMatchPlugin',
+        downloadUrl: 'https://github.com/TitaniumLithium/CS2FunMatchPlugin/releases/download/v1.1.1/FunMatchPlugin_dll_windows_v1.1.1.zip',
+        category: 'cssharp' as const,
+        description: 'Fun round modes (gravity, speed, etc)',
+        folderName: 'FunMatchPlugin'
+    },
+    rtd: {
+        name: 'RollTheDice',
+        currentVersion: '26.01.3',
+        githubRepo: 'Kandru/cs2-roll-the-dice',
+        downloadUrl: 'https://github.com/Kandru/cs2-roll-the-dice/releases/download/26.01.3/cs2-roll-the-dice-release-26.01.3.zip',
+        category: 'cssharp' as const,
+        description: 'Roll dice for random effects',
+        folderName: 'cs2-roll-the-dice'
+    },
+    mutualscoring: {
+        name: 'CS2-MutualScoringPlayers',
+        currentVersion: 'v1.0.3',
+        githubRepo: 'qstage/CS2-MutualScoringPlayers',
+        downloadUrl: 'https://github.com/qstage/CS2-MutualScoringPlayers/releases/download/v1.0.3/MutualScoringPlayers.zip',
+        category: 'cssharp' as const,
+        description: 'Track head-to-head kills between players',
+        folderName: 'MutualScoringPlayers'
+    },
+    warcraft: {
+        name: 'CS2WarcraftMod',
+        currentVersion: '3.3.5',
+        githubRepo: 'Wngui/CS2WarcraftMod',
+        downloadUrl: 'https://github.com/Wngui/CS2WarcraftMod/releases/download/3.3.5/warcraft-plugin-3.3.5.zip',
+        category: 'cssharp' as const,
+        description: 'Comprehensive Warcraft RPG system',
+        folderName: 'warcraft-plugin'
+    },
+    advancedweapon: {
+        name: 'CS2 Advanced Weapon System',
+        currentVersion: 'v1.11',
+        githubRepo: 'schwarper/cs2-advanced-weapon-system',
+        downloadUrl: 'https://github.com/schwarper/cs2-advanced-weapon-system/releases/download/v1.11/cs2-advanced-weapon-system-v1.11.zip',
+        category: 'cssharp' as const,
+        description: 'Advanced weapon attribute control',
+        folderName: 'cs2-advanced-weapon-system'
+    },
+    oneinthechamber: {
+        name: 'CS2 One In The Chamber',
+        currentVersion: '1.0.0',
+        githubRepo: 'ShookEagle/cs2-OneInTheChamber',
+        downloadUrl: 'https://github.com/ShookEagle/cs2-OneInTheChamber/releases/download/1.0.0/cs2-OneInTheChamber.zip',
+        category: 'cssharp' as const,
+        description: 'One In The Chamber gamemode',
+        folderName: 'cs2-OneInTheChamber'
+    },
+    quakesounds: {
+        name: 'CS2 Quake Sounds',
+        currentVersion: '26.01.3',
+        githubRepo: 'Kandru/cs2-quake-sounds',
+        downloadUrl: 'https://github.com/Kandru/cs2-quake-sounds/releases/download/26.01.3/cs2-quake-sounds-release-26.01.3.zip',
+        category: 'cssharp' as const,
+        description: 'Quake announcment sounds for kills',
+        folderName: 'cs2-quake-sounds'
+    },
+    weaponspeed: {
+        name: 'CS2-WeaponSpeed',
+        currentVersion: 'v1.3',
+        githubRepo: 'akanora/CS2-WeaponSpeed',
+        downloadUrl: 'https://github.com/akanora/CS2-WeaponSpeed/releases/download/v1.3/WeaponSpeed.zip',
+        category: 'cssharp' as const,
+        description: 'Speed boost when firing specific weapons',
+        folderName: 'WeaponSpeed'
+    },
+    spectatorlist: {
+        name: 'SpectatorList-CS2',
+        currentVersion: 'v1.0.5',
+        githubRepo: 'wiruwiru/SpectatorList-CS2',
+        downloadUrl: 'https://github.com/wiruwiru/SpectatorList-CS2/releases/download/build-16/SpectatorList.zip',
+        category: 'cssharp' as const,
+        description: 'Shows real-time spectators on screen',
+        folderName: 'SpectatorList'
+    },
+    football: {
+        name: 'SLAYER_Football',
+        currentVersion: 'v1.1',
+        githubRepo: 'zakriamansoor47/SLAYER_Football',
+        downloadUrl: 'https://github.com/zakriamansoor47/SLAYER_Football/releases/download/v1.1/CS2_SLAYER_Football_v1.1.zip',
+        category: 'cssharp' as const,
+        description: 'Football game mode for CS2',
+        folderName: 'SLAYER_Football'
+    },
+    revive: {
+        name: 'SLAYER_Revive',
+        currentVersion: 'v1.3.2',
+        githubRepo: 'zakriamansoor47/SLAYER_Revive',
+        downloadUrl: 'https://github.com/zakriamansoor47/SLAYER_Revive/releases/download/v1.3.2/CS2.SLAYER_Revive.v1.3.2.zip',
+        category: 'cssharp' as const,
+        description: 'Revive teammates in-game',
+        folderName: 'SLAYER_Revive'
+    },
+    teleportkill: {
+        name: 'CS2-TeleportKill',
+        currentVersion: 'v1.0.1',
+        githubRepo: 'rodopoulos1/cs2-TeleportKill',
+        downloadUrl: 'https://github.com/rodopoulos1/cs2-TeleportKill/releases/download/1.0.1/TeleportKill-1.0.1.zip',
+        category: 'cssharp' as const,
+        description: 'Teleport to victim position on kill',
+        folderName: 'TeleportKill'
     }
 } as const;
 
