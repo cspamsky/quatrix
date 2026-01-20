@@ -70,9 +70,15 @@ const Players = () => {
       if (response.ok) {
         const data = await response.json()
         setPlayers(data)
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch players' }))
+        if (isManual) {
+          showNotification('error', 'Update Failed', errorData.message || 'Server might be starting or unreachable')
+        }
       }
     } catch (error) {
       console.error('Failed to fetch players:', error)
+      if (isManual) showNotification('error', 'Connection Error', 'Unable to reach the panel backend')
     } finally {
       setLoading(false)
       setRefreshing(false)

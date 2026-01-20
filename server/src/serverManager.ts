@@ -205,17 +205,29 @@ class ServerManager {
 
     async sendCommand(id: string | number, command: string): Promise<string> {
         const idStr = id.toString();
-        if (!this.isServerRunning(idStr)) throw new Error("Server is not running");
         const server = db.prepare("SELECT * FROM servers WHERE id = ?").get(idStr) as any;
+        if (!server) throw new Error("Server not found in database");
+
         const { Rcon } = await import('rcon-client');
         let rcon = this.rconConnections.get(idStr);
-        if (!rcon) {
-            rcon = await Rcon.connect({ host: '127.0.0.1', port: server.port, password: server.rcon_password, timeout: 5000 });
-            rcon.on('error', () => this.rconConnections.delete(idStr));
-            rcon.on('end', () => this.rconConnections.delete(idStr));
-            this.rconConnections.set(idStr, rcon);
+        
+        try {
+            if (!rcon) {
+                rcon = await Rcon.connect({ 
+                    host: '127.0.0.1', 
+                    port: server.port, 
+                    password: server.rcon_password, 
+                    timeout: 3000 // 3s timeout for faster feedback
+                });
+                rcon.on('error', () => this.rconConnections.delete(idStr));
+                rcon.on('end', () => this.rconConnections.delete(idStr));
+                this.rconConnections.set(idStr, rcon);
+            }
+            return await rcon.send(command);
+        } catch (error) {
+            this.rconConnections.delete(idStr);
+            throw new Error(`RCON Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
-        return rcon.send(command);
     }
 
     async getCurrentMap(id: string | number): Promise<string | null> {
@@ -234,40 +246,43 @@ class ServerManager {
             
             for (const line of lines) {
                 const trimmed = line.trim();
-                // We are looking for lines like: # 2 1 "Name" STEAM_1:0:123 01:23 15
-                // Skipping header lines
-                if (!trimmed.startsWith('#') || trimmed.includes('userid')) continue;
+                // We are looking for lines starting with # but not the header
+                if (!trimmed.startsWith('#') || trimmed.includes('userid') || trimmed.length < 10) continue;
 
-                // CS2 status format can have variable spacing:
-                // #      2      1 "Name" ...
-                const parts = trimmed.split(/\s+/);
-                if (parts.length >= 6) {
-                    // Parts: [#, index, userid, name, steamid, connected, ping, ...]
-                    // Note: name is often "Name", so we need to be careful with spaces in names
-                    // Re-parsing with regex but simpler
-                    const nameMatch = trimmed.match(/"(.+)"/);
-                    if (nameMatch) {
-                        const name = nameMatch[1];
-                        const partsAfterName = trimmed.split(nameMatch[0])[1];
-                        if (partsAfterName) {
-                            const steamPart = partsAfterName.trim().split(/\s+/);
-                            // steamPart[0] is SteamID, steamPart[1] is connected, steamPart[2] is ping
-                            players.push({
-                                userId: parts[2],
-                                name: name,
-                                steamId: steamPart[0],
-                                connected: steamPart[1],
-                                ping: parseInt(steamPart[2] || '0'),
-                                state: 'active'
-                            });
-                        }
+                // CS2 status format: # index userid "name" steamid connected ping loss state rate
+                // Example: # 2 1 "Silver" STEAM_1:0:123 01:23 15 0 active 128000
+                
+                const nameMatch = trimmed.match(/"(.+)"/);
+                if (nameMatch) {
+                    const name = nameMatch[1];
+                    const fullMatch = nameMatch[0];
+                    const afterName = trimmed.split(fullMatch)[1]?.trim() || "";
+                    const beforeName = trimmed.split(fullMatch)[0]?.trim() || "";
+                    
+                    const beforeParts = beforeName.split(/\s+/); // [#, index, userid]
+                    const afterParts = afterName.split(/\s+/);   // [steamid, connected, ping, ...]
+
+                    if (afterParts.length >= 2) {
+                        players.push({
+                            userId: beforeParts[beforeParts.length - 1], // Last part before name
+                            name: name,
+                            steamId: afterParts[0],
+                            connected: afterParts[1],
+                            ping: parseInt(afterParts[2] || '0'),
+                            state: 'active'
+                        });
                     }
                 }
             }
+
+            if (players.length === 0 && output.includes('# userid')) {
+                console.log(`[RCON] No players parsed, but header found. Raw output snippet:\n${output.substring(0, 500)}`);
+            }
+
             return players;
         } catch (e) {
             console.error(`[RCON] Failed to get players for ${id}:`, e);
-            return [];
+            throw e; // Throw so the API can see the error
         }
     }
 

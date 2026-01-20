@@ -11,9 +11,6 @@ router.use(authenticateToken);
 router.get("/:id/players", async (req: any, res) => {
     try {
         const id = req.params.id;
-        if (!serverManager.isServerRunning(id)) {
-            return res.json([]);
-        }
         const players = await serverManager.getPlayers(id);
         res.json(players);
     } catch (error: any) {
