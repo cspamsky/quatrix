@@ -161,30 +161,24 @@ class ServerManager {
                 if (buffer.length > 200) buffer.shift();
                 this.logBuffers.set(id, buffer);
 
-                // --- OYUNCU TAKIBI (SteamID Yakalama) ---
-                // 1. Standart Source/CS2 validated formatı: "Name<2><[U:1:1008325669]><>" STEAM USERID validated
+                // --- OYUNCU TAKIBI (ID ve SteamID Yakalama) ---
                 const validatedMatch = line.match(/["'](.+)<(\d+)><(\[?U:\d:\d+\]?|STEAM_\d:\d:\d+|BOT)>/i);
-                
-                // 2. Bağlantı anındaki UDP formatı: UDP steamid:76561198968591397@...
                 const udpMatch = line.match(/steamid:(\d{17})/);
                 
+                const serverId = id.toString();
+                if (!this.playerIdentityCache.has(serverId)) this.playerIdentityCache.set(serverId, new Map());
+                const cache = this.playerIdentityCache.get(serverId);
+
                 if (validatedMatch) {
-                    const name = validatedMatch[1].replace('SV:  ', '').trim(); // SV: gibi ön ekleri temizle
+                    const userId = validatedMatch[2];
                     const steamId = validatedMatch[3];
-                    
-                    if (!this.playerIdentityCache.has(id.toString())) this.playerIdentityCache.set(id.toString(), new Map());
-                    this.playerIdentityCache.get(id.toString())?.set(name, steamId);
-                    console.log(`[IDENTITY] Validated: ${name} -> ${steamId}`);
+                    cache?.set(userId, steamId);
+                    // İsim de yedek olarak kalsın
+                    cache?.set(validatedMatch[1], steamId);
                 } else if (udpMatch && line.includes("'")) {
-                    // Örnek: ... steamid:76561198968591397@... 'Pamsky'
                     const steamId64 = udpMatch[1];
                     const nameMatch = line.match(/'(.+)'/);
-                    if (nameMatch) {
-                        const name = nameMatch[1];
-                        if (!this.playerIdentityCache.has(id.toString())) this.playerIdentityCache.set(id.toString(), new Map());
-                        this.playerIdentityCache.get(id.toString())?.set(name, steamId64);
-                        console.log(`[IDENTITY] UDP Match: ${name} -> ${steamId64}`);
-                    }
+                    if (nameMatch) cache?.set(nameMatch[1], steamId64);
                 }
             }
         });
@@ -315,15 +309,29 @@ class ServerManager {
                     const name = nameMatch[1];
                     const idPart = trimmed.replace('[Client]', '').trim().split(/\s+/)[0];
                     if (idPart && /^\d+$/.test(idPart) && idPart !== '65535') {
-                        // Eğer bu oyuncu zaten eklenmediyse ekle
                         if (!players.find(p => p.name === name)) {
-                            // Önce cache'de bu isim için bir SteamID var mı bak
-                            const cachedSteamId = (cache && name) ? cache.get(name) : null;
+                            // 1. Önce Cache'den (ID bazlı veya isim bazlı) bak
+                            let steamId = cache?.get(idPart) || cache?.get(name);
                             
+                            // 2. Eğer hala yoksa, mevcut log buffer'ını son kez tara (Geriye dönük)
+                            if (!steamId) {
+                                const buffer = this.logBuffers.get(idStr) || [];
+                                for (const logLine of buffer) {
+                                    if (logLine.includes(name) && (logLine.includes('U:1:') || logLine.includes('STEAM_'))) {
+                                        const m = logLine.match(/(\[?U:\d:\d+\]?|STEAM_\d:\d:\d+)/i);
+                                        if (m && m[1]) {
+                                            steamId = m[1];
+                                            if (cache) cache.set(idPart, steamId); // Bir dahaki sefere daha hızlı bul
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
                             players.push({
                                 userId: idPart,
                                 name: name,
-                                steamId: cachedSteamId || 'Hidden/Pending',
+                                steamId: steamId || 'Hidden/Pending',
                                 connected: '00:00',
                                 ping: 0,
                                 state: 'active'

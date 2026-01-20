@@ -62,8 +62,10 @@ const Players = () => {
       setPlayers([])
       return
     }
+    
+    // Sadece manuel yenilemede veya ilk yüklemede loading göster
     if (isManual) setRefreshing(true)
-    else if (players.length === 0) setLoading(true)
+    else if (players.length === 0 && !loading) setLoading(true)
 
     try {
       const response = await apiFetch(`/api/servers/${selectedServerId}/players`)
@@ -87,7 +89,8 @@ const Players = () => {
 
   useEffect(() => {
     fetchPlayers()
-    const interval = setInterval(fetchPlayers, 5000)
+    // 10 saniyede bir otomatik yenile (Sürekli yenilenme hissini azaltmak için)
+    const interval = setInterval(() => fetchPlayers(false), 10000)
     return () => clearInterval(interval)
   }, [selectedServerId])
 
