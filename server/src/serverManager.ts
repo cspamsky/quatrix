@@ -226,6 +226,36 @@ class ServerManager {
         } catch (e) { return null; }
     }
 
+    async getPlayers(id: string | number): Promise<any[]> {
+        try {
+            const output = await this.sendCommand(id, 'status');
+            const players: any[] = [];
+            const lines = output.split('\n');
+            
+            // Format: # userid name uniqueid connected ping loss state rate
+            // Example: # 2 1 "SilverSurfer_99" STEAM_1:0:12345678 04:20 18 0 active 128000
+            for (const line of lines) {
+                const match = line.match(/^#\s+(\d+)\s+(\d+)\s+"(.+)"\s+(\S+)\s+([\d:]+)\s+(\d+)\s+(\d+)\s+(\w+)\s+(\d+)/);
+                if (match) {
+                    players.push({
+                        userId: match[2],
+                        name: match[3],
+                        steamId: match[4],
+                        connected: match[5],
+                        ping: parseInt(match[6] || '0'),
+                        loss: match[7],
+                        state: match[8],
+                        rate: match[9]
+                    });
+                }
+            }
+            return players;
+        } catch (e) {
+            console.error(`[RCON] Failed to get players for ${id}:`, e);
+            return [];
+        }
+    }
+
     async listFiles(id: string | number, subDir: string = '') {
         const base = path.join(this.installDir, id.toString(), 'game', 'csgo');
         const target = path.resolve(base, subDir);

@@ -14,6 +14,7 @@ import commandsRouter from "./routes/commands.js";
 import configRouter from "./routes/config.js";
 import filesRouter from "./routes/files.js";
 import pluginsRouter from "./routes/plugins.js";
+import playersRouter from "./routes/players.js";
 
 // Environment variables are loaded via --env-file in package.json dev script
 
@@ -39,6 +40,7 @@ app.use('/api/servers', pluginsRouter); // /api/servers/plugins/...
 app.use('/api/servers', serversRouter); // /api/servers (base)
 app.use('/api/servers', commandsRouter); // /api/servers/:id/start, etc.
 app.use('/api/servers', filesRouter); // /api/servers/:id/files
+app.use('/api/servers', playersRouter); // /api/servers/:id/players
 
 // --- Background Tasks ---
 
