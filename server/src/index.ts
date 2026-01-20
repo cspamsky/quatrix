@@ -50,6 +50,8 @@ app.use('/api/servers', playersRouter); // /api/servers/:id/players
 // --- Serve Frontend in Production ---
 if (isProduction) {
   const clientBuildPath = path.join(__dirname, '../../client/dist');
+  console.log(`\x1b[34m[INFO]\x1b[0m Serving frontend from: \x1b[35m${clientBuildPath}\x1b[0m`);
+  
   app.use(express.static(clientBuildPath));
   
   // SPA fallback - tüm non-API route'ları index.html'e yönlendir
@@ -57,8 +59,17 @@ if (isProduction) {
     if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
       return next();
     }
-    res.sendFile(path.join(clientBuildPath, 'index.html'));
+    
+    const indexPath = path.join(clientBuildPath, 'index.html');
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        console.error(`\x1b[31m[ERROR]\x1b[0m Failed to serve index.html:`, err.message);
+        res.status(500).send("Frontend build not found. Please run 'npm run build' first.");
+      }
+    });
   });
+} else {
+  console.log(`\x1b[33m[WARN]\x1b[0m Running in development mode. Frontend should be started separately via 'npm run dev'.`);
 }
 
 // --- Background Tasks ---
