@@ -111,8 +111,8 @@ quatrix/                     # Root Hub
 
 ## 🗺️ Roadmap: The Future of Server Management
 
-- [] **Live Player Manager**: RCON status integration, Avatars, and Moderation tools.
-- [] **Plugin Marketplace**: One-click install for CSS, MM, and top-tier plugins.
+- [ ] **Live Player Manager**: RCON status integration, Avatars, and Moderation tools.
+- [ ] **Plugin Marketplace**: One-click install for CSS, MM, and top-tier plugins.
 - [ ] **Steam Workshop Bridge**: Native workshop browser for automated map deployments.
 - [ ] **Snapshot Backups**: Automated backups of configurations and plugin data.
 - [ ] **Discord Integration**: Real-time alerts for server status and player sessions.
