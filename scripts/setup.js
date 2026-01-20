@@ -71,7 +71,7 @@ async function runSetup() {
         // 4. Dependency Installation (Faster if only needed)
         const install = (dir, name) => {
             log(C.magenta, "INSTALL", `Installing dependencies for ${C.bright}${name}${C.reset}...`);
-            const targetDir = path.join(__dirname, dir);
+            const targetDir = path.join(rootDir, dir);
             
             // Special cleanup for client (Vite cache)
             if (dir === 'client') {
