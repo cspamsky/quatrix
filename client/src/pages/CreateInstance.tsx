@@ -17,7 +17,7 @@ const CreateInstance = () => {
   const [error, setError] = useState('')
   const [formData, setFormData] = useState({
     serverName: '',
-    gameType: 'competitive',
+    gameType: '0-1', // Default to Competitive (type 0, mode 1)
     maxPlayers: 10,
     port: '27015',
     initialMap: 'de_dust2',
@@ -60,6 +60,8 @@ const CreateInstance = () => {
           gslt_token: formData.glstToken || null,
           steam_api_key: formData.steamApiKey || null,
           vac_enabled: formData.vac ? 1 : 0,
+          game_type: parseInt(formData.gameType.split('-')[0]),
+          game_mode: parseInt(formData.gameType.split('-')[1])
         }),
       })
 
@@ -148,10 +150,12 @@ const CreateInstance = () => {
                       onChange={handleInputChange}
                       className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                     >
-                      <option value="competitive">Competitive</option>
-                      <option value="casual">Casual</option>
-                      <option value="deathmatch">Deathmatch</option>
-                      <option value="wingman">Wingman</option>
+                      <option value="0-0">Casual</option>
+                      <option value="0-1">Competitive</option>
+                      <option value="0-2">Wingman</option>
+                      <option value="1-0">Arms Race</option>
+                      <option value="1-1">Demolition</option>
+                      <option value="1-2">Deathmatch</option>
                     </select>
                   </div>
 

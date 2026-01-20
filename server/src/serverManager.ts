@@ -90,8 +90,14 @@ class ServerManager {
         fs.writeFileSync(serverCfgPath, cfgContent);
 
         const args = [
-            '-dedicated', '+map', options.map || 'de_dust2', '-port', options.port.toString(),
-            '-maxplayers', (options.max_players || 16).toString(), '-nosteamclient', '+ip', '0.0.0.0'
+            '-dedicated', 
+            '+game_type', (options.game_type ?? 0).toString(),
+            '+game_mode', (options.game_mode ?? 0).toString(),
+            '+map', options.map || 'de_dust2', 
+            '-port', options.port.toString(),
+            '-maxplayers', (options.max_players || 16).toString(), 
+            '-nosteamclient', 
+            '+ip', '0.0.0.0'
         ];
         if (options.vac_enabled) args.push('+sv_lan', '0'); else args.push('-insecure', '+sv_lan', '1');
         if (options.gslt_token) args.push('+sv_setsteamaccount', options.gslt_token);

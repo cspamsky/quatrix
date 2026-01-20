@@ -9,7 +9,7 @@ export const pluginRegistry = {
     },
     cssharp: {
         name: 'CounterStrikeSharp',
-        currentVersion: 'v1.0.355',
+        currentVersion: 'v1.0.356',
         githubRepo: 'roflmuffin/CounterStrikeSharp',
         assetNamePattern: 'counterstrikesharp-with-runtime-linux-{version_clean}.zip',
         category: 'core'

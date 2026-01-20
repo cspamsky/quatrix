@@ -15,7 +15,18 @@ interface ServerData {
   vac_enabled: boolean
   gslt_token?: string
   steam_api_key?: string
+  game_type: number
+  game_mode: number
 }
+
+const GAME_MODES = [
+  { name: 'Casual', type: 0, mode: 0 },
+  { name: 'Competitive', type: 0, mode: 1 },
+  { name: 'Wingman', type: 0, mode: 2 },
+  { name: 'Arms Race', type: 1, mode: 0 },
+  { name: 'Demolition', type: 1, mode: 1 },
+  { name: 'Deathmatch', type: 1, mode: 2 }
+]
 
 const ServerSettings = () => {
   const { id } = useParams()
@@ -159,6 +170,26 @@ const ServerSettings = () => {
                   />
                 </div>
               </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Game Mode
+                  </label>
+                  <select
+                    value={`${server.game_type}-${server.game_mode}`}
+                    onChange={(e) => {
+                      const [type, mode] = e.target.value.split('-').map(Number)
+                      setServer({ ...server, game_type: type, game_mode: mode })
+                    }}
+                    className="w-full px-4 py-2 bg-[#0d1421] border border-gray-800 rounded-lg text-white focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all"
+                  >
+                    {GAME_MODES.map((mode) => (
+                      <option key={`${mode.type}-${mode.mode}`} value={`${mode.type}-${mode.mode}`}>
+                        {mode.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">

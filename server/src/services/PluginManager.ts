@@ -33,7 +33,6 @@ export class PluginManager {
     private lastSync = 0;
 
     async syncRegistry(): Promise<void> {
-        if (this.manifest && Date.now() - this.lastSync < 30000) return; 
         try {
             if (fs.existsSync(this.MANIFEST_PATH)) {
                 const data = fs.readFileSync(this.MANIFEST_PATH, 'utf8');
