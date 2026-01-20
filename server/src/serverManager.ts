@@ -232,21 +232,36 @@ class ServerManager {
             const players: any[] = [];
             const lines = output.split('\n');
             
-            // Format: # userid name uniqueid connected ping loss state rate
-            // Example: # 2 1 "SilverSurfer_99" STEAM_1:0:12345678 04:20 18 0 active 128000
             for (const line of lines) {
-                const match = line.match(/^#\s+(\d+)\s+(\d+)\s+"(.+)"\s+(\S+)\s+([\d:]+)\s+(\d+)\s+(\d+)\s+(\w+)\s+(\d+)/);
-                if (match) {
-                    players.push({
-                        userId: match[2],
-                        name: match[3],
-                        steamId: match[4],
-                        connected: match[5],
-                        ping: parseInt(match[6] || '0'),
-                        loss: match[7],
-                        state: match[8],
-                        rate: match[9]
-                    });
+                const trimmed = line.trim();
+                // We are looking for lines like: # 2 1 "Name" STEAM_1:0:123 01:23 15
+                // Skipping header lines
+                if (!trimmed.startsWith('#') || trimmed.includes('userid')) continue;
+
+                // CS2 status format can have variable spacing:
+                // #      2      1 "Name" ...
+                const parts = trimmed.split(/\s+/);
+                if (parts.length >= 6) {
+                    // Parts: [#, index, userid, name, steamid, connected, ping, ...]
+                    // Note: name is often "Name", so we need to be careful with spaces in names
+                    // Re-parsing with regex but simpler
+                    const nameMatch = trimmed.match(/"(.+)"/);
+                    if (nameMatch) {
+                        const name = nameMatch[1];
+                        const partsAfterName = trimmed.split(nameMatch[0])[1];
+                        if (partsAfterName) {
+                            const steamPart = partsAfterName.trim().split(/\s+/);
+                            // steamPart[0] is SteamID, steamPart[1] is connected, steamPart[2] is ping
+                            players.push({
+                                userId: parts[2],
+                                name: name,
+                                steamId: steamPart[0],
+                                connected: steamPart[1],
+                                ping: parseInt(steamPart[2] || '0'),
+                                state: 'active'
+                            });
+                        }
+                    }
                 }
             }
             return players;
