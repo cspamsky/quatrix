@@ -61,10 +61,14 @@ export async function getPlayerAvatars(steamIds: string[]): Promise<Map<string, 
         const apiKeyRow = db.prepare("SELECT value FROM settings WHERE key = 'steam_api_key'").get() as { value: string } | undefined;
         
         if (!apiKeyRow || !apiKeyRow.value) {
+            console.warn('[Steam API] No API key configured. Please add Steam API key to database.');
+            console.warn('[Steam API] Run: sqlite3 data/quatrix.db "INSERT OR REPLACE INTO settings (key, value) VALUES (\'steam_api_key\', \'YOUR_KEY\');"');
             return avatarMap;
         }
 
         const apiKey = apiKeyRow.value;
+        console.log(`[Steam API] API key found, fetching avatars for ${steamIds.length} players`);
+        
         // Steam API maksimum 100 ID'yi aynı anda kabul eder
         const chunks = [];
         for (let i = 0; i < steamIds.length; i += 100) {
@@ -74,21 +78,30 @@ export async function getPlayerAvatars(steamIds: string[]): Promise<Map<string, 
         for (const chunk of chunks) {
             const url = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${apiKey}&steamids=${chunk.join(',')}`;
             
+            console.log(`[Steam API] Fetching ${chunk.length} player summaries...`);
             const response = await fetch(url);
+            
             if (response.ok) {
                 const data = await response.json();
                 const players = data.response?.players as SteamPlayerSummary[];
                 
                 if (players) {
+                    console.log(`[Steam API] Received ${players.length} player profiles`);
                     players.forEach(player => {
                         const avatarUrl = player.avatarfull || player.avatarmedium || player.avatar;
                         if (avatarUrl) {
                             avatarMap.set(player.steamid, avatarUrl);
                         }
                     });
+                } else {
+                    console.warn('[Steam API] No players data in response');
                 }
+            } else {
+                console.error(`[Steam API] Request failed with status ${response.status}: ${response.statusText}`);
             }
         }
+        
+        console.log(`[Steam API] Total avatars fetched: ${avatarMap.size}`);
     } catch (error) {
         console.error('[Steam API] Error fetching avatars:', error);
     }

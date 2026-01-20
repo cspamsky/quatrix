@@ -344,10 +344,29 @@ class ServerManager {
                         continue;
                     }
                     
-                    // Satırdan ID ve ping bilgisini çıkar
+                    // Satırdan ID, time ve ping bilgisini çıkar
                     // Format: [Client] id time ping 'name'
+                    // Örnek: [Client] 2  0:15  25  'Pamsky'
                     const parts = trimmed.replace('[Client]', '').trim().split(/\s+/);
                     const idPart = parts[0];
+                    
+                    // Bağlantı süresini parse et (genellikle 2. sütun: MM:SS veya H:MM:SS)
+                    let connectedTime = '00:00:00';
+                    if (parts.length >= 2 && parts[1] && parts[1].includes(':')) {
+                        const timeParts = parts[1].split(':');
+                        if (timeParts.length === 2 && timeParts[0] && timeParts[1]) {
+                            // MM:SS formatı
+                            const mins = parseInt(timeParts[0]) || 0;
+                            const secs = parseInt(timeParts[1]) || 0;
+                            connectedTime = `00:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                        } else if (timeParts.length === 3 && timeParts[0] && timeParts[1] && timeParts[2]) {
+                            // H:MM:SS formatı
+                            const hours = parseInt(timeParts[0]) || 0;
+                            const mins = parseInt(timeParts[1]) || 0;
+                            const secs = parseInt(timeParts[2]) || 0;
+                            connectedTime = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                        }
+                    }
                     
                     // Ping bilgisini bul (genellikle 3. sütun)
                     let ping = 0;
@@ -378,26 +397,13 @@ class ServerManager {
                             }
                         }
 
-                        // 3. Veritabanı Taraması (SteamID ve bağlantı süresi)
-                        let connectedTime = '00:00:00';
+                        // 3. Veritabanı Taraması (Sadece SteamID için)
                         if (!steamId) {
-                            const dbRow = db.prepare("SELECT steam_id, first_seen FROM player_identities WHERE name = ?")
-                                           .get(name) as { steam_id: string; first_seen: string } | undefined;
+                            const dbRow = db.prepare("SELECT steam_id FROM player_identities WHERE name = ?")
+                                           .get(name) as { steam_id: string } | undefined;
                             if (dbRow) {
                                 steamId = dbRow.steam_id;
                                 if (cache) cache.set(idPart, steamId);
-                                
-                                // Bağlantı süresini hesapla (HH:MM:SS)
-                                if (dbRow.first_seen) {
-                                    const firstSeen = new Date(dbRow.first_seen);
-                                    const now = new Date();
-                                    const diffMs = now.getTime() - firstSeen.getTime();
-                                    const diffSecs = Math.floor(diffMs / 1000);
-                                    const hours = Math.floor(diffSecs / 3600);
-                                    const mins = Math.floor((diffSecs % 3600) / 60);
-                                    const secs = diffSecs % 60;
-                                    connectedTime = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                                }
                             }
                         }
 
@@ -423,16 +429,25 @@ class ServerManager {
                 .map(p => p.steamId)
                 .filter(id => id && /^\d{17}$/.test(id)); // Sadece geçerli Steam64 ID'leri
 
+            console.log(`[Avatar] Found ${steamIds.length} Steam64 IDs to fetch avatars for`);
+
             if (steamIds.length > 0) {
-                const { getPlayerAvatars } = await import('./utils/steamApi.js');
-                const avatars = await getPlayerAvatars(steamIds);
-                
-                // Avatar URL'lerini oyunculara ekle
-                players.forEach(player => {
-                    if (player.steamId && avatars.has(player.steamId)) {
-                        player.avatar = avatars.get(player.steamId);
-                    }
-                });
+                try {
+                    const { getPlayerAvatars } = await import('./utils/steamApi.js');
+                    const avatars = await getPlayerAvatars(steamIds);
+                    
+                    console.log(`[Avatar] Successfully fetched ${avatars.size} avatars from Steam API`);
+                    
+                    // Avatar URL'lerini oyunculara ekle
+                    players.forEach(player => {
+                        if (player.steamId && avatars.has(player.steamId)) {
+                            player.avatar = avatars.get(player.steamId);
+                            console.log(`[Avatar] Added avatar for ${player.name}: ${player.avatar}`);
+                        }
+                    });
+                } catch (error) {
+                    console.error('[Avatar] Failed to fetch avatars:', error);
+                }
             }
 
             return players;

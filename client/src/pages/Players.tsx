@@ -64,18 +64,19 @@ const Players = () => {
       return
     }
     
-    // Sadece manuel yenilemede loading göster
+    // Sadece manuel yenilemede refreshing göster
     if (isManual) {
       setRefreshing(true)
-    } else {
-      setLoading(true)
     }
+    // Loading state'i otomatik yenilemelerde gösterme (arayüz bozulmasın)
 
     try {
       const response = await apiFetch(`/api/servers/${selectedServerId}/players`)
       if (response.ok) {
         const data = await response.json()
         setPlayers(data)
+        // İlk başarılı yüklemeden sonra loading'i kapat
+        if (loading) setLoading(false)
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Failed to fetch players' }))
         if (isManual) {
@@ -86,10 +87,9 @@ const Players = () => {
       console.error('Failed to fetch players:', error)
       if (isManual) showNotification('error', 'Connection Error', 'Unable to reach the panel backend')
     } finally {
-      setLoading(false)
       setRefreshing(false)
     }
-  }, [selectedServerId, showNotification])
+  }, [selectedServerId, showNotification, loading])
 
   useEffect(() => {
     if (!selectedServerId) return
