@@ -7,33 +7,42 @@ function killProcesses() {
     console.log(`[STOP] Detecting and terminating processes on ${os.platform()}...`);
 
     if (isWindows) {
-        // Windows: Kill by image name
-        const targets = ['node.exe', 'cs2.exe'];
+        // Windows cleanup
+        const targets = ['node.exe', 'cs2.exe', 'cmd.exe'];
         targets.forEach(target => {
             try {
-                // We use /F to force and /T to kill child processes
-                // Filtering by 'node.exe' might be too broad, but since it's a dev environment cleanup it's usually what's needed
-                // Better approach: check for specific keywords in command line if possible, but taskkill is limited
+                // Taskkill /F /IM kills by image name
+                // Adding 'node.exe' will stop both Vite and Backend
                 execSync(`taskkill /F /IM ${target} /T`, { stdio: 'ignore' });
-                console.log(`[STOP] Terminated ${target} instances.`);
-            } catch (e) {
-                // ignore errors if process not found
-            }
+            } catch (e) {}
         });
     } else {
-        // Linux/Mac: Use pkill
-        const targets = ['tsx', 'vite', 'cs2'];
-        targets.forEach(target => {
+        // Linux cleanup (More aggressive)
+        
+        // 1. Try to kill by port (Requires lsof or fuser)
+        const ports = [3001, 5173, 27015];
+        ports.forEach(port => {
             try {
-                execSync(`pkill -f '${target}'`, { stdio: 'ignore' });
-                console.log(`[STOP] Terminated ${target} instances.`);
+                console.log(`[STOP] Checking port ${port}...`);
+                execSync(`lsof -t -i:${port} | xargs -r kill -9`, { stdio: 'ignore' });
             } catch (e) {
-                // ignore
+                try {
+                    execSync(`fuser -k ${port}/tcp`, { stdio: 'ignore' });
+                } catch (e2) {}
             }
+        });
+
+        // 2. Kill by process name/pattern
+        const patterns = ['tsx', 'vite', 'cs2', 'node'];
+        patterns.forEach(pattern => {
+            try {
+                // pkill -9 is the nuclear option
+                execSync(`pkill -9 -f '${pattern}'`, { stdio: 'ignore' });
+            } catch (e) {}
         });
     }
     
-    console.log('[STOP] Cleanup complete.');
+    console.log('[STOP] Cleanup complete. You can now run "npm run dev".');
 }
 
 killProcesses();
