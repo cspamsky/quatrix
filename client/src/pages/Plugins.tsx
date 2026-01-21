@@ -229,24 +229,24 @@ const Plugins = () => {
                 />
             </div>
             
-            <div className="flex items-center gap-2 bg-[#111827]/40 border border-gray-800/50 p-1.5 rounded-2xl overflow-x-auto scrollbar-hide">
+            <div className="flex items-center gap-2 bg-[#111827]/40 border border-gray-800/50 p-1.5 rounded-2xl overflow-x-auto scrollbar-hide w-full lg:w-auto min-w-0">
                 {categories.map(cat => (
                     <button
                         key={cat}
                         onClick={() => setActiveCategory(cat)}
-                        className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeCategory === cat ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-gray-300'}`}
+                        className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap shrink-0 ${activeCategory === cat ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-gray-300'}`}
                     >
                         {cat}
                     </button>
                 ))}
             </div>
 
-            <div className="flex items-center gap-2 bg-[#111827]/40 border border-gray-800/50 p-1.5 rounded-2xl overflow-x-auto scrollbar-hide">
+            <div className="flex items-center gap-2 bg-[#111827]/40 border border-gray-800/50 p-1.5 rounded-2xl overflow-x-auto scrollbar-hide w-full lg:w-auto min-w-0">
                 {statuses.map(s => (
                     <button
                         key={s.id}
                         onClick={() => setStatusFilter(s.id)}
-                        className={`flex items-center gap-2 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${statusFilter === s.id ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                        className={`flex items-center gap-2 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap shrink-0 ${statusFilter === s.id ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-300'}`}
                     >
                         {s.icon}
                         {s.label}
@@ -256,11 +256,11 @@ const Plugins = () => {
         </div>
 
         {/* Tag Cloud */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide w-full min-w-0">
             <Tag size={14} className="text-primary mr-2 shrink-0" />
             <button
                 onClick={() => setSelectedTag(null)}
-                className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all border ${!selectedTag ? 'bg-primary/10 border-primary text-primary' : 'border-gray-800 text-gray-500 hover:border-gray-700'}`}
+                className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all border shrink-0 ${!selectedTag ? 'bg-primary/10 border-primary text-primary' : 'border-gray-800 text-gray-500 hover:border-gray-700'}`}
             >
                 All Tags
             </button>
