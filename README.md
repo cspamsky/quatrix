@@ -19,7 +19,7 @@ Game server management shouldn't feel like 1999. Quatrix bridges the gap between
 - **Elite Dashboard**: Live telemetry streams (CPU/RAM/Network) with delta-accurate traffic monitoring.
 - **Smart RCON Orchestration**: High-speed console with intelligent auto-scroll, full ANSI color support, and spawngroup-aware status parsing.
 - **Live Player Intelligence**: Real-time player list with Steam avatars, accurate connection duration, and latency tracking.
-- **Plugin Marketplace**: One-click installation for Metamod, CounterStrikeSharp, and core community plugins (MatchZy, SimpleAdmin, etc.).
+- **Intelligent Plugin Pool**: Centralized eklenti storage ("Download Once, Sync Everywhere") for instant deployment across multiple server instances with deep-discovery archive parsing.
 - **Dynamic Asset Engine**: Real-time map synchronization with automated themed visuals for the entire official CS2 map pool.
 - **Unified File Manager**: A web-native explorer for live configuration editing without SFTP baggage.
 - **Self-Healing Deployment**: Intelligent setup scripts with automated SteamCMD provisioning and dependency resolution.
@@ -96,15 +96,18 @@ npm start
 ## 📁 Architecture Overview
 
 ```text
-quatrix/                     # Root Hub
-├── .env                     # Centralized Configuration (Root)
-├── scripts/                 # Automation & Maintenance Scripts
-├── client/                  # Frontend Application (React Hub)
-│   └── dist/                # Production UI Build
-├── server/                  # Backend Engine (Node Service)
-│   ├── data/                # Database & Global Assets
-│   └── src/                 # RCON Orchestrator & API Logic
-└── instances/               # Isolated CS2 Server Folders
+quatrix/                     # Project Root
+├── client/                  # Frontend Hub (React 19 & Vite 7)
+│   ├── src/                 # UI Components, Hooks, and Real-time Logic
+│   └── public/              # Static Brand Assets
+├── server/                  # Backend Orchestrator (Express 5 & Socket.IO)
+│   ├── src/                 # Services (RCON, Plugin Manager, Server Logic)
+│   ├── database.sqlite      # SQLite Persistent Storage
+│   └── dist/                # Production-ready Backend Build
+├── plugin_pool/             # Centralized Plugin Depository (Pool Strategy)
+├── scripts/                 # System Automation & Infrastructure Scripts
+├── assets/                  # Documentation Media & Visuals
+└── .env                     # Unified Cluster Configuration
 ```
 
 ---
@@ -112,7 +115,7 @@ quatrix/                     # Root Hub
 ## 🗺️ Roadmap: The Future of Server Management
 
 - [ ] **Live Player Manager**: RCON status integration, Avatars, and Moderation tools.
-- [ ] **Plugin Marketplace**: One-click install for CSS, MM, and top-tier plugins.
+- [ ] **Plugin Marketplace**: High-speed centralized pool with one-click install for CSS, MM, and community eklentis.
 - [ ] **Steam Workshop Bridge**: Native workshop browser for automated map deployments.
 - [ ] **Snapshot Backups**: Automated backups of configurations and plugin data.
 - [ ] **Discord Integration**: Real-time alerts for server status and player sessions.
