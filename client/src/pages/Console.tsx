@@ -74,11 +74,14 @@ const Console = () => {
             const match = log.match(/^\[(.*?)\] (.*)/);
 
             if (match) {
+              const possibleDate = new Date(match[1]);
+              const isValidDate = !isNaN(possibleDate.getTime());
+              
               return {
                 id: generateUUID(),
-                timestamp: new Date(match[1]).toLocaleTimeString(),
+                timestamp: isValidDate ? possibleDate.toLocaleTimeString() : "",
                 type: "RAW" as const,
-                message: match[2],
+                message: isValidDate ? match[2] : log,
               };
             }
             return {
