@@ -56,7 +56,30 @@ class ServerManager {
       /^command line arguments:/,
       /^Network System Initialized/,
       /^Source2Init OK/,
-      /^Created physics for/
+      /^Created physics for/,
+      /^USRLOCAL path not found/,
+      /^Trying to set dxlevel/,
+      /^Physics Console Communications/,
+      /^Event System loaded/,
+      /^CEntitySystem::BuildEntityNetworking/,
+      /^CHostStateMgr::QueueNewRequest/,
+      /^HostStateRequest::Start/,
+      /^SwitchToLoop/,
+      /^Host activate:/,
+      /^SV:\s+Level loading started/,
+      /^CL:\s+CLoopModeLevelLoad/,
+      /^SteamInternal_SetMinidumpSteamID/,
+      /^Caching Steam ID:/,
+      /^Setting Steam ID:/,
+      /^Looking up breakpad interfaces/,
+      /^Calling BreakpadMiniDumpSystemInit/,
+      /^GameTypes: missing mapgroupsSP/,
+      /^\[S_API FAIL\]/,
+      /CSSharp: Copying bytes from disk/,
+      /CSSharp: Loading hostfxr/,
+      /CSSharp: Loading CSS API/,
+      /erVoiceListener::PostSpawnGroupUnload/,
+      /CSource2Server::GameServerSteamAPIDeactivated/
     ];
     return noisePatterns.some((pattern) => pattern.test(line));
   }
