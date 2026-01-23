@@ -104,6 +104,9 @@ class ServerManager {
   private getOrphanedStmt = db.prepare(
     "SELECT id, pid, status FROM servers WHERE status != 'OFFLINE'",
   );
+  private updatePlayerCountStmt = db.prepare(
+    "UPDATE servers SET current_players = ? WHERE id = ?",
+  );
 
   constructor() {
     // Async initialization - call init() after construction
@@ -112,6 +115,20 @@ class ServerManager {
 
     // Performance: Flush player identities every 5 seconds in batches
     setInterval(() => this.flushPlayerIdentities(), 5000);
+
+    // Update player counts periodically (every 15s)
+    setInterval(() => this.updateAllPlayerCounts(), 15000);
+  }
+
+  private async updateAllPlayerCounts() {
+    for (const [id] of this.runningServers) {
+      try {
+        const { players } = await this.getPlayers(id);
+        this.updatePlayerCountStmt.run(players.length, id);
+      } catch (error) {
+        // Silently fail, server might be starting or busy
+      }
+    }
   }
 
   async init() {
@@ -479,6 +496,7 @@ class ServerManager {
 
       this.runningServers.delete(id);
       this.updateStatusStmt.run("OFFLINE", null, id);
+      this.updatePlayerCountStmt.run(0, id);
 
       if (onLog) onLog(exitMsg);
     });
@@ -505,6 +523,7 @@ class ServerManager {
         process.kill(server.pid);
       } catch (e) {}
     this.updateStatusStmt.run("OFFLINE", null, idStr);
+    this.updatePlayerCountStmt.run(0, idStr);
     this.runningServers.delete(idStr);
     return true;
   }
@@ -596,56 +615,68 @@ class ServerManager {
       for (const line of lines) {
         const trimmed = line.trim();
 
-        // Skip bots and non-client lines
+        // Skip non-player lines and bots
         if (
           trimmed.includes("BOT") ||
           trimmed.includes("<BOT>") ||
-          !trimmed.includes("[Client]")
+          trimmed.startsWith("userid") ||
+          trimmed.startsWith("version")
         ) {
           continue;
         }
 
-        const nameMatch = trimmed.match(/["'](.+)["']/);
-        if (!nameMatch) continue;
+        // Identify if it's a valid player line (Either starting with # or containing [Client])
+        const isStandard = trimmed.startsWith("#");
+        const isPlugin = trimmed.includes("[Client]");
 
-        const name = nameMatch[1];
-        if (name === undefined || name === null) continue;
-        if (name.length < 2 || name.toUpperCase().includes("BOT")) continue;
+        if (!isStandard && !isPlugin) continue;
 
-        // De-duplicate immediately
-        if (seenNames.has(name)) continue;
-        seenNames.add(name);
-
-        const parts = trimmed.replace("[Client]", "").trim().split(/\s+/);
-        const idPart = parts[0];
-        if (!idPart || !/^\d+$/.test(idPart) || idPart === "65535") continue;
-
-        // Connection Duration Extraction
+        let name = "";
         let connectedTime = "00:00:00";
-        if (parts.length >= 2 && parts[1]?.includes(":")) {
-          const timeParts = parts[1].split(":");
-          if (
-            timeParts.length === 2 &&
-            timeParts[0] !== undefined &&
-            timeParts[1] !== undefined
-          ) {
-            connectedTime = `00:${timeParts[0].padStart(2, "0")}:${timeParts[1].padStart(2, "0")}`;
-          } else if (
-            timeParts.length === 3 &&
-            timeParts[0] !== undefined &&
-            timeParts[1] !== undefined &&
-            timeParts[2] !== undefined
-          ) {
-            connectedTime = `${timeParts[0].padStart(2, "0")}:${timeParts[1].padStart(2, "0")}:${timeParts[2].padStart(2, "0")}`;
+        let ping = 0;
+        let idPart = "";
+
+        if (isStandard) {
+          // Standard: # 2 1 "Name" STEAM_1:0:1234 05:20 50 0 active
+          const match = trimmed.match(
+            /#\s+(\d+)\s+(\d+)\s+["'](.+?)["']\s+(?:STEAM_|\[U:)(?:\d+:\d+:\d+|.+?)\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+(\d+)/,
+          );
+          if (match) {
+            idPart = match[1] || "";
+            name = match[3] || "";
+            const rawTime = match[4] || "00:00";
+            connectedTime =
+              rawTime.split(":").length === 2
+                ? `00:${rawTime.padStart(5, "0")}`
+                : rawTime;
+            ping = parseInt(match[5] || "0") || 0;
+          }
+        } else if (isPlugin) {
+          // Plugin: [Client] 2 05:20 50 "Name"
+          const match = trimmed.match(
+            /\[Client\]\s+(\d+)\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+(\d+)\s+["'](.+?)["']/,
+          );
+          if (match) {
+            idPart = match[1] || "";
+            const rawTime = match[2] || "00:00";
+            connectedTime =
+              rawTime.split(":").length === 2
+                ? `00:${rawTime.padStart(5, "0")}`
+                : rawTime;
+            ping = parseInt(match[3] || "0") || 0;
+            name = match[4] || "";
           }
         }
 
-        // Ping Extraction
-        let ping = 0;
-        if (parts.length >= 3 && parts[2]) {
-          const pVal = parseInt(parts[2]);
-          if (!isNaN(pVal)) ping = pVal;
+        if (
+          !name ||
+          name.toUpperCase().includes("BOT") ||
+          seenNames.has(name) ||
+          idPart === "65535"
+        ) {
+          continue;
         }
+        seenNames.add(name);
 
         // Initial Identity Resolution
         let steamId = cache?.get(`i:${idPart}`) || cache?.get(`n:${name}`);
