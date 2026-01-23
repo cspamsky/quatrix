@@ -11,6 +11,7 @@ import {
 import { useParams } from "react-router-dom";
 import socket from '../utils/socket'
 import { generateUUID } from "../utils/uuid";
+import { COMMON_COMMANDS } from "../config/consoleCommands";
 
 interface LogEntry {
   id: string;
@@ -98,6 +99,7 @@ const Console = () => {
       }
     };
 
+    const fetchServerDataInterval = setInterval(fetchServerData, 5000);
     fetchServerData();
     fetchLogs();
 
@@ -163,6 +165,7 @@ const Console = () => {
     );
 
     return () => {
+      clearInterval(fetchServerDataInterval);
       socket.off(eventName);
       socket.off("status_update");
     };
@@ -227,22 +230,58 @@ const Console = () => {
     }
   };
 
+  // --- Autocomplete System ---
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const handleCommandChange = (val: string) => {
+    setCommand(val);
+    if (val.trim()) {
+      const filtered = COMMON_COMMANDS.filter(cmd => 
+        cmd.toLowerCase().startsWith(val.toLowerCase()) && cmd.toLowerCase() !== val.toLowerCase()
+      ).slice(0, 8); // Limit to 8 suggestions
+      setSuggestions(filtered);
+      setSelectedIndex(0);
+      setShowSuggestions(filtered.length > 0);
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (showSuggestions) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedIndex(prev => (prev + 1) % suggestions.length);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIndex(prev => (prev - 1 + suggestions.length) % suggestions.length);
+      } else if (e.key === "Tab" || e.key === "Enter") {
+        e.preventDefault();
+        setCommand(suggestions[selectedIndex]);
+        setShowSuggestions(false);
+      } else if (e.key === "Escape") {
+        setShowSuggestions(false);
+      }
+    }
+  };
+
   const sendCommand = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!command.trim() || !id) return;
 
     const cmdToSubmit = command;
     setCommand(""); // Clear input immediately for UX
+    setShowSuggestions(false);
 
     try {
       await apiFetch(`/api/servers/${id}/rcon`, {
-
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ command: cmdToSubmit }),
       });
-      // We don't need to handle the response here because the backend
-      // now emits both the command and the response to the socket.
+      // Backend handles emission via sockets
     } catch (error) {
       setLogs((prev) => [
         ...prev,
@@ -279,7 +318,6 @@ const Console = () => {
     try {
       const response = await apiFetch(
         `/api/servers/${id}/install`,
-
         {
           method: "POST",
         }
@@ -374,6 +412,29 @@ const Console = () => {
             </div>
           </div>
 
+          {/* Autocomplete Suggestions UI */}
+          {showSuggestions && (
+            <div className="absolute bottom-20 left-4 z-50 min-w-[250px] bg-[#1a2233] border border-gray-700 rounded-lg shadow-2xl overflow-hidden backdrop-blur-md bg-opacity-95">
+              {suggestions.map((suggestion, index) => (
+                <div
+                  key={suggestion}
+                  onClick={() => {
+                    setCommand(suggestion);
+                    setShowSuggestions(false);
+                  }}
+                  className={`px-4 py-2 text-sm font-mono cursor-pointer transition-colors ${
+                    index === selectedIndex
+                      ? "bg-primary text-white"
+                      : "text-slate-300 hover:bg-gray-800"
+                  }`}
+                >
+                  <span className="opacity-50 mr-2 text-xs">cmd</span>
+                  {suggestion}
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Command Input */}
           <form
             onSubmit={sendCommand}
@@ -385,8 +446,11 @@ const Console = () => {
                 className="w-full bg-transparent border-none focus:ring-0 text-sm font-mono placeholder:text-slate-600 p-0 outline-none text-white"
                 placeholder="Type console command..."
                 type="text"
+                autoComplete="off"
                 value={command}
-                onChange={(e) => setCommand(e.target.value)}
+                onChange={(e) => handleCommandChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               />
             </div>
             <button
