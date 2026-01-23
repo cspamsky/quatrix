@@ -412,46 +412,43 @@ const Console = () => {
             </div>
           </div>
 
-          {/* Autocomplete Suggestions UI */}
-          {showSuggestions && (
-            <div className="absolute bottom-20 left-4 z-50 min-w-[250px] bg-[#1a2233] border border-gray-700 rounded-lg shadow-2xl overflow-hidden backdrop-blur-md bg-opacity-95">
-              {suggestions.map((suggestion, index) => (
-                <div
-                  key={suggestion}
-                  onClick={() => {
-                    setCommand(suggestion);
-                    setShowSuggestions(false);
-                  }}
-                  className={`px-4 py-2 text-sm font-mono cursor-pointer transition-colors ${
-                    index === selectedIndex
-                      ? "bg-primary text-white"
-                      : "text-slate-300 hover:bg-gray-800"
-                  }`}
-                >
-                  <span className="opacity-50 mr-2 text-xs">cmd</span>
-                  {suggestion}
-                </div>
-              ))}
-            </div>
-          )}
-
           {/* Command Input */}
           <form
             onSubmit={sendCommand}
             className="p-4 border-t border-gray-800 flex items-center gap-4 bg-[#111827]"
           >
-            <div className="flex-1 flex items-center gap-3 text-slate-400">
-              <MoveRight className="text-primary w-5 h-5" />
-              <input
-                className="w-full bg-transparent border-none focus:ring-0 text-sm font-mono placeholder:text-slate-600 p-0 outline-none text-white"
-                placeholder="Type console command..."
-                type="text"
-                autoComplete="off"
-                value={command}
-                onChange={(e) => handleCommandChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-              />
+            <div className="flex-1 flex items-center gap-3 text-slate-400 relative group">
+              <MoveRight className="text-primary w-5 h-5 shrink-0" />
+              <div className="relative flex-1 flex items-center">
+                {/* Ghost Suggestion */}
+                {command && suggestions.length > 0 && (
+                  <div className="absolute left-0 top-0 text-sm font-mono p-0 pointer-events-none text-slate-600 whitespace-pre">
+                    <span className="opacity-0">{command}</span>
+                    {suggestions[0].slice(command.length)}
+                  </div>
+                )}
+                <input
+                  className="w-full bg-transparent border-none focus:ring-0 text-sm font-mono placeholder:text-slate-600 p-0 outline-none text-white relative z-10"
+                  placeholder="Type console command..."
+                  type="text"
+                  autoComplete="off"
+                  value={command}
+                  onChange={(e) => handleCommandChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if ((e.key === "Tab" || e.key === "ArrowRight") && suggestions.length > 0) {
+                      e.preventDefault();
+                      setCommand(suggestions[0]);
+                      setSuggestions([]);
+                    } else if (e.key === "Escape") {
+                      setSuggestions([]);
+                    }
+                    handleKeyDown(e);
+                  }}
+                />
+              </div>
+              <div className="hidden group-focus-within:block text-[10px] text-slate-500 font-mono animate-pulse">
+                Press [Tab] or [→] to complete
+              </div>
             </div>
             <button
               type="submit"
