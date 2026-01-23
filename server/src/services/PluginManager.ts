@@ -256,6 +256,7 @@ export class PluginManager {
 
     const hasGameDir = fs.existsSync(path.join(poolPath, "game"));
     const hasAddonsDir = fs.existsSync(path.join(poolPath, "addons"));
+    const hasCSSDir = fs.existsSync(path.join(poolPath, "counterstrikesharp"));
 
     // Check for standard CS2 folders to determine merge target
     const assetFolders = ["cfg", "materials", "models", "particles", "sound", "soundevents", "translations", "maps", "scripts"];
@@ -267,6 +268,9 @@ export class PluginManager {
     } else if (hasAddonsDir || assetFound) {
       // Merge into game/csgo
       await fs.promises.cp(poolPath, csgoDir, { recursive: true });
+    } else if (hasCSSDir) {
+      // Merge into game/csgo/addons (contains counterstrikesharp/)
+      await fs.promises.cp(poolPath, path.join(csgoDir, "addons"), { recursive: true });
     } else {
       // Non-standard or single-file plugin
       if (pluginInfo.category === "cssharp") {

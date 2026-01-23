@@ -53,6 +53,12 @@ router.post("/:id/plugins/:plugin/:action", async (req: any, res) => {
             return res.status(400).json({ message: "Invalid plugin" });
         }
 
+        if (serverManager.isServerRunning(id)) {
+            return res.status(400).json({ 
+                message: "Cannot modify plugins while the server is running. Please stop the server first." 
+            });
+        }
+
         if (action === 'install') {
             await serverManager.installPlugin(id, pluginId);
         } else if (action === 'uninstall') {
