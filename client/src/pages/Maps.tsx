@@ -1,14 +1,18 @@
-import { useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { 
   Search, 
   Plus, 
   Play, 
-  Trash2, 
   RefreshCcw, 
   CheckCircle2,
   Clock,
-  Layers
+  Layers,
+  Server as ServerIcon,
+  Loader2
 } from 'lucide-react'
+import { apiFetch } from '../utils/api'
+import toast from 'react-hot-toast'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 interface CS2Map {
   id: string
@@ -20,55 +24,81 @@ interface CS2Map {
   inPool: boolean
 }
 
+interface Instance {
+  id: number
+  name: string
+  status: string
+  map: string
+}
+
 const Maps = () => {
+  const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState<'pool' | 'all' | 'workshop'>('pool')
+  const [selectedServerId, setSelectedServerId] = useState<number | null>(null)
 
-  const [maps] = useState<CS2Map[]>([
-    {
-      id: '1',
-      name: 'de_dust2',
-      displayName: 'Dust II',
-      type: 'Defusal',
-      image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop',
-      isActive: true,
-      inPool: true
-    },
-    {
-      id: '2',
-      name: 'de_inferno',
-      displayName: 'Inferno',
-      type: 'Defusal',
-      image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=2070&auto=format&fit=crop',
-      isActive: false,
-      inPool: true
-    },
-    {
-      id: '3',
-      name: 'de_mirage',
-      displayName: 'Mirage',
-      type: 'Defusal',
-      image: 'https://images.unsplash.com/photo-1542751110-97427bbecf20?q=80&w=2070&auto=format&fit=crop',
-      isActive: false,
-      inPool: true
-    },
-    {
-      id: '4',
-      name: 'cs_italy',
-      displayName: 'Italy',
-      type: 'Hostage',
-      image: 'https://images.unsplash.com/photo-1533134486753-c833f0ed4866?q=80&w=2070&auto=format&fit=crop',
-      isActive: false,
-      inPool: false
-    }
-  ])
-
-  const activeMap = maps.find(m => m.isActive)
-  const filteredMaps = maps.filter(m => {
-    if (activeTab === 'pool') return m.inPool
-    if (activeTab === 'all') return true
-    return m.type === 'Workshop'
+  // 1. Fetch Servers
+  const { data: servers = [], isLoading: serversLoading } = useQuery<Instance[]>({
+    queryKey: ['servers'],
+    queryFn: () => apiFetch('/api/servers').then(res => res.json()),
   })
+
+  // Auto-select first online server
+  useEffect(() => {
+    if (servers.length > 0 && !selectedServerId) {
+      const firstOnline = servers.find(s => s.status === 'ONLINE') || servers[0]
+      setSelectedServerId(firstOnline.id)
+    }
+  }, [servers, selectedServerId])
+
+  // 2. Fetch Maps for specific server (Simulated for now, can be connected to real API)
+  const { data: maps = [], isLoading: mapsLoading } = useQuery<CS2Map[]>({
+    queryKey: ['server-maps', selectedServerId],
+    queryFn: async () => {
+      // In a real scenario, this would fetch from /api/servers/:id/maps
+      // For now, we return a structured list based on the server's current map
+      const currentServer = servers.find(s => s.id === selectedServerId)
+      const currentMapName = currentServer?.map || 'de_dust2'
+
+      return [
+        { id: '1', name: 'de_dust2', displayName: 'Dust II', type: 'Defusal', image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop', isActive: currentMapName === 'de_dust2', inPool: true },
+        { id: '2', name: 'de_inferno', displayName: 'Inferno', type: 'Defusal', image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=2070&auto=format&fit=crop', isActive: currentMapName === 'de_inferno', inPool: true },
+        { id: '3', name: 'de_mirage', displayName: 'Mirage', type: 'Defusal', image: 'https://images.unsplash.com/photo-1542751110-97427bbecf20?q=80&w=2070&auto=format&fit=crop', isActive: currentMapName === 'de_mirage', inPool: true },
+        { id: '4', name: 'de_nuke', displayName: 'Nuke', type: 'Defusal', image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=2070&auto=format&fit=crop', isActive: currentMapName === 'de_nuke', inPool: true },
+        { id: '5', name: 'de_overpass', displayName: 'Overpass', type: 'Defusal', image: 'https://images.unsplash.com/photo-1542751110-97427bbecf20?q=80&w=2070&auto=format&fit=crop', isActive: currentMapName === 'de_overpass', inPool: true },
+        { id: '6', name: 'de_ancient', displayName: 'Ancient', type: 'Defusal', image: 'https://images.unsplash.com/photo-1533134486753-c833f0ed4866?q=80&w=2070&auto=format&fit=crop', isActive: currentMapName === 'de_ancient', inPool: true },
+        { id: '7', name: 'cs_italy', displayName: 'Italy', type: 'Hostage', image: 'https://images.unsplash.com/photo-1533134486753-c833f0ed4866?q=80&w=2070&auto=format&fit=crop', isActive: currentMapName === 'cs_italy', inPool: false }
+      ] as CS2Map[]
+    },
+    enabled: !!selectedServerId
+  })
+
+  // 3. Change Map Mutation
+  const changeMapMutation = useMutation({
+    mutationFn: (mapName: string) => apiFetch(`/api/servers/${selectedServerId}/command`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: `map ${mapName}` })
+    }).then(res => res.json()),
+    onSuccess: () => {
+      toast.success('Map change command sent!')
+      queryClient.invalidateQueries({ queryKey: ['servers'] })
+    },
+    onError: () => toast.error('Failed to change map')
+  })
+
+  const activeMap = useMemo(() => maps.find(m => m.isActive), [maps])
+
+  const filteredMaps = useMemo(() => {
+    return maps.filter(m => {
+      const matchesSearch = m.displayName.toLowerCase().includes(searchQuery.toLowerCase()) || m.name.toLowerCase().includes(searchQuery.toLowerCase())
+      if (!matchesSearch) return false
+
+      if (activeTab === 'pool') return m.inPool
+      if (activeTab === 'workshop') return m.type === 'Workshop'
+      return true
+    })
+  }, [maps, activeTab, searchQuery])
 
   return (
     <div className="p-6 font-display">
@@ -77,11 +107,26 @@ const Maps = () => {
           <h2 className="text-2xl font-bold text-white tracking-tight">Map Management</h2>
           <p className="text-sm text-gray-400 mt-1">Configure your server's map pool and community content.</p>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Server Selector */}
+          <div className="relative group">
+            <ServerIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
+            <select 
+              className="bg-[#111827] border border-gray-800 text-white pl-10 pr-4 py-2 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none text-sm"
+              value={selectedServerId || ''}
+              onChange={(e) => setSelectedServerId(Number(e.target.value))}
+            >
+              <option value="" disabled>Select server...</option>
+              {servers.map(s => (
+                <option key={s.id} value={s.id}>{s.name} ({s.status})</option>
+              ))}
+            </select>
+          </div>
+
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
             <input 
-              className="w-64 pl-10 pr-4 py-2 bg-[#111827] border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200" 
+              className="w-48 lg:w-64 pl-10 pr-4 py-2 bg-[#111827] border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200" 
               placeholder="Search maps..." 
               type="text"
               value={searchQuery}
@@ -96,7 +141,11 @@ const Maps = () => {
       </header>
 
       {/* Current Map Hero */}
-      {activeMap && (
+      {mapsLoading ? (
+        <div className="h-64 mb-10 bg-[#111827] rounded-3xl border border-gray-800 flex items-center justify-center">
+            <Loader2 className="animate-spin text-primary" size={32} />
+        </div>
+      ) : activeMap ? (
         <section className="mb-10 relative group h-64 rounded-3xl overflow-hidden border border-gray-800 shadow-2xl">
           <img 
             src={activeMap.image} 
@@ -111,15 +160,18 @@ const Maps = () => {
                   Live Now
                 </span>
                 <span className="text-gray-300 text-xs font-medium flex items-center gap-1">
-                  <Clock size={12} /> 12:45 Elapsed
+                  <Clock size={12} /> Active on Node
                 </span>
               </div>
               <h1 className="text-4xl font-black text-white tracking-tighter uppercase">{activeMap.displayName}</h1>
-              <p className="text-gray-400 text-sm font-medium">de_dust2 • Competitive Mode</p>
+              <p className="text-gray-400 text-sm font-medium">{activeMap.name} • Competitive Mode</p>
             </div>
             <div className="flex gap-3">
-              <button className="px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white rounded-2xl font-bold text-sm transition-all flex items-center gap-2 border border-white/10">
-                <RefreshCcw size={18} />
+              <button 
+                onClick={() => changeMapMutation.mutate(activeMap.name)}
+                className="px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white rounded-2xl font-bold text-sm transition-all flex items-center gap-2 border border-white/10"
+              >
+                <RefreshCcw size={18} className={changeMapMutation.isPending ? 'animate-spin' : ''} />
                 Restart Map
               </button>
               <button className="px-6 py-3 bg-primary hover:bg-blue-600 text-white rounded-2xl font-bold text-sm transition-all flex items-center gap-2 shadow-xl shadow-primary/20">
@@ -129,31 +181,28 @@ const Maps = () => {
             </div>
           </div>
         </section>
+      ) : (
+        <div className="h-64 mb-10 bg-[#111827] rounded-3xl border border-gray-800 flex items-center justify-center text-gray-500 font-bold uppercase tracking-widest text-xs">
+            No Active Map Signal Detected
+        </div>
       )}
 
       {/* Map Pool Tabs */}
       <div className="flex items-center gap-6 mb-8 border-b border-gray-800 pb-px">
-        <button 
-          onClick={() => setActiveTab('pool')}
-          className={`pb-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'pool' ? 'text-primary' : 'text-gray-500 hover:text-white'}`}
-        >
-          Active Map Pool
-          {activeTab === 'pool' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary shadow-[0_0_10px_#1890ff]"></div>}
-        </button>
-        <button 
-          onClick={() => setActiveTab('all')}
-          className={`pb-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'all' ? 'text-primary' : 'text-gray-500 hover:text-white'}`}
-        >
-          All Maps
-          {activeTab === 'all' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary shadow-[0_0_10px_#1890ff]"></div>}
-        </button>
-        <button 
-          onClick={() => setActiveTab('workshop')}
-          className={`pb-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'workshop' ? 'text-primary' : 'text-gray-500 hover:text-white'}`}
-        >
-          Workshop Content
-          {activeTab === 'workshop' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary shadow-[0_0_10px_#1890ff]"></div>}
-        </button>
+        {[
+          { id: 'pool', label: 'Active Map Pool' },
+          { id: 'all', label: 'All Maps' },
+          { id: 'workshop', label: 'Workshop Content' }
+        ].map(tab => (
+          <button 
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`pb-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === tab.id ? 'text-primary' : 'text-gray-500 hover:text-white'}`}
+          >
+            {tab.label}
+            {activeTab === tab.id && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary shadow-[0_0_10px_#1890ff]"></div>}
+          </button>
+        ))}
       </div>
 
       {/* Map Grid */}
@@ -173,8 +222,16 @@ const Maps = () => {
                 </div>
               )}
               
-              <button className="absolute inset-0 m-auto w-12 h-12 bg-primary text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform translate-y-4 group-hover:translate-y-0 shadow-xl shadow-primary/40">
-                <Play size={24} fill="currentColor" className="ml-1" />
+              <button 
+                onClick={() => changeMapMutation.mutate(map.name)}
+                disabled={changeMapMutation.isPending}
+                className="absolute inset-0 m-auto w-12 h-12 bg-primary text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform translate-y-4 group-hover:translate-y-0 shadow-xl shadow-primary/40 disabled:opacity-50"
+              >
+                {changeMapMutation.isPending && changeMapMutation.variables === map.name ? (
+                    <Loader2 size={24} className="animate-spin" />
+                ) : (
+                    <Play size={24} fill="currentColor" className="ml-1" />
+                )}
               </button>
             </div>
             
@@ -194,9 +251,6 @@ const Maps = () => {
                 <div className="flex gap-1">
                   <button className="p-2 text-gray-600 hover:text-white transition-colors">
                     <RefreshCcw size={14} />
-                  </button>
-                  <button className="p-2 text-gray-600 hover:text-red-500 transition-colors">
-                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>

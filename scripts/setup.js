@@ -36,10 +36,10 @@ async function runSetup() {
         if (process.platform === 'linux') {
             log(C.cyan, "SYSTEM", "Detected Linux environment. Checking for SteamCMD dependencies...");
             try {
-                log(C.magenta, "DEPS", "Attempting to install 32-bit libraries (requires sudo)...");
-                // This will prompt for password if needed because of stdio: inherit
-                execSync('sudo apt-get update && sudo apt-get install -y lib32gcc-s1 lib32stdc++6 libc6-i386 lib32z1', { stdio: 'inherit' });
-                log(C.green, "SUCCESS", "Linux dependencies are ready.");
+                log(C.magenta, "DEPS", "Attempting to install SteamCMD and Core dependencies (requires sudo)...");
+                // Added libicu-dev, libssl-dev, libkrb5-3 and dotnet-runtime-8.0 for CounterStrikeSharp support
+                execSync('sudo apt-get update && sudo apt-get install -y lib32gcc-s1 lib32stdc++6 libc6-i386 lib32z1 libicu-dev libkrb5-3 zlib1g libssl-dev dotnet-runtime-8.0', { stdio: 'inherit' });
+                log(C.green, "SUCCESS", "Linux system dependencies are ready.");
             } catch (err) {
                 log(C.yellow, "WARNING", "Could not install dependencies automatically.");
                 log(C.yellow, "TIP", "Please run: sudo apt-get update && sudo apt-get install -y lib32gcc-s1 lib32stdc++6 libc6-i386 lib32z1");
