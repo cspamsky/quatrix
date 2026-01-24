@@ -27,7 +27,6 @@ export const createServerSchema = z.object({
 router.use(authenticateToken);
 
 // GET /api/servers
-// GET /api/servers
 router.get("/", (req: any, res) => {
   try {
     // Join with workshop_maps to get map images and names if they exist
@@ -35,7 +34,10 @@ router.get("/", (req: any, res) => {
       SELECT 
         s.*, 
         s.is_installed as isInstalled,
-        wm.name as workshop_map_name,
+        CASE 
+          WHEN wm.name IS NOT NULL THEN wm.name
+          ELSE s.map
+        END as workshop_map_name,
         wm.image_url as workshop_map_image
       FROM servers s
       LEFT JOIN workshop_maps wm ON (
@@ -45,6 +47,7 @@ router.get("/", (req: any, res) => {
       )
       WHERE s.user_id = ?
     `).all(req.user.id);
+    
     res.json(servers);
   } catch (error) {
     console.error("Fetch servers error:", error);

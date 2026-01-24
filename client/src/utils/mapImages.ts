@@ -16,5 +16,29 @@ export const mapImages: Record<string, string> = {
 }
 
 export const getMapImage = (mapName: string): string => {
-  return mapImages[mapName] || mapImages['default']
+  // Check if exact match exists
+  if (mapImages[mapName]) return mapImages[mapName];
+  
+  // Smart fallbacks for custom maps based on prefix
+  const lowerMap = mapName.toLowerCase();
+  
+  if (lowerMap.startsWith('awp_')) {
+    // AWP maps - sniper theme
+    return 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&q=80&w=800';
+  } else if (lowerMap.startsWith('aim_')) {
+    // Aim maps - training theme
+    return 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&q=80&w=800';
+  } else if (lowerMap.startsWith('fy_')) {
+    // Fight yard maps - arena theme
+    return 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?auto=format&fit=crop&q=80&w=800';
+  } else if (lowerMap.startsWith('surf_')) {
+    // Surf maps - abstract/motion theme
+    return 'https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&q=80&w=800';
+  } else if (lowerMap.startsWith('bhop_') || lowerMap.startsWith('kz_')) {
+    // Movement maps - parkour theme
+    return 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&q=80&w=800';
+  }
+  
+  // Final fallback
+  return mapImages['default'];
 }
