@@ -413,15 +413,23 @@ class ServerManager {
                 fs.copyFileSync(steamClientSrc, path.join(binDir, 'steamclient.so'));
                 fs.copyFileSync(steamClientSrc, path.join(steamSubDir, 'steamclient.so'));
                 
-                // CRITICAL: Point HOME to serverPath and setup local steam SDK dir
+                // CRITICAL FIX: Ensure the exact path from the error exists
                 const localSteamSdk = path.join(serverPath, '.steam/sdk64');
                 if (!fs.existsSync(localSteamSdk)) fs.mkdirSync(localSteamSdk, { recursive: true });
-                fs.copyFileSync(steamClientSrc, path.join(localSteamSdk, 'steamclient.so'));
                 
-                console.log(`[SYSTEM] Isolated Steam API deployment for instance ${id}`);
+                const targetPath = path.join(localSteamSdk, 'steamclient.so');
+                fs.copyFileSync(steamClientSrc, targetPath);
+                
+                // Set permissions to ensure it's readable/executable
+                fs.chmodSync(targetPath, 0o755);
+                
+                console.log(`[SYSTEM] Verified Steam API deployment for instance ${id}: ${targetPath}`);
             } catch (e) {
-                console.warn(`[SYSTEM] Library deployment failed for ${id}:`, e);
+                console.error(`[SYSTEM] Library deployment failed CRITICALLY for ${id}:`, e);
+                throw new Error("Steam API library could not be deployed. Check permissions.");
             }
+        } else {
+            throw new Error("steamclient.so not found in SteamCMD directory. Run update first.");
         }
 
         // Metamod VDF Deployment (Standard Source2 Format)
@@ -468,11 +476,17 @@ class ServerManager {
             SteamAppId: "730"
         };
 
-        // CRITICAL PRELOADS: steamclient.so for API stability, tcmalloc for memory stability
+        // CRITICAL PRELOADS: Absolute paths based on instance-local libraries
         const preloads: string[] = [];
         
-        const steamClientPath = path.join(steamLib64, "steamclient.so");
-        if (fs.existsSync(steamClientPath)) preloads.push(steamClientPath);
+        const localSteamLib = path.join(serverPath, ".steam/sdk64/steamclient.so");
+        if (fs.existsSync(localSteamLib)) {
+            preloads.push(localSteamLib);
+        } else {
+            // Fallback to steamcmd dir if local is not yet ready (should be ready due to prepareEnvironment)
+            const steamClientPath = path.join(steamLib64, "steamclient.so");
+            if (fs.existsSync(steamClientPath)) preloads.push(steamClientPath);
+        }
         
         const tcmalloc = "/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4";
         if (fs.existsSync(tcmalloc)) preloads.push(tcmalloc);
