@@ -524,6 +524,23 @@ class ServerManager {
     await cleanDir(this.installDir);
     return { success: true, clearedFiles, clearedBytes };
   }
+
+  async repairSystemHealth() {
+    console.log(`[SYSTEM] Starting system health repair...`);
+    // Basic repair logic: ensure steamcmd is active
+    const steamActive = await this.ensureSteamCMD();
+    
+    // Ensure instances dir
+    if (!fs.existsSync(this.installDir)) {
+      fs.mkdirSync(this.installDir, { recursive: true });
+    }
+
+    return { 
+      success: true, 
+      message: "System health repair completed",
+      details: { steamActive }
+    };
+  }
 }
 
 const serverManager = new ServerManager();

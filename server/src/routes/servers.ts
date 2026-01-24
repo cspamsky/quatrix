@@ -27,11 +27,27 @@ export const createServerSchema = z.object({
 router.use(authenticateToken);
 
 // GET /api/servers
+// GET /api/servers
 router.get("/", (req: any, res) => {
   try {
-    const servers = db.prepare("SELECT *, is_installed as isInstalled FROM servers WHERE user_id = ?").all(req.user.id);
+    // Join with workshop_maps to get map images and names if they exist
+    const servers = db.prepare(`
+      SELECT 
+        s.*, 
+        s.is_installed as isInstalled,
+        wm.name as workshop_map_name,
+        wm.image_url as workshop_map_image
+      FROM servers s
+      LEFT JOIN workshop_maps wm ON (
+        s.map = wm.workshop_id OR 
+        s.map LIKE 'workshop/%/' || wm.workshop_id || '/%' OR
+        s.map LIKE 'workshop/' || wm.workshop_id || '%'
+      )
+      WHERE s.user_id = ?
+    `).all(req.user.id);
     res.json(servers);
   } catch (error) {
+    console.error("Fetch servers error:", error);
     res.status(500).json({ message: "Failed to fetch servers" });
   }
 });

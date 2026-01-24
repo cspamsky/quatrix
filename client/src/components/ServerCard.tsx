@@ -26,6 +26,8 @@ interface Instance {
   port: number
   image?: string
   isInstalled?: boolean
+  workshop_map_name?: string
+  workshop_map_image?: string
 }
 
 interface ServerCardProps {
@@ -75,9 +77,9 @@ const ServerCard = memo(({
     >
       <div className="relative h-32 overflow-hidden bg-gray-900">
         <img 
-          alt={`Map ${instance.map}`} 
+          alt={`Map ${instance.workshop_map_name || instance.map}`} 
           className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-500" 
-          src={getMapImage(instance.map)}
+          src={instance.workshop_map_image || getMapImage(instance.map)}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#111827] to-transparent"></div>
         
@@ -108,8 +110,10 @@ const ServerCard = memo(({
           )}
         </div>
 
-        <div className="absolute bottom-3 left-3">
-          <p className="text-white text-[10px] font-bold tracking-widest uppercase opacity-80">{instance.map}</p>
+        <div className="absolute bottom-3 left-3 pr-3">
+          <p className="text-white text-[10px] font-bold tracking-widest uppercase opacity-80 truncate max-w-[150px]">
+            {instance.workshop_map_name || instance.map}
+          </p>
         </div>
       </div>
 
