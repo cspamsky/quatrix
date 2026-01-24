@@ -97,7 +97,7 @@ const Settings = () => {
   // 3. Repair System Health
   const repairHealthMutation = useMutation({
     mutationFn: () => apiFetch('/api/servers/health/repair', { method: 'POST' }).then(res => res.json()),
-    onSuccess: (result) => {
+    onSuccess: (result: any) => {
       if (result.success) {
         toast.success(result.message || 'System repaired successfully')
         queryClient.invalidateQueries({ queryKey: ['system-health'] })

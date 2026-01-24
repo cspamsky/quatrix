@@ -41,7 +41,7 @@ const Players = () => {
   const { data: servers = [] } = useQuery<ServerInfo[]>({
     queryKey: ['servers'],
     queryFn: () => apiFetch('/api/servers').then(res => res.json()),
-    select: (data) => data.filter((s: any) => s.status === 'ONLINE')
+    select: (data: any) => data.filter((s: any) => s.status === 'ONLINE')
   })
 
   // Auto-select first server
@@ -114,7 +114,7 @@ const Players = () => {
               onChange={(e) => setSelectedServerId(Number(e.target.value))}
             >
               <option value="" disabled>Select active server...</option>
-              {servers.map(s => (
+              {servers.map((s: ServerInfo) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>

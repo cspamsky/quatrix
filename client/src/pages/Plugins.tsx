@@ -129,7 +129,7 @@ const Plugins = () => {
   };
 
   const allPlugins = useMemo(() => 
-    Object.entries(registry).map(([id, info]) => ({ ...info, id })), 
+    Object.entries(registry).map(([id, info]) => ({ ...(info as PluginInfo), id })), 
   [registry]);
 
   const filteredPlugins = useMemo(() => {
@@ -302,7 +302,7 @@ const Plugins = () => {
                             {info.description || `High-performance module.`}
                           </p>
                           <div className="flex flex-wrap gap-1">
-                            {info.tags?.map(t => (
+                            {info.tags?.map((t: string) => (
                                 <span key={t} className="text-[8px] font-bold text-primary/40 group-hover:text-primary/70 transition-colors uppercase tracking-tight">#{t}</span>
                             ))}
                           </div>
