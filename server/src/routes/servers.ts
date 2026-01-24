@@ -27,6 +27,7 @@ export const createServerSchema = z.object({
 router.use(authenticateToken);
 
 // GET /api/servers
+// GET /api/servers
 router.get("/", (req: any, res) => {
   try {
     // Join with workshop_maps to get map images and names if they exist
@@ -43,11 +44,8 @@ router.get("/", (req: any, res) => {
       LEFT JOIN workshop_maps wm ON (
         s.map = wm.map_file OR
         s.map = wm.workshop_id OR 
-        s.map LIKE 'workshop/%/' || wm.workshop_id || '/%' OR
-        s.map LIKE 'workshop/' || wm.workshop_id || '%' OR
-        s.map LIKE '%/' || wm.workshop_id || '/%' OR
-        LOWER(s.map) = LOWER(wm.name) OR
-        s.map LIKE '%' || wm.workshop_id
+        s.map LIKE '%' || wm.workshop_id || '%' OR
+        LOWER(s.map) = LOWER(wm.map_file)
       )
       WHERE s.user_id = ?
     `).all(req.user.id);

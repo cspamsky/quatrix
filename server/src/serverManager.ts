@@ -286,49 +286,46 @@ class ServerManager {
   async sendCommand(
     id: string | number,
     command: string,
-    retries = 3,
+    retries = 2,
   ): Promise<string> {
     const idStr = id.toString();
     const server = this.getServerStmt.get(idStr) as any;
-    if (!server) throw new Error("Server not found in database");
+    if (!server) throw new Error("Server not found");
 
     const { Rcon } = await import("rcon-client");
     let rcon = this.rconConnections.get(idStr);
 
-    const rconPort = server.port;
-
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        if (!rcon) {
-          const newRcon = new Rcon({
+        if (!rcon || !rcon.authenticated) {
+          rcon = new Rcon({
             host: "127.0.0.1",
-            port: rconPort,
+            port: server.port,
             password: server.rcon_password,
-            timeout: 3000,
+            timeout: 5000,
           });
 
-          // CRITICAL: Attach error listener BEFORE connecting to catch early resets
-          newRcon.on("error", (err: any) => {
-            console.warn(`[RCON] Socket error for server ${idStr}: ${err.message}`);
+          rcon.on("error", (err: any) => {
+            console.warn(`[RCON] Error for server ${idStr}:`, err.message);
             this.rconConnections.delete(idStr);
           });
 
-          await newRcon.connect();
-          rcon = newRcon;
+          await rcon.connect();
           this.rconConnections.set(idStr, rcon);
         }
-        return await rcon.send(command).catch((err: any) => {
-            this.rconConnections.delete(idStr);
-            throw err;
-        });
-      } catch (error) {
+
+        return await rcon.send(command);
+      } catch (error: any) {
         this.rconConnections.delete(idStr);
         rcon = undefined;
-        if (attempt === retries) throw error;
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        if (attempt === retries) {
+            console.error(`[RCON] Final failure for ${idStr}:`, error.message);
+            throw new Error(error.message || "RCON command failed");
+        }
+        await new Promise(r => setTimeout(r, 1000));
       }
     }
-    throw new Error("RCON connection failed");
+    throw new Error("RCON unreachable");
   }
 
   async getCurrentMap(id: string | number): Promise<string | null> {
