@@ -1,5 +1,5 @@
 import { apiFetch } from '../utils/api'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { 
   Folder, 
@@ -9,9 +9,15 @@ import {
   RefreshCw,
   FileCode,
   FileText,
-  MoreVertical,
-  X
+  Trash2,
+  FolderPlus,
+  Upload,
+  Search,
+  Download,
+  Edit2
 } from 'lucide-react'
+import toast from 'react-hot-toast'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 
 interface FileStat {
   name: string
@@ -23,11 +29,16 @@ interface FileStat {
 const FileManager = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { showConfirm } = useConfirmDialog()
   const [files, setFiles] = useState<FileStat[]>([])
   const [currentPath, setCurrentPath] = useState<string>('')
   const [loading, setLoading] = useState(true)
-  const [editingFile, setEditingFile] = useState<{name: string, content: string} | null>(null)
+  const [editingFile, setEditingFile] = useState<{name: string, content: string, originalContent: string} | null>(null)
   const [saving, setSaving] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetchFiles(currentPath)
@@ -37,13 +48,15 @@ const FileManager = () => {
     setLoading(true)
     try {
       const response = await apiFetch(`/api/servers/${id}/files?path=${encodeURIComponent(path)}`)
-
       if (response.ok) {
         const data = await response.json()
         setFiles(data)
+      } else {
+        toast.error('Failed to load files')
       }
     } catch (error) {
       console.error('Failed to fetch files:', error)
+      toast.error('Connection error')
     } finally {
       setLoading(false)
     }
@@ -57,13 +70,15 @@ const FileManager = () => {
 
     try {
       const response = await apiFetch(`/api/servers/${id}/files/read?path=${encodeURIComponent(currentPath ? `${currentPath}/${file.name}` : file.name)}`)
-
       if (response.ok) {
         const data = await response.json()
-        setEditingFile({ name: file.name, content: data.content })
+        setEditingFile({ name: file.name, content: data.content, originalContent: data.content })
+        toast.success(`Editing ${file.name}`)
+      } else {
+        toast.error('Failed to read file')
       }
     } catch {
-      alert('Failed to read file')
+      toast.error('Connection error')
     }
   }
 
@@ -73,27 +88,142 @@ const FileManager = () => {
     try {
       const filePath = currentPath ? `${currentPath}/${editingFile.name}` : editingFile.name
       const response = await apiFetch(`/api/servers/${id}/files/write`, {
-
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: filePath, content: editingFile.content })
       })
       if (response.ok) {
         setEditingFile(null)
+        toast.success('File saved successfully')
         fetchFiles(currentPath)
       } else {
-        alert('Failed to save file')
+        toast.error('Failed to save file')
       }
     } catch {
-      alert('Connection error')
+      toast.error('Connection error')
     } finally {
       setSaving(false)
     }
   }
 
-  const navigateUp = () => {
-    const parts = currentPath.split('/')
-    parts.pop()
-    setCurrentPath(parts.join('/'))
+  const handleDelete = async (file: FileStat) => {
+    const confirmed = await showConfirm({
+      title: 'Delete Item',
+      message: `Are you sure you want to delete ${file.name}? This action cannot be undone.`,
+      confirmText: 'Delete',
+      type: 'danger'
+    })
+
+    if (confirmed) {
+      try {
+        const filePath = currentPath ? `${currentPath}/${file.name}` : file.name
+        const response = await apiFetch(`/api/servers/${id}/files?path=${encodeURIComponent(filePath)}`, {
+          method: 'DELETE'
+        })
+        if (response.ok) {
+          toast.success(`${file.name} deleted`)
+          fetchFiles(currentPath)
+        } else {
+          toast.error('Failed to delete item')
+        }
+      } catch {
+        toast.error('Connection error')
+      }
+    }
+  }
+
+  const handleRename = async (file: FileStat) => {
+    const newName = prompt(`Enter new name for ${file.name}:`, file.name)
+    if (!newName || newName === file.name) return
+
+    try {
+      const oldPath = currentPath ? `${currentPath}/${file.name}` : file.name
+      const newPath = currentPath ? `${currentPath}/${newName}` : newName
+      const response = await apiFetch(`/api/servers/${id}/files/rename`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldPath, newPath })
+      })
+      if (response.ok) {
+        toast.success('Renamed successfully')
+        fetchFiles(currentPath)
+      } else {
+        toast.error('Failed to rename')
+      }
+    } catch {
+      toast.error('Connection error')
+    }
+  }
+
+  const handleDownload = async (file: FileStat) => {
+    try {
+      const filePath = currentPath ? `${currentPath}/${file.name}` : file.name
+      const response = await apiFetch(`/api/servers/${id}/files/read?path=${encodeURIComponent(filePath)}`)
+      if (response.ok) {
+        const data = await response.json()
+        const blob = new Blob([data.content], { type: 'text/plain' })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = file.name
+        a.click()
+        window.URL.revokeObjectURL(url)
+        toast.success(`Downloading ${file.name}`)
+      }
+    } catch {
+      toast.error('Download failed')
+    }
+  }
+
+  const handleCreateFolder = async () => {
+    if (!newFolderName) return
+    try {
+      const dirPath = currentPath ? `${currentPath}/${newFolderName}` : newFolderName
+      const response = await apiFetch(`/api/servers/${id}/files/mkdir`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: dirPath })
+      })
+      if (response.ok) {
+        toast.success('Folder created')
+        setIsNewFolderModalOpen(false)
+        setNewFolderName('')
+        fetchFiles(currentPath)
+      } else {
+        toast.error('Failed to create folder')
+      }
+    } catch {
+      toast.error('Connection error')
+    }
+  }
+
+  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const response = await fetch(`/api/servers/${id}/files/upload?path=${encodeURIComponent(currentPath)}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formData
+      })
+
+      if (response.ok) {
+        toast.success(`${file.name} uploaded successfully`)
+        fetchFiles(currentPath)
+      } else {
+        toast.error('Upload failed')
+      }
+    } catch {
+      toast.error('Network error during upload')
+    }
+    
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const formatSize = (bytes: number) => {
@@ -104,139 +234,231 @@ const FileManager = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
+  const filteredFiles = files.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()))
+
   return (
-    <div className="p-6 h-full flex flex-col">
-      <header className="mb-8 flex justify-between items-center">
-        <div>
-          <button
-            onClick={() => navigate('/instances')}
-            className="flex items-center text-gray-400 hover:text-white transition-colors mb-4"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Instances
-          </button>
-          <h2 className="text-2xl font-bold text-white tracking-tight">File Manager</h2>
-          <div className="flex items-center text-sm text-gray-400 mt-2 gap-2">
+    <div className="p-6 h-full flex flex-col animate-in fade-in duration-500">
+      <header className="mb-8">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <button
+              onClick={() => navigate('/instances')}
+              className="flex items-center text-gray-500 hover:text-white transition-colors mb-4 text-xs font-bold uppercase tracking-widest"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Instances
+            </button>
+            <h2 className="text-3xl font-black text-white tracking-tighter flex items-center gap-3">
+              FILE MANAGER
+              <span className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full font-bold tracking-widest uppercase">
+                {currentPath ? 'Directory' : 'Root'}
+              </span>
+            </h2>
+          </div>
+
+          <div className="flex gap-3">
+             <button 
+               onClick={() => setIsNewFolderModalOpen(true)}
+               className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all border border-gray-700/50"
+             >
+               <FolderPlus size={16} /> NEW FOLDER
+             </button>
+             <button 
+               onClick={() => fileInputRef.current?.click()}
+               className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-primary/20"
+             >
+               <Upload size={16} /> UPLOAD
+             </button>
+             <input type="file" ref={fileInputRef} className="hidden" onChange={handleUpload} />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 bg-[#111827] p-2 rounded-2xl border border-gray-800 shadow-inner">
+          <div className="flex-1 flex items-center px-4 gap-2 text-sm text-gray-400">
             <button
               type="button"
-              className="cursor-pointer hover:text-primary transition-all bg-transparent border-0 p-0"
+              className="cursor-pointer hover:text-primary transition-all font-bold"
               onClick={() => setCurrentPath('')}
-              aria-label="Root directory"
             >
               root
             </button>
             {currentPath.split('/').filter(p => p).map((p, i, arr) => (
               <span key={i} className="flex items-center gap-2">
-                <ChevronRight size={14} className="opacity-50" />
+                <ChevronRight size={14} className="opacity-30" />
                 <button
                   type="button"
-                  className="cursor-pointer hover:text-primary transition-all bg-transparent border-0 p-0"
+                  className="cursor-pointer hover:text-white transition-all"
                   onClick={() => setCurrentPath(arr.slice(0, i + 1).join('/'))}
-                  aria-label={`Go to ${p}`}
                 >
                   {p}
                 </button>
               </span>
             ))}
           </div>
-        </div>
+          
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+            <input 
+              type="text" 
+              placeholder="Search files..."
+              className="w-full bg-black/20 border border-gray-700/50 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-gray-600 focus:border-primary outline-none transition-all"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
 
-        <div className="flex gap-4">
-           {currentPath && (
-             <button 
-               onClick={navigateUp}
-               className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-xl text-sm transition-all"
-             >
-               Go Up
-             </button>
-           )}
-           <button 
+          <button 
              onClick={() => fetchFiles(currentPath)}
-             className="bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-xl transition-all"
-             aria-label="Refresh files"
+             className="p-2.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-xl transition-all"
+             title="Refresh"
            >
-             <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+             <RefreshCw size={18} className={loading && !editingFile ? 'animate-spin' : ''} />
            </button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="flex-1 bg-[#111827] border border-gray-800 rounded-xl overflow-hidden flex flex-col">
+      <main className="flex-1 bg-[#111827] border border-gray-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl relative">
         {editingFile ? (
-          <div className="flex-1 flex flex-col">
-            <div className="bg-[#1c2537] px-4 py-3 flex justify-between items-center border-b border-gray-800">
-              <span className="text-sm font-mono text-white">{editingFile.name}</span>
-              <div className="flex gap-4">
+          <div className="flex-1 flex flex-col animate-in slide-in-from-right-4 duration-300">
+            <div className="bg-[#1c2537] px-6 py-4 flex justify-between items-center border-b border-gray-800">
+              <div className="flex items-center gap-3">
+                <FileCode className="text-primary" size={20} />
+                <div>
+                  <h4 className="text-white text-sm font-bold tracking-tight">{editingFile.name}</h4>
+                  <p className="text-[10px] text-gray-500 font-mono tracking-widest">{currentPath || 'root'}</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
                 <button 
-                  onClick={() => setEditingFile(null)}
-                  className="text-gray-400 hover:text-white transition-all"
-                  aria-label="Close editor"
+                  onClick={() => {
+                    if (editingFile.content !== editingFile.originalContent) {
+                      if (!confirm('You have unsaved changes. Discard?')) return
+                    }
+                    setEditingFile(null)
+                  }}
+                  className="text-xs font-bold text-gray-400 hover:text-white px-4 py-2 rounded-xl transition-all"
                 >
-                  <X size={18} />
+                  DISCARD
                 </button>
                 <button 
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-4 py-1.5 rounded text-xs font-bold transition-all disabled:opacity-50"
+                  className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-black tracking-widest transition-all disabled:opacity-50 shadow-lg shadow-primary/20"
                  >
-                  <Save size={14} /> {saving ? 'SAVING...' : 'SAVE CHANGES'}
+                  <Save size={16} /> {saving ? 'SAVING...' : 'SAVE CHANGES'}
                 </button>
               </div>
             </div>
             <textarea 
-              className="flex-1 bg-black/20 text-gray-300 p-6 font-mono text-sm outline-none resize-none custom-scrollbar"
+              className="flex-1 bg-black/30 text-gray-300 p-8 font-mono text-sm outline-none resize-none custom-scrollbar leading-relaxed"
               spellCheck={false}
+              autoFocus
               value={editingFile.content}
               onChange={(e) => setEditingFile({ ...editingFile, content: e.target.value })}
             />
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <table className="w-full text-left">
-              <thead className="bg-black/20 text-gray-400 text-[10px] uppercase font-bold tracking-widest sticky top-0">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-black/40 text-gray-500 text-[10px] uppercase font-black tracking-[0.2em] sticky top-0 z-10">
                 <tr>
-                  <th className="px-6 py-4">Name</th>
-                  <th className="px-6 py-4">Size</th>
-                  <th className="px-6 py-4">Modified</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+                  <th className="px-8 py-5">Name</th>
+                  <th className="px-8 py-5">Size</th>
+                  <th className="px-8 py-5">Modified</th>
+                  <th className="px-8 py-5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800/50">
+              <tbody className="divide-y divide-gray-800/30">
+                {currentPath && (
+                   <tr 
+                     className="hover:bg-white/[0.02] cursor-pointer transition-all border-l-2 border-transparent hover:border-primary/50"
+                     onClick={() => {
+                        const parts = currentPath.split('/')
+                        parts.pop()
+                        setCurrentPath(parts.join('/'))
+                     }}
+                   >
+                     <td colSpan={4} className="px-8 py-4 flex items-center gap-3 text-gray-500 font-bold text-xs italic">
+                       <ArrowLeft size={14} /> .. (Go Up)
+                     </td>
+                   </tr>
+                )}
                 {loading ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-20 text-center text-gray-500">Loading files...</td>
+                    <td colSpan={4} className="px-8 py-20 text-center">
+                      <div className="flex flex-col items-center gap-4 text-gray-600">
+                        <RefreshCw className="w-10 h-10 animate-spin opacity-20" />
+                        <span className="text-xs font-black tracking-widest">LOADING FILESYSTEM</span>
+                      </div>
+                    </td>
                   </tr>
-                ) : files.length === 0 ? (
+                ) : filteredFiles.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-20 text-center text-gray-500">No files found here.</td>
+                    <td colSpan={4} className="px-8 py-20 text-center">
+                       <div className="flex flex-col items-center gap-2 text-gray-600">
+                         <Search className="w-10 h-10 opacity-20" />
+                         <span className="text-xs font-black tracking-widest">{searchTerm ? 'NO FILES MATCH SEARCH' : 'DIRECTORY IS EMPTY'}</span>
+                       </div>
+                    </td>
                   </tr>
-                ) : files.map((file, i) => (
+                ) : filteredFiles.map((file, i) => (
                   <tr 
                     key={i} 
-                    className="hover:bg-white/[0.02] cursor-pointer group transition-all"
+                    className="hover:bg-white/[0.03] cursor-pointer group transition-all border-l-4 border-transparent hover:border-primary group"
                     onClick={() => handleEdit(file)}
                   >
-                    <td className="px-6 py-4 flex items-center gap-3">
-                      {file.isDirectory ? (
-                        <Folder className="text-amber-500 w-5 h-5" />
-                      ) : file.name.endsWith('.cfg') || file.name.endsWith('.json') ? (
-                        <FileCode className="text-blue-500 w-5 h-5" />
-                      ) : (
-                        <FileText className="text-gray-500 w-5 h-5" />
-                      )}
-                      <span className="text-sm font-medium text-gray-300 group-hover:text-primary transition-all">{file.name}</span>
+                    <td className="px-8 py-4 flex items-center gap-4">
+                      <div className="p-2 rounded-lg bg-gray-900/50 group-hover:bg-gray-800 transition-all border border-gray-800/50">
+                        {file.isDirectory ? (
+                          <Folder className="text-amber-500 w-5 h-5 fill-amber-500/10" />
+                        ) : file.name.endsWith('.cfg') || file.name.endsWith('.json') || file.name.endsWith('.ini') ? (
+                          <FileCode className="text-primary w-5 h-5" />
+                        ) : (
+                          <FileText className="text-gray-400 w-5 h-5" />
+                        )}
+                      </div>
+                      <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-all">{file.name}</span>
                     </td>
-                    <td className="px-6 py-4 text-xs text-gray-500">{file.isDirectory ? '-' : formatSize(file.size)}</td>
-                    <td className="px-6 py-4 text-xs text-gray-500">
+                    <td className="px-8 py-4 text-xs font-mono text-gray-500 tracking-tighter">
+                      {file.isDirectory ? '-' : formatSize(file.size)}
+                    </td>
+                    <td className="px-8 py-4 text-xs text-gray-600 font-medium">
                       {new Date(file.mtime).toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        className="text-gray-600 hover:text-white transition-all opacity-0 group-hover:opacity-100"
-                        aria-label="More options"
-                      >
-                        <MoreVertical size={16} />
-                      </button>
+                    <td className="px-8 py-4 text-right">
+                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                        <button 
+                          className="p-2 text-gray-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleRename(file)
+                          }}
+                          title="Rename"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        {!file.isDirectory && (
+                           <button 
+                            className="p-2 text-gray-500 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDownload(file)
+                            }}
+                            title="Download"
+                          >
+                            <Download size={14} />
+                          </button>
+                        )}
+                        <button 
+                          className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDelete(file)
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -244,7 +466,48 @@ const FileManager = () => {
             </table>
           </div>
         )}
-      </div>
+
+        {/* New Folder Modal */}
+        {isNewFolderModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIsNewFolderModalOpen(false)}></div>
+            <div className="relative bg-[#111827] border border-gray-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+              <h3 className="text-xl font-black text-white mb-6 tracking-tighter uppercase">NEW DIRECTORY</h3>
+              <div className="space-y-4">
+                <input 
+                  type="text" 
+                  autoFocus
+                  placeholder="Folder Name"
+                  className="w-full bg-black/40 border border-gray-700 rounded-2xl px-6 py-4 text-white focus:border-primary outline-none transition-all font-bold"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
+                />
+                <button 
+                  onClick={handleCreateFolder}
+                  className="w-full py-4 bg-primary hover:bg-blue-600 text-white rounded-2xl font-black tracking-widest text-xs transition-all shadow-lg shadow-primary/20"
+                >
+                  CREATE FOLDER
+                </button>
+                <button 
+                  onClick={() => setIsNewFolderModalOpen(false)}
+                  className="w-full py-4 bg-transparent text-gray-500 hover:text-white font-bold text-xs"
+                >
+                  CANCEL
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+      
+      <footer className="mt-4 flex justify-between items-center text-[10px] font-black text-gray-600 tracking-[0.3em] uppercase">
+        <div>QUATRIX FILE SYSTEM V2</div>
+        <div className="flex gap-4">
+          <span>{files.length} ITEMS</span>
+          <span className="text-primary/50">ENCRYPTED TRANSFER</span>
+        </div>
+      </footer>
     </div>
   )
 }

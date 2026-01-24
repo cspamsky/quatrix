@@ -882,6 +882,30 @@ class ServerManager {
     return fs.promises.writeFile(safePath, content);
   }
 
+  async deleteFile(id: string | number, filePath: string) {
+    const safePath = this._resolveSecurePath(id, filePath);
+    return fs.promises.rm(safePath, { recursive: true, force: true });
+  }
+
+  async createDirectory(id: string | number, dirPath: string) {
+    const safePath = this._resolveSecurePath(id, dirPath);
+    return fs.promises.mkdir(safePath, { recursive: true });
+  }
+
+  async renameFile(id: string | number, oldPath: string, newPath: string) {
+    const safeOldPath = this._resolveSecurePath(id, oldPath);
+    const safeNewPath = this._resolveSecurePath(id, newPath);
+    return fs.promises.rename(safeOldPath, safeNewPath);
+  }
+
+  /**
+   * Returns the absolute path for a file intended for file uploading
+   * Use with caution.
+   */
+  getFilePath(id: string | number, filePath: string) {
+    return this._resolveSecurePath(id, filePath);
+  }
+
   async deleteServerFiles(id: string | number) {
     const idStr = id.toString();
     const serverDir = path.join(this.installDir, idStr);
