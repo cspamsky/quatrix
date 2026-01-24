@@ -12,6 +12,8 @@ import {
 } from 'lucide-react'
 import socket from '../utils/socket'
 
+import { useQuery } from '@tanstack/react-query'
+
 const Dashboard = () => {
   const [stats, setStats] = useState<any>({
     cpu: '0.0',
@@ -21,32 +23,30 @@ const Dashboard = () => {
     netIn: '0',
     netOut: '0'
   })
-  const [systemInfo, setSystemInfo] = useState<any>({
-    os: 'Loading...',
-    arch: 'Loading...',
-    hostname: 'Loading...',
-  })
-  const [serverStats, setServerStats] = useState<any>({
-    totalServers: 0,
-    activeServers: 0,
-    totalPlayers: 0
-  })
 
   const [isConnected, setIsConnected] = useState(socket.connected)
 
+  // Use React Query for system info
+  const { data: systemInfo = {
+    os: 'Loading...',
+    arch: 'Loading...',
+    hostname: 'Loading...',
+  } } = useQuery({
+    queryKey: ['system-info'],
+    queryFn: () => apiFetch('/api/system-info').then(res => res.json()),
+  })
+
+  // Use React Query for server stats
+  const { data: serverStats = {
+    totalServers: 0,
+    activeServers: 0,
+    totalPlayers: 0
+  } } = useQuery({
+    queryKey: ['server-stats'],
+    queryFn: () => apiFetch('/api/stats').then(res => res.json()),
+  })
+
   useEffect(() => {
-    // Fetch system info
-    apiFetch('/api/system-info')
-      .then(res => res.json())
-      .then(data => setSystemInfo(data))
-      .catch(err => console.error('Failed to fetch system info:', err))
-
-    // Fetch user server stats
-    apiFetch('/api/stats')
-      .then(res => res.json())
-      .then(data => setServerStats(data))
-      .catch(err => console.error('Failed to fetch server stats:', err))
-
     // Socket Connection Handlers
     const onConnect = () => {
       setIsConnected(true)

@@ -11,6 +11,7 @@ import toast from 'react-hot-toast'
 import socket from '../utils/socket'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import ServerCard from '../components/ServerCard'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 interface Instance {
   id: number
@@ -27,76 +28,70 @@ interface Instance {
 const Instances = () => {
   const navigate = useNavigate()
   const { showConfirm } = useConfirmDialog()
+  const queryClient = useQueryClient()
+  
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [instances, setInstances] = useState<Instance[]>([])
-  const [serverIp, setServerIp] = useState<string>('')
-  const [loading, setLoading] = useState(true)
+  const [localInstances, setLocalInstances] = useState<Instance[]>([])
+  
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [installingId, setInstallingId] = useState<number | null>(null)
   const [restartingId, setRestartingId] = useState<number | null>(null)
   const [startingId, setStartingId] = useState<number | null>(null)
   const [stoppingId, setStoppingId] = useState<number | null>(null)
 
-  const fetchSystemInfo = useCallback(async () => {
-    try {
-      const response = await apiFetch('/api/system-info')
+  // System Info Query
+  const { data: serverIp = window.location.hostname } = useQuery({
+    queryKey: ['system-info-ip'],
+    queryFn: () => apiFetch('/api/system-info')
+      .then(res => res.json())
+      .then(data => data.publicIp || window.location.hostname)
+  })
 
-      if (response.ok) {
-        const data = await response.json()
-        setServerIp(data.publicIp || window.location.hostname)
-      }
-    } catch (error) {
-      console.error('Failed to fetch system info:', error)
-      setServerIp(window.location.hostname)
+  // Servers Query
+  const { data: instances = [], isLoading: loading } = useQuery<Instance[]>({
+    queryKey: ['servers'],
+    queryFn: () => apiFetch('/api/servers').then(res => res.json()),
+  })
+
+  // Synchronize local state with Query data
+  useEffect(() => {
+    if (instances) {
+      setLocalInstances(instances)
     }
-  }, [])
-
-  const fetchServers = useCallback(async () => {
-    try {
-      const response = await apiFetch('/api/servers')
-
-      const data = await response.json()
-      setInstances(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error('Failed to fetch servers:', error)
-    }
-  }, [])
+  }, [instances])
 
   useEffect(() => {
-    // Paralel olarak her ikisini de çalıştır
-    const loadData = async () => {
-      setLoading(true)
-      await Promise.all([
-        fetchServers(),
-        fetchSystemInfo()
-      ])
-      setLoading(false)
-    }
-    
-    loadData()
-
     // Listen for real-time status updates
     socket.on('status_update', ({ serverId, status }: { serverId: number, status: string }) => {
-      setInstances(prev => 
+      setLocalInstances(prev => 
         prev.map(instance => 
           instance.id === serverId 
             ? { ...instance, status: status as Instance['status'] }
             : instance
         )
       )
+      // Also update the cache so the status persists
+      queryClient.setQueryData(['servers'], (old: Instance[] | undefined) => 
+        old?.map(instance => 
+          instance.id === serverId ? { ...instance, status: status as Instance['status'] } : instance
+        )
+      )
     })
 
     // Listen for server updates (map changes, settings, etc.)
     socket.on('server_update', () => {
-      // Refresh the specific server data
-      fetchServers()
+      queryClient.invalidateQueries({ queryKey: ['servers'] })
     })
 
     return () => {
       socket.off('status_update')
       socket.off('server_update')
     }
-  }, []) // Boş dependency array - sadece mount'ta çalışır
+  }, [queryClient])
+
+  const fetchServers = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['servers'] })
+  }, [queryClient])
 
   const handleDeleteServer = useCallback(async (id: number) => {
     const confirmed = await showConfirm({
@@ -112,12 +107,14 @@ const Instances = () => {
     setDeletingId(id)
     try {
       const response = await apiFetch(`/api/servers/${id}`, {
-
         method: 'DELETE'
       })
       if (response.ok) {
         toast.success('Server deleted successfully')
-        setInstances(prev => prev.filter(i => i.id !== id))
+        setLocalInstances(prev => prev.filter(i => i.id !== id))
+        queryClient.setQueryData(['servers'], (old: Instance[] | undefined) => 
+          old?.filter(i => i.id !== id)
+        )
       } else {
         toast.error('Failed to delete server')
       }
@@ -127,13 +124,12 @@ const Instances = () => {
     } finally {
       setDeletingId(null)
     }
-  }, [showConfirm])
+  }, [showConfirm, queryClient])
 
   const handleInstall = useCallback(async (id: number) => {
     setInstallingId(id)
     try {
       const response = await apiFetch(`/api/servers/${id}/install`, {
-
         method: 'POST'
       })
       if (response.ok) {
@@ -265,10 +261,9 @@ const Instances = () => {
       navigate(`/instances/${id}/settings`)
   }, [navigate]);
 
-   const handleFilesNavigate = useCallback((id: number) => {
+  const handleFilesNavigate = useCallback((id: number) => {
       navigate(`/instances/${id}/files`)
   }, [navigate]);
-
 
   return (
     <div className="p-6 min-h-screen flex flex-col">
@@ -298,11 +293,11 @@ const Instances = () => {
           </div>
         </header>
 
-        {loading ? (
+        {loading && localInstances.length === 0 ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-gray-400">Loading servers...</div>
           </div>
-        ) : instances.length === 0 ? (
+        ) : localInstances.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <p className="text-gray-400 mb-4">No servers found. Create your first server to get started!</p>
             <button 
@@ -314,7 +309,7 @@ const Instances = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {instances.map((instance) => (
+            {localInstances.map((instance) => (
               <ServerCard
                 key={instance.id}
                 instance={instance}
@@ -340,22 +335,22 @@ const Instances = () => {
         )}
       </div>
 
-      {!loading && instances.length > 0 && (
+      {!loading && localInstances.length > 0 && (
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 p-5 bg-[#111827] rounded-xl border border-gray-800/60">
           <div className="flex items-center space-x-10">
             <div className="flex flex-col">
               <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Total Active</span>
               <div className="flex items-baseline space-x-1">
-                <span className="text-xl font-bold text-white">{instances.filter(i => i.status === 'ONLINE').length}</span>
-                <span className="text-gray-500 text-sm">/ {instances.length}</span>
+                <span className="text-xl font-bold text-white">{localInstances.filter(i => i.status === 'ONLINE').length}</span>
+                <span className="text-gray-500 text-sm">/ {localInstances.length}</span>
               </div>
             </div>
             <div className="w-px h-8 bg-gray-800"></div>
             <div className="flex flex-col">
               <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Player Count</span>
               <div className="flex items-baseline space-x-1">
-                <span className="text-xl font-bold text-white">{instances.reduce((sum, i) => sum + i.current_players, 0)}</span>
-                <span className="text-gray-500 text-sm">/ {instances.reduce((sum, i) => sum + i.max_players, 0)}</span>
+                <span className="text-xl font-bold text-white">{localInstances.reduce((sum, i) => sum + i.current_players, 0)}</span>
+                <span className="text-gray-500 text-sm">/ {localInstances.reduce((sum, i) => sum + i.max_players, 0)}</span>
               </div>
             </div>
           </div>

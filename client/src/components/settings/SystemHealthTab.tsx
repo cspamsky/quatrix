@@ -16,7 +16,7 @@ interface SystemHealthTabProps {
   healthData: any
   healthLoading: boolean
   onRefresh: () => void
-  onRepair: () => Promise<{ success: boolean; message: string }>
+  onRepair: () => void
 }
 
 const SystemHealthTab: React.FC<SystemHealthTabProps> = ({ healthData, healthLoading, onRefresh, onRepair }) => {

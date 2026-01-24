@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { apiFetch } from '../utils/api'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 // Sub-components
 import GeneralTab from '../components/settings/GeneralTab'
@@ -13,124 +14,108 @@ import ActivityLogTab from '../components/settings/ActivityLogTab'
 type TabType = 'General' | 'Security' | 'Notifications' | 'API Keys' | 'Activity Log' | 'Server Engine' | 'System Health'
 
 const Settings = () => {
+  const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<TabType>('General')
   
-  // State for General
+  // --- Local States for Forms (Controlled Inputs) ---
   const [panelName, setPanelName] = useState('Quatrix Panel')
   const [defaultPort, setDefaultPort] = useState('27015')
   const [autoBackup, setAutoBackup] = useState(true)
   const [autoPluginUpdates, setAutoPluginUpdates] = useState(false)
-
-  // State for Server Engine
   const [steamCmdPath, setSteamCmdPath] = useState('')
   const [installDir, setInstallDir] = useState('')
-  const [engineLoading, setEngineLoading] = useState(false)
   const [engineMessage, setEngineMessage] = useState({ type: '', text: '' })
 
-  // State for System Health
-  const [healthData, setHealthData] = useState<any>(null)
-  const [healthLoading, setHealthLoading] = useState(false)
+  // --- Queries ---
+  
+  // 1. Fetch Global Settings
+  useQuery({
+    queryKey: ['settings'],
+    queryFn: async () => {
+      const res = await apiFetch('/api/settings')
+      const data = await res.json()
+      // Sync local state when data arrives
+      setSteamCmdPath(data.steamcmd_path || '')
+      setInstallDir(data.install_dir || '')
+      // You could sync other fields here if they were in API
+      return data
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+
+  // 2. Fetch System Health
+  const { data: healthData, isLoading: healthLoading, refetch: refetchHealth } = useQuery({
+    queryKey: ['system-health'],
+    queryFn: () => apiFetch('/api/system/health').then(res => res.json()),
+    enabled: activeTab === 'System Health',
+  })
+
+  // --- Mutations ---
+
+  // 1. Update Global Settings
+  const updateSettingsMutation = useMutation({
+    mutationFn: (updates: any) => apiFetch('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    }).then(res => res.json()),
+    onSuccess: () => {
+      toast.success('Settings updated successfully!')
+      queryClient.invalidateQueries({ queryKey: ['settings'] })
+      setEngineMessage({ type: 'success', text: 'Cloud Engine settings saved.' })
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update settings')
+      setEngineMessage({ type: 'error', text: 'Error saving settings.' })
+    }
+  })
+
+  // 2. Download SteamCMD
+  const downloadSteamCmdMutation = useMutation({
+    mutationFn: (path: string) => apiFetch('/api/settings/steamcmd/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path })
+    }).then(res => {
+      if (!res.ok) return res.json().then(d => { throw new Error(d.message) })
+      return res.json()
+    }),
+    onMutate: () => {
+      setEngineMessage({ type: 'info', text: 'Downloading SteamCMD... Please wait.' })
+    },
+    onSuccess: () => {
+      setEngineMessage({ type: 'success', text: 'SteamCMD downloaded and extracted successfully!' })
+      toast.success('SteamCMD installed successfully!')
+      queryClient.invalidateQueries({ queryKey: ['settings'] })
+    },
+    onError: (error: any) => {
+      setEngineMessage({ type: 'error', text: error.message || 'Failed to download SteamCMD.' })
+      toast.error(error.message || 'Download failed')
+    }
+  })
+
+  // 3. Repair System Health
+  const repairHealthMutation = useMutation({
+    mutationFn: () => apiFetch('/api/servers/health/repair', { method: 'POST' }).then(res => res.json()),
+    onSuccess: (result) => {
+      if (result.success) {
+        toast.success(result.message || 'System repaired successfully')
+        queryClient.invalidateQueries({ queryKey: ['system-health'] })
+      } else {
+        toast.error(result.message || 'Repair failed')
+      }
+    },
+    onError: () => toast.error('Failed to repair system health')
+  })
 
   const tabs: TabType[] = ['General', 'Server Engine', 'System Health', 'Security', 'Notifications', 'API Keys', 'Activity Log']
 
-  useEffect(() => {
-    const saved = localStorage.getItem('autoPluginUpdates');
-    if (saved !== null) setAutoPluginUpdates(saved === 'true');
-    
-    if (activeTab === 'Server Engine') fetchSettings()
-    else if (activeTab === 'System Health') fetchHealth()
-  }, [activeTab])
-
-  const fetchHealth = async () => {
-    setHealthLoading(true)
-    try {
-      const response = await apiFetch('/api/system/health')
-      setHealthData(await response.json())
-    } catch (error) {
-      console.error('Failed to fetch health data:', error)
-    } finally {
-      setHealthLoading(false)
-    }
+  const handleSaveEngineSettings = () => {
+    updateSettingsMutation.mutate({ steamcmd_path: steamCmdPath, install_dir: installDir })
   }
 
-  const repairSystemHealth = async (): Promise<{ success: boolean; message: string }> => {
-    try {
-      const response = await apiFetch('/api/servers/health/repair', { method: 'POST' });
-      const result = await response.json();
-      
-      if (result.success) {
-        toast.success(result.message || 'System repaired successfully');
-        // Refresh health data after repair
-        await fetchHealth();
-      } else {
-        toast.error(result.message || 'Repair failed');
-      }
-      
-      return result;
-    } catch (error: any) {
-      const errorMsg = 'Failed to repair system health';
-      toast.error(errorMsg);
-      return { success: false, message: errorMsg };
-    }
-  }
-
-  const fetchSettings = async () => {
-    try {
-      const response = await apiFetch('/api/settings')
-      const data = await response.json()
-      setSteamCmdPath(data.steamcmd_path || '')
-      setInstallDir(data.install_dir || '')
-    } catch (error) {
-      console.error('Failed to fetch settings:', error)
-    }
-  }
-
-  const saveEngineSettings = async () => {
-    if (engineLoading) return
-    setEngineLoading(true)
-    try {
-      const response = await apiFetch('/api/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ steamcmd_path: steamCmdPath, install_dir: installDir })
-      })
-      if (response.ok) {
-        toast.success('Settings updated successfully!')
-        setEngineMessage({ type: 'success', text: 'Cloud Engine settings saved.' })
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        setEngineMessage({ type: 'error', text: errorData.message || 'Server error while saving settings.' })
-        toast.error(errorData.message || 'Failed to update settings')
-      }
-    } catch (error) {
-      setEngineMessage({ type: 'error', text: 'Connection error while saving settings.' })
-      toast.error('Connection error: Could not reach the server')
-    } finally {
-      setEngineLoading(false)
-    }
-  }
-
-  const downloadSteamCmd = async () => {
-    setEngineLoading(true)
-    setEngineMessage({ type: 'info', text: 'Downloading SteamCMD... Please wait.' })
-    try {
-      const response = await apiFetch('/api/settings/steamcmd/download', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: steamCmdPath })
-      })
-      if (response.ok) {
-        setEngineMessage({ type: 'success', text: 'SteamCMD downloaded and extracted successfully!' })
-        toast.success('SteamCMD installed successfully!')
-      } else {
-        const data = await response.json()
-        setEngineMessage({ type: 'error', text: data.message || 'Failed to download SteamCMD.' })
-      }
-    } catch (error) {
-      setEngineMessage({ type: 'error', text: 'Network error while downloading SteamCMD.' })
-    } finally {
-      setEngineLoading(false)
-    }
+  const handleDownloadSteamCmd = () => {
+    downloadSteamCmdMutation.mutate(steamCmdPath)
   }
 
   return (
@@ -177,18 +162,19 @@ const Settings = () => {
             <ServerEngineTab 
               steamCmdPath={steamCmdPath} setSteamCmdPath={setSteamCmdPath}
               installDir={installDir} setInstallDir={setInstallDir}
-              engineLoading={engineLoading} engineMessage={engineMessage}
-              onDownloadSteamCmd={downloadSteamCmd}
-              onSave={saveEngineSettings}
+              engineLoading={updateSettingsMutation.isPending || downloadSteamCmdMutation.isPending} 
+              engineMessage={engineMessage}
+              onDownloadSteamCmd={handleDownloadSteamCmd}
+              onSave={handleSaveEngineSettings}
             />
           )}
 
           {activeTab === 'System Health' && (
             <SystemHealthTab 
               healthData={healthData} 
-              healthLoading={healthLoading} 
-              onRefresh={fetchHealth}
-              onRepair={repairSystemHealth}
+              healthLoading={healthLoading || repairHealthMutation.isPending} 
+              onRefresh={() => refetchHealth()}
+              onRepair={() => repairHealthMutation.mutate()}
             />
           )}
 

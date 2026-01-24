@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { apiFetch } from '../utils/api'
 import { 
   Users, 
@@ -13,6 +13,7 @@ import {
   Server
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 interface Player {
   userId: string
@@ -31,76 +32,46 @@ interface ServerInfo {
 }
 
 const Players = () => {
+  const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
-  const [servers, setServers] = useState<ServerInfo[]>([])
   const [selectedServerId, setSelectedServerId] = useState<number | null>(null)
-  const [players, setPlayers] = useState<Player[]>([])
-  const [averagePing, setAveragePing] = useState(0)
-  const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
+  // 1. Fetch Servers
+  const { data: servers = [] } = useQuery<ServerInfo[]>({
+    queryKey: ['servers'],
+    queryFn: () => apiFetch('/api/servers').then(res => res.json()),
+    select: (data) => data.filter((s: any) => s.status === 'ONLINE')
+  })
+
+  // Auto-select first server
   useEffect(() => {
-    const fetchServers = async () => {
-      try {
-        const response = await apiFetch('/api/servers')
-        if (response.ok) {
-          const data = await response.json()
-          const runningServers = data.filter((s: any) => s.status === 'ONLINE')
-          setServers(runningServers)
-          if (runningServers.length > 0 && !selectedServerId) {
-            setSelectedServerId(runningServers[0].id)
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch servers:', error)
-      }
+    if (servers.length > 0 && !selectedServerId) {
+      setSelectedServerId(servers[0].id)
     }
-    fetchServers()
-  }, [])
+  }, [servers, selectedServerId])
 
-  const fetchPlayers = useCallback(async (isManual = false) => {
-    if (!selectedServerId) {
-      setPlayers([])
-      setAveragePing(0)
-      return
-    }
-    
-    // Sadece manuel yenilemede refreshing göster
-    if (isManual) {
-      setRefreshing(true)
-    }
-    // Loading state'i otomatik yenilemelerde gösterme (arayüz bozulmasın)
+  // 2. Fetch Players for selected server
+  const { 
+    data: playerData = { players: [], averagePing: 0 }, 
+    isLoading: loading,
+    refetch 
+  } = useQuery({
+    queryKey: ['players', selectedServerId],
+    queryFn: () => apiFetch(`/api/servers/${selectedServerId}/players`).then(res => res.json()),
+    enabled: !!selectedServerId,
+    refetchInterval: 10000 // 10s auto-refresh
+  })
 
-    try {
-      const response = await apiFetch(`/api/servers/${selectedServerId}/players`)
-      if (response.ok) {
-        const data = await response.json()
-        setPlayers(data.players || data)
-        setAveragePing(data.averagePing || 0)
-        // İlk başarılı yüklemeden sonra loading'i kapat
-        if (loading) setLoading(false)
-      } else {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch players' }))
-        if (isManual) {
-          toast.error(errorData.message || 'Server might be starting or unreachable')
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch players:', error)
-      if (isManual) toast.error('Connection Error: Unable to reach the panel backend')
-    } finally {
-      setRefreshing(false)
-    }
-  }, [selectedServerId, loading])
+  const players = useMemo(() => playerData.players || [], [playerData])
+  const averagePing = playerData.averagePing || 0
 
-  useEffect(() => {
-    if (!selectedServerId) return
-    
-    fetchPlayers()
-    // 10 saniyede bir otomatik yenile
-    const interval = setInterval(() => fetchPlayers(false), 10000)
-    return () => clearInterval(interval)
-  }, [selectedServerId, fetchPlayers])
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    await refetch()
+    setRefreshing(false)
+    toast.success('Player list updated')
+  }
 
   const handleAction = async (action: 'kick' | 'ban', userId: string) => {
     if (!selectedServerId) return
@@ -114,14 +85,14 @@ const Players = () => {
       })
       if (response.ok) {
         toast.success(`Player ${action}ed successfully`)
-        fetchPlayers(true)
+        queryClient.invalidateQueries({ queryKey: ['players', selectedServerId] })
       }
     } catch (error) {
       toast.error(`Failed to ${action} player`)
     }
   }
 
-  const filteredPlayers = players.filter(p => 
+  const filteredPlayers = players.filter((p: Player) => 
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     p.steamId.toLowerCase().includes(searchQuery.toLowerCase())
   )
@@ -160,7 +131,7 @@ const Players = () => {
             />
           </div>
           <button 
-            onClick={() => fetchPlayers(true)}
+            onClick={handleRefresh}
             disabled={!selectedServerId || refreshing}
             className="bg-primary hover:bg-blue-600 disabled:opacity-50 text-white px-5 py-2 rounded-xl font-bold text-sm flex items-center transition-all shadow-lg shadow-blue-500/20 active:scale-95"
           >
@@ -206,7 +177,7 @@ const Players = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/30">
-              {loading ? (
+              {loading && players.length === 0 ? (
                 <tr>
                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500 text-sm">Loading players...</td>
                 </tr>
@@ -217,7 +188,7 @@ const Players = () => {
                    </td>
                 </tr>
               ) : (
-                filteredPlayers.map((player) => (
+                filteredPlayers.map((player: Player) => (
                   <tr key={player.userId} className="hover:bg-white/[0.02] transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -227,13 +198,14 @@ const Players = () => {
                             alt={player.name}
                             className="w-10 h-10 rounded-xl border border-gray-700"
                             onError={(e) => {
-                              // Avatar yüklenemezse fallback göster
+                              // Avatar yüklenebilir durumda değilse, görseli gizleyip fallback'i göster
                               e.currentTarget.style.display = 'none';
-                              e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                              const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback');
+                              if (fallback) fallback.classList.remove('hidden');
                             }}
                           />
                         ) : null}
-                        <div className={`w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-primary font-bold border border-gray-700 ${player.avatar ? 'hidden' : ''}`}>
+                        <div className={`avatar-fallback w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-primary font-bold border border-gray-700 ${player.avatar ? 'hidden' : ''}`}>
                           {player.name[0].toUpperCase()}
                         </div>
                         <div>

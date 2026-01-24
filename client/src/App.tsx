@@ -28,9 +28,22 @@ const PageLoader = () => (
   </div>
 )
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60, // 1 minute
+      refetchOnWindowFocus: false,
+    },
+  },
+})
+
 const App = () => {
   return (
-    <ConfirmDialogProvider>
+    <QueryClientProvider client={queryClient}>
+      <ConfirmDialogProvider>
       <Router>
         {/* Global Toast Notifications */}
         <Toaster 
@@ -85,6 +98,7 @@ const App = () => {
         </Suspense>
       </Router>
     </ConfirmDialogProvider>
+    </QueryClientProvider>
   )
 }
 

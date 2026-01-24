@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
   Cpu, 
@@ -19,6 +19,7 @@ import {
 import { apiFetch } from '../utils/api'
 import toast from 'react-hot-toast'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 interface Instance {
     id: number;
@@ -37,14 +38,10 @@ interface PluginInfo {
 const Plugins = () => {
   const navigate = useNavigate()
   const { showConfirm } = useConfirmDialog()
-  const [instances, setInstances] = useState<Instance[]>([])
+  const queryClient = useQueryClient()
+  
   const [selectedServer, setSelectedServer] = useState<string | null>(null)
-  const [registry, setRegistry] = useState<Record<string, PluginInfo>>({})
-  const [pluginStatus, setPluginStatus] = useState<Record<string, boolean>>({})
-  const [pluginUpdates, setPluginUpdates] = useState<any>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [registryLoading, setRegistryLoading] = useState(true)
   
   // Filtering state
   const [searchQuery, setSearchQuery] = useState('')
@@ -52,79 +49,39 @@ const Plugins = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'installed' | 'not-installed' | 'update'>('all')
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
 
-  const fetchRegistry = async () => {
-      try {
-          setRegistryLoading(true);
-          const res = await apiFetch('/api/servers/plugins/registry');
-          const data = await res.json();
-          setRegistry(data);
-      } catch (e) { 
-          console.error("Failed to fetch registry", e);
-          toast.error('Could not load plugin list from server');
-      } finally {
-          setRegistryLoading(false);
-      }
-  };
+  // 1. Fetch Plugin Registry (Global Pool)
+  const { data: registry = {}, isLoading: registryLoading } = useQuery<Record<string, PluginInfo>>({
+    queryKey: ['plugin-registry'],
+    queryFn: () => apiFetch('/api/servers/plugins/registry').then(res => res.json())
+  })
 
-  const fetchInstances = useCallback(async () => {
-    try {
-        setLoading(true);
-        const response = await apiFetch('/api/servers');
-        const data = await response.json();
-        if (Array.isArray(data)) {
-            setInstances(data);
-            if (data.length > 0 && !selectedServer) {
-                setSelectedServer(data[0].id.toString());
-            }
-        }
-    } catch (error) {
-        console.error('Failed to fetch instances:', error);
-    } finally {
-        setLoading(false);
+  // 2. Fetch Server Instances (Dropdown)
+  const { data: instances = [], isLoading: instancesLoading } = useQuery<Instance[]>({
+    queryKey: ['servers'],
+    queryFn: () => apiFetch('/api/servers').then(res => res.json()),
+  })
+
+  // Set default selected server
+  useEffect(() => {
+    if (instances.length > 0 && !selectedServer) {
+        setSelectedServer(instances[0].id.toString());
     }
-  }, [selectedServer]);
+  }, [instances, selectedServer]);
 
-  const fetchPluginStatus = useCallback(async (id: string) => {
-    try {
-        const response = await apiFetch(`/api/servers/${id}/plugins/status`);
-        if (response.ok) {
-            const data = await response.json();
-            setPluginStatus(data);
-        }
-    } catch (error) { console.error('Failed to fetch plugin status:', error); }
-  }, []);
+  // 3. Fetch Plugin Status for selected server
+  const { data: pluginStatus = {} } = useQuery<Record<string, boolean>>({
+    queryKey: ['plugin-status', selectedServer],
+    queryFn: () => apiFetch(`/api/servers/${selectedServer}/plugins/status`).then(res => res.json()),
+    enabled: !!selectedServer,
+    refetchInterval: 15000 // Automatic polling every 15s
+  })
 
-  const fetchPluginUpdates = useCallback(async (id: string) => {
-    try {
-        const response = await apiFetch(`/api/servers/${id}/plugins/updates`);
-        if (response.ok) {
-            const data = await response.json();
-            setPluginUpdates(data);
-        }
-    } catch (error) { console.error('Failed to fetch plugin updates:', error); }
-  }, []);
-
-  useEffect(() => {
-    fetchRegistry();
-  }, []);
-
-  useEffect(() => {
-    fetchInstances();
-  }, [fetchInstances]);
-
-  useEffect(() => {
-    if (selectedServer) {
-        fetchPluginStatus(selectedServer);
-        fetchPluginUpdates(selectedServer);
-
-        // Automatic polling for status every 15 seconds
-        const interval = setInterval(() => {
-            fetchPluginStatus(selectedServer);
-        }, 15000);
-        
-        return () => clearInterval(interval);
-    }
-  }, [selectedServer, fetchPluginStatus, fetchPluginUpdates]);
+  // 4. Fetch Plugin Updates for selected server
+  const { data: pluginUpdates = null } = useQuery<any>({
+    queryKey: ['plugin-updates', selectedServer],
+    queryFn: () => apiFetch(`/api/servers/${selectedServer}/plugins/updates`).then(res => res.json()),
+    enabled: !!selectedServer
+  })
 
   const handleAction = async (plugin: string, action: 'install' | 'uninstall' | 'update') => {
     if (!selectedServer) return;
@@ -158,8 +115,9 @@ const Plugins = () => {
 
       if (response.ok) {
         toast.success(`${pluginName} ${action}ed successfully!`);
-        await fetchPluginStatus(selectedServer);
-        await fetchPluginUpdates(selectedServer);
+        // Invalidate queries to refresh UI
+        queryClient.invalidateQueries({ queryKey: ['plugin-status', selectedServer] });
+        queryClient.invalidateQueries({ queryKey: ['plugin-updates', selectedServer] });
       } else {
         toast.error(data.message || 'Action failed');
       }
@@ -170,17 +128,12 @@ const Plugins = () => {
     }
   };
 
-  const renderUnifiedPluginTable = () => {
-    const sections = [
-        { id: 'core', name: 'Core Foundations', icon: <Layers size={14} className="text-primary" /> },
-        { id: 'metamod', name: 'Metamod Plugin', icon: <Cpu size={14} className="text-primary" /> },
-        { id: 'cssharp', name: 'CounterStrikeSharp Plugin', icon: <Zap size={14} className="text-primary" /> }
-    ];
-    
-    // Filter and Search Logic
-    const allPlugins = Object.entries(registry).map(([id, info]) => ({ ...info, id }));
-    
-    const filteredPlugins = allPlugins.filter(plugin => {
+  const allPlugins = useMemo(() => 
+    Object.entries(registry).map(([id, info]) => ({ ...info, id })), 
+  [registry]);
+
+  const filteredPlugins = useMemo(() => {
+    return allPlugins.filter(plugin => {
         // Search filter
         const matchesSearch = plugin.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                              plugin.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -202,7 +155,19 @@ const Plugins = () => {
         
         return matchesSearch && matchesCategory && matchesStatus && matchesTag;
     });
+  }, [allPlugins, searchQuery, activeCategory, statusFilter, selectedTag, pluginStatus, pluginUpdates]);
 
+  const allTags = useMemo(() => 
+    Array.from(new Set(allPlugins.flatMap(p => p.tags || []))).sort(),
+  [allPlugins]);
+
+  const renderUnifiedPluginTable = () => {
+    const sections = [
+        { id: 'core', name: 'Core Foundations', icon: <Layers size={14} className="text-primary" /> },
+        { id: 'metamod', name: 'Metamod Plugin', icon: <Cpu size={14} className="text-primary" /> },
+        { id: 'cssharp', name: 'CounterStrikeSharp Plugin', icon: <Zap size={14} className="text-primary" /> }
+    ];
+    
     const categories = ['all', 'core', 'metamod', 'cssharp'] as const;
     const statuses = [
         { id: 'all', label: 'All Status', icon: <Box size={14} /> },
@@ -210,9 +175,6 @@ const Plugins = () => {
         { id: 'not-installed', label: 'Not Installed', icon: <XCircle size={14} className="text-gray-500" /> },
         { id: 'update', label: 'Updates', icon: <AlertCircle size={14} className="text-yellow-500" /> }
     ] as const;
-
-    // Extract unique tags
-    const allTags = Array.from(new Set(allPlugins.flatMap(p => p.tags || []))).sort();
 
     return (
       <div className="flex flex-col gap-6 max-h-[calc(100vh-250px)]">
@@ -293,7 +255,6 @@ const Plugins = () => {
 
               return (
                 <React.Fragment key={section.id}>
-                  {/* Category Header Row */}
                   <tr className="bg-primary/[0.03] border-y border-gray-800/40">
                     <td colSpan={4} className="px-6 py-3">
                       <div className="flex items-center gap-3">
@@ -312,11 +273,10 @@ const Plugins = () => {
                     </td>
                   </tr>
                   
-                  {/* Plugin Rows */}
                   {sectionPlugins.map((info) => {
                     const pid = info.id;
-                    const isInstalled = pluginStatus[pid];
-                    const hasUpdate = pluginUpdates?.[pid]?.hasUpdate;
+                    const isInstalled = !!pluginStatus[pid];
+                    const hasUpdate = !!pluginUpdates?.[pid]?.hasUpdate;
                     const isLoading = actionLoading === pid;
                     const updates = pluginUpdates?.[pid];
 
@@ -438,7 +398,7 @@ const Plugins = () => {
     );
   };
 
-  if ((loading || registryLoading) && instances.length === 0) {
+  if ((instancesLoading || registryLoading) && instances.length === 0) {
     return (
         <div className="p-6 flex flex-col items-center justify-center min-h-[60vh]">
             <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
@@ -475,7 +435,7 @@ const Plugins = () => {
 
       {renderUnifiedPluginTable()}
 
-      {instances.length === 0 && !loading && (
+      {instances.length === 0 && !instancesLoading && (
         <div className="flex flex-col items-center justify-center py-20 bg-gray-900/30 rounded-3xl border-2 border-dashed border-gray-800">
             <Box size={60} className="text-gray-700 mb-6" />
             <h3 className="text-xl font-bold text-gray-400">Atmosphere is Empty</h3>
