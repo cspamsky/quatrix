@@ -17,23 +17,48 @@ router.get("/workshop", (req, res) => {
 });
 
 // POST /api/maps/workshop - Add a new workshop map
-router.post("/workshop", (req, res) => {
-    const { workshop_id, name, image_url } = req.body;
+router.post("/workshop", async (req, res) => {
+    const { workshop_id } = req.body;
     
     if (!workshop_id) {
         return res.status(400).json({ message: "Workshop ID is required" });
     }
 
     try {
+        // Fetch details from Steam Web API
+        let name = `Workshop Map ${workshop_id}`;
+        let image_url = null;
+
+        try {
+            const steamResponse = await fetch('https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `itemcount=1&publishedfileids[0]=${workshop_id}`
+            });
+
+            const data = await steamResponse.json();
+            const details = data?.response?.publishedfiledetails?.[0];
+
+            if (details && details.result === 1) {
+                name = details.title || name;
+                image_url = details.preview_url || null;
+            }
+        } catch (steamErr) {
+            console.warn("Failed to fetch Steam workshop details:", steamErr);
+        }
+
         db.prepare(`
             INSERT INTO workshop_maps (workshop_id, name, image_url)
             VALUES (?, ?, ?)
             ON CONFLICT(workshop_id) DO UPDATE SET
                 name = excluded.name,
                 image_url = excluded.image_url
-        `).run(workshop_id, name || `Workshop Map ${workshop_id}`, image_url || null);
+        `).run(workshop_id, name, image_url);
         
-        res.status(201).json({ message: "Workshop map added successfully" });
+        res.status(201).json({ 
+            message: "Workshop map added successfully",
+            details: { name, image_url }
+        });
     } catch (error) {
         console.error("Add workshop map error:", error);
         res.status(500).json({ message: "Failed to add workshop map" });
