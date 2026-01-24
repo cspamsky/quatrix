@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { Suspense, lazy } from 'react'
 import { Toaster } from 'react-hot-toast'
@@ -27,8 +28,6 @@ const PageLoader = () => (
     <Oval stroke="#1890ff" strokeWidth={4} speed={1} />
   </div>
 )
-
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 // Create a client
 const queryClient = new QueryClient({
