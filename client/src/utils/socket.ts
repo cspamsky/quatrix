@@ -5,6 +5,7 @@ const socket = io({
   reconnectionAttempts: 10,
   reconnectionDelay: 1000,
   autoConnect: true,
+  transports: ['polling', 'websocket'], // Start with polling, then upgrade
 });
 
 
