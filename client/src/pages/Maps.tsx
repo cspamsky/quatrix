@@ -38,7 +38,7 @@ const Maps = () => {
   const [selectedServerId, setSelectedServerId] = useState<number | null>(null)
 
   // 1. Fetch Servers
-  const { data: servers = [], isLoading: serversLoading } = useQuery<Instance[]>({
+  const { data: servers = [] } = useQuery<Instance[]>({
     queryKey: ['servers'],
     queryFn: () => apiFetch('/api/servers').then(res => res.json()),
   })
