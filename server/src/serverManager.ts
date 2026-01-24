@@ -551,6 +551,12 @@ class ServerManager {
         if (!fs.existsSync(serverPath)) fs.mkdirSync(serverPath, { recursive: true });
 
         onLog(`[INSTALL] Commencing update for instance ${id}...\n`);
+        
+        // Fix permission denied for steamcmd
+        if (process.platform === 'linux' && fs.existsSync(this.steamCmdExe)) {
+            try { fs.chmodSync(this.steamCmdExe, 0o755); } catch {}
+        }
+
         const cmd = `${this.steamCmdExe} +force_install_dir ${serverPath} +login anonymous +app_update 730 validate +quit`;
         
         return new Promise<void>((resolve, reject) => {
@@ -616,7 +622,11 @@ class ServerManager {
                 fs.mkdirSync(steamcmdDir, { recursive: true });
             } catch { return false; }
         }
-        return fs.existsSync(this.steamCmdExe);
+        if (fs.existsSync(this.steamCmdExe)) {
+            try { fs.chmodSync(this.steamCmdExe, 0o755); } catch {}
+            return true;
+        }
+        return false;
     }
 }
 
