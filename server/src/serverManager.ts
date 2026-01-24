@@ -4,7 +4,7 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 import db from "./db.js";
 import { pluginManager } from "./services/PluginManager.js";
-import type { PluginId } from "./config/plugins.js";
+import { pluginRegistry, type PluginId } from "./config/plugins.js";
 import { promisify } from "util";
 
 const execAsync = promisify(exec);
@@ -608,6 +608,7 @@ class ServerManager {
     async updatePlugin(id: string | number, pId: PluginId) { return pluginManager.updatePlugin(this.installDir, id, pId); }
     async checkPluginUpdate(id: string | number, pId: PluginId) { return pluginManager.checkPluginUpdate(id, pId); }
     async checkAllPluginUpdates(id: string | number) { return pluginManager.checkAllPluginUpdates(id); }
+    async getPluginRegistry() { return pluginRegistry; }
 
     // Path Helpers
     getInstallDir() { return this.installDir; }
