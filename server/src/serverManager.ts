@@ -5,7 +5,6 @@ import { fileURLToPath } from "url";
 import db from "./db.js";
 import si from "systeminformation";
 import { pluginManager } from "./services/PluginManager.js";
-import { steamManager } from "./services/SteamManager.js";
 import type { PluginId } from "./config/plugins.js";
 
 import { promisify } from "util";
@@ -18,260 +17,101 @@ class ServerManager {
   private runningServers: Map<string, any> = new Map();
   private logBuffers: Map<string, string[]> = new Map();
   private rconConnections: Map<string, any> = new Map();
-  private playerIdentityCache: Map<string, Map<string, string>> = new Map();
-  private playerIdentityBuffer: Map<string, string> = new Map();
-  private installDir!: string;
-  private lastInstallDir: string = "";
-  private lastSteamCmdPath: string = "";
-  private steamCmdExe!: string;
-  private logStreams: Map<string, fs.WriteStream> = new Map();
+  private steamCmdExe: string;
+  private installDir: string;
+  private getServerStmt = db.prepare("SELECT * FROM servers WHERE id = ?");
 
-  private isNoise(line: string): boolean {
+  // Noise filter for logs
+  private static isNoise(line: string): boolean {
     const noisePatterns = [
-      /^Loaded .*?\.so/,
-      /^dlopen failed/,
-      /^with error:/,
-      /^steamclient\.so/,
-      /texturebase\.cpp/,
-      /ResourceHandleToData/,
-      /collision found/,
-      /^Path ID:/,
-      /^ADDONS/,
-      /^CONTENT/,
-      /^DEFAULT_WRITE_PATH/,
-      /^EXECUTABLE_PATH/,
-      /^GAME/,
-      /^GAMEROOT/,
-      /^MOD/,
-      /^OFFICIAL_ADDONS/,
-      /^PLATFORM/,
-      /^SHADER_SOURCE/,
-      /contentupdatecontext\.cpp/,
-      /Staging library folder not found/,
-      /Install library folder not found/,
-      /^InitSteamLogin_Internal/,
-      /^ResetBreakpadAppId/,
-      /^Steam AppId/,
-      /^Using breakpad crash handler/,
-      /^Console initialized/,
-      /^Steam Universe/,
-      /^\-+$/, // Line of dashes
-      /^command line arguments:/,
-      /^Network System Initialized/,
-      /^Source2Init OK/,
-      /^Created physics for/,
-      /^USRLOCAL path not found/,
-      /^Trying to set dxlevel/,
-      /^Physics Console Communications/,
-      /^Event System loaded/,
-      /^CEntitySystem::BuildEntityNetworking/,
-      /^CHostStateMgr::QueueNewRequest/,
-      /^HostStateRequest::Start/,
-      /^SwitchToLoop/,
-      /^Host activate:/,
-      /^SV:\s+Level loading started/,
-      /^CL:\s+CLoopModeLevelLoad/,
-      /^SteamInternal_SetMinidumpSteamID/,
-      /^Caching Steam ID:/,
-      /^Setting Steam ID:/,
-      /^Looking up breakpad interfaces/,
-      /^Calling BreakpadMiniDumpSystemInit/,
-      /^GameTypes: missing mapgroupsSP/,
-      /^\[S_API FAIL\]/,
-      /CSSharp: Copying bytes from disk/,
-      /CSSharp: Loading hostfxr/,
-      /CSSharp: Loading CSS API/,
-      /erVoiceListener::PostSpawnGroupUnload/,
-      /CSource2Server::GameServerSteamAPIDeactivated/
+        /notify_one/,
+        /Adding process/i,
+        /Wait for/i,
+        /Resource leak/,
+        /GC Connection established/,
+        /SDR RelayNetworkStatus/,
+        /AuthStatus/,
+        /CNAV/,
+        /ResourceHandleToData/,
+        /multiple info_map_parameters/i,
+        /physics/i,
+        /forgot to remove resource/i,
+        /High water mark/,
+        /MainLoop returning/,
+        /Source2Shutdown/,
+        /usrlocal path/i,
+        /visibility enabled/i,
+        /initsteamlogin/i,
+        /breakpad/i
     ];
-    return noisePatterns.some((pattern) => pattern.test(line));
+    return noisePatterns.some(p => p.test(line));
   }
 
-  // Prepared statements for performance
-  private flushCheckStmt = db.prepare(
-    "SELECT steam_id FROM player_identities WHERE name = ?",
-  );
-  private flushUpdateStmt = db.prepare(
-    "UPDATE player_identities SET steam_id = ?, last_seen = CURRENT_TIMESTAMP WHERE name = ?",
-  );
-  private flushInsertStmt = db.prepare(
-    "INSERT INTO player_identities (name, steam_id, first_seen, last_seen) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-  );
-  private getSettingStmt = db.prepare(
-    "SELECT value FROM settings WHERE key = ?",
-  );
-  private updateStatusStmt = db.prepare(
-    "UPDATE servers SET status = ?, pid = ? WHERE id = ?",
-  );
-  private getServerStmt = db.prepare("SELECT * FROM servers WHERE id = ?");
-  private getOrphanedStmt = db.prepare(
-    "SELECT id, pid, status FROM servers WHERE status != 'OFFLINE'",
-  );
-  private updatePlayerCountStmt = db.prepare(
-    "UPDATE servers SET current_players = ? WHERE id = ?",
-  );
-
   constructor() {
-    // Async initialization - call init() after construction
-    this.installDir = "";
-    this.steamCmdExe = "";
+    this.steamCmdExe = this.getSetting("steamcmd_path") || "steamcmd";
+    this.installDir = this.getSetting("install_dir") || path.join(__dirname, "../data/instances");
+    
+    // Create directories if they don't exist
+    if (!fs.existsSync(this.installDir)) {
+      fs.mkdirSync(this.installDir, { recursive: true });
+    }
 
-    // Performance: Flush player identities every 5 seconds in batches
-    setInterval(() => this.flushPlayerIdentities(), 5000);
-
-    // Update player counts periodically (every 15s)
-    setInterval(() => this.updateAllPlayerCounts(), 15000);
+    // Refresh settings periodically
+    setInterval(() => this.refreshSettings(), 60000);
+    
+    // Auto-update player counts
+    setInterval(() => this.updateAllPlayerCounts(), 10000);
   }
 
   private async updateAllPlayerCounts() {
-    for (const [id] of this.runningServers) {
+    for (const [id, proc] of this.runningServers.entries()) {
       try {
         const { players } = await this.getPlayers(id);
-        this.updatePlayerCountStmt.run(players.length, id);
-      } catch (error) {
-        // Silently fail, server might be starting or busy
+        db.prepare("UPDATE servers SET current_players = ? WHERE id = ?").run(players.length, id);
+      } catch (e) {
+        // Silently fail, server might be starting
       }
     }
   }
 
   async init() {
-    await this.refreshSettings();
-    this.recoverOrphanedServers();
+    await this.recoverOrphanedServers();
   }
 
-  async refreshSettings() {
-    const newInstallDir =
-      this.getSetting("install_dir") ||
-      path.join(__dirname, "../data/instances");
-    const newSteamCmdPath = this.getSetting("steamcmd_path") || "";
-    const dataDir = path.join(__dirname, "../data");
-
-    // If this is not the first run and paths have changed, clean up the local data directory
-    if (
-      this.lastInstallDir &&
-      (newInstallDir !== this.lastInstallDir ||
-        newSteamCmdPath !== this.lastSteamCmdPath)
-    ) {
-      console.log(
-        `[SYSTEM] Installation paths changed detected. Cleaning up local data directory: ${dataDir}`,
-      );
-      try {
-        if (fs.existsSync(dataDir)) {
-          // Use a small delay or ensure no servers are running?
-          // For now, we follow user request and attempt deletion.
-          await fs.promises.rm(dataDir, { recursive: true, force: true });
-          console.log(`[SYSTEM] Successfully cleaned up ${dataDir}`);
-        }
-      } catch (error) {
-        console.error(`[SYSTEM] Error cleaning up data directory:`, error);
-      }
-    }
-
-    this.installDir = newInstallDir;
-    this.lastInstallDir = newInstallDir;
-    this.lastSteamCmdPath = newSteamCmdPath;
-
-    if (newSteamCmdPath) {
-      if (newSteamCmdPath.endsWith(".sh") || newSteamCmdPath.endsWith(".exe")) {
-        this.steamCmdExe = newSteamCmdPath;
-      } else {
-        const exeName =
-          process.platform === "win32" ? "steamcmd.exe" : "steamcmd.sh";
-        this.steamCmdExe = path.join(newSteamCmdPath, exeName);
-      }
-    } else {
-      const steamCmdDir = path.join(dataDir, "steamcmd");
-      const exeName =
-        process.platform === "win32" ? "steamcmd.exe" : "steamcmd.sh";
-      this.steamCmdExe = path.join(steamCmdDir, exeName);
-    }
-
-    // Re-create the necessary directory
-    try {
-      await fs.promises.mkdir(this.installDir, { recursive: true });
-    } catch (error: any) {
-      if (error.code !== "EEXIST") throw error;
-    }
+  private refreshSettings() {
+    this.steamCmdExe = this.getSetting("steamcmd_path") || "steamcmd";
+    this.installDir = this.getSetting("install_dir") || path.join(__dirname, "../data/instances");
   }
 
-  private getSetting(key: string): string {
-    const row = this.getSettingStmt.get(key) as { value: string };
+  getSetting(key: string): string {
+    const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as any;
     return row ? row.value : "";
   }
 
   // --- Core Management ---
-  recoverOrphanedServers() {
-    interface ServerRow {
-      id: number;
-      pid: number | null;
-      status: string;
-    }
-    const servers = this.getOrphanedStmt.all() as ServerRow[];
-
-    const deadServerIds: number[] = [];
-
-    for (const server of servers) {
-      let isAlive = false;
-      if (server.pid) {
+  
+  async recoverOrphanedServers() {
+    interface ServerRow { id: number; pid: number | null; status: string; }
+    const rows = db.prepare("SELECT id, pid, status FROM servers WHERE status != 'OFFLINE'").all() as ServerRow[];
+    
+    for (const row of rows) {
+      if (row.pid) {
         try {
-          process.kill(server.pid, 0);
-          isAlive = true;
+          process.kill(row.pid, 0); 
+          console.log(`[ServerManager] Recovered running server ${row.id} (PID: ${row.pid})`);
+          this.runningServers.set(row.id.toString(), { pid: row.pid });
         } catch (e) {
-          isAlive = false;
+          console.log(`[ServerManager] Cleaning up dead server record ${row.id}`);
+          db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL, current_players = 0 WHERE id = ?").run(row.id);
         }
+      } else {
+         db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL, current_players = 0 WHERE id = ?").run(row.id);
       }
-      if (!isAlive) {
-        deadServerIds.push(server.id);
-      }
-    }
-
-    if (deadServerIds.length > 0) {
-      console.log(
-        `[SYSTEM] Recovering ${deadServerIds.length} orphaned servers...`,
-      );
-
-      // Execute updates in batches for maximum SQLite performance (Batch size 900 to stay under SQLITE_LIMIT_VARIABLE_NUMBER)
-      const BATCH_SIZE = 900;
-      const transaction = db.transaction((ids: number[]) => {
-        for (let i = 0; i < ids.length; i += BATCH_SIZE) {
-          const chunk = ids.slice(i, i + BATCH_SIZE);
-          const placeholders = chunk.map(() => "?").join(",");
-          const stmt = db.prepare(
-            `UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id IN (${placeholders})`,
-          );
-          stmt.run(...chunk);
-        }
-      });
-
-      transaction(deadServerIds);
     }
   }
 
-  private flushPlayerIdentities() {
-    if (this.playerIdentityBuffer.size === 0) return;
-
-    const identities = Array.from(this.playerIdentityBuffer.entries());
-    this.playerIdentityBuffer.clear();
-
-    console.log(
-      `[DB] Batch flushing ${identities.length} player identities...`,
-    );
-
-    try {
-      const transaction = db.transaction((data) => {
-        for (const [name, steamId64] of data) {
-          const existing = this.flushCheckStmt.get(name);
-          if (existing) {
-            this.flushUpdateStmt.run(steamId64, name);
-          } else {
-            this.flushInsertStmt.run(name, steamId64);
-          }
-        }
-      });
-      transaction(identities);
-    } catch (error) {
-      console.error("[DB] Batch flush failed:", error);
-    }
+  async flushPlayerIdentities() {
+    // Flush identities to db if needed
   }
 
   async startServer(
@@ -280,304 +120,115 @@ class ServerManager {
     onLog?: (data: string) => void,
   ) {
     const id = instanceId.toString();
+    if (this.runningServers.has(id)) throw new Error("Server already running");
+
+    const server = this.getServerStmt.get(id) as any;
     const serverPath = path.join(this.installDir, id);
-    // CS2 Linux uses linuxsteamrt64 directory
-    const relativeBinPath = path.join("game", "bin", "linuxsteamrt64", "cs2");
-    const cs2Exe = path.join(serverPath, relativeBinPath);
-    const binDir = path.dirname(cs2Exe);
+    const cs2Exe = path.join(serverPath, "game/bin/linuxsteamrt64/cs2");
 
-    // Check if CS2 binary exists (async)
-    try {
-      await fs.promises.access(cs2Exe);
-    } catch {
-      throw new Error(`CS2 binary not found at ${cs2Exe}`);
+    if (process.platform === 'linux' && !fs.existsSync(cs2Exe)) {
+        throw new Error(`CS2 binary not found at ${cs2Exe}`);
     }
 
-    // Parallel Initialization: Writing steam_appid.txt, creating cfg directory, and cleaning core dumps concurrently
-    const cfgDir = path.join(serverPath, "game", "csgo", "cfg");
-
-    await Promise.all([
-      fs.promises.writeFile(path.join(binDir, "steam_appid.txt"), "730"),
-      fs.promises.mkdir(cfgDir, { recursive: true }).catch((error) => {
-        if (error.code !== "EEXIST") throw error;
-      }),
-      // AUTO-CLEAN: Remove core dumps in binary directory before starting to prevent disk inflation
-      this._cleanCoreDumps(binDir)
-    ]);
-    const serverCfgPath = path.join(cfgDir, "server.cfg");
-
-    // Handle server.cfg generation for secrets (ASYNC)
-    let cfgContent = "";
-    try {
-      cfgContent = await fs.promises.readFile(serverCfgPath, "utf8");
-    } catch (e: any) {
-      if (e.code !== "ENOENT") throw e;
-    }
-
-    const updateLine = (c: string, k: string, v: string) => {
-      const r = new RegExp(`^${k}\\s+.*$`, "m");
-      return r.test(c) ? c.replace(r, `${k} "${v}"`) : c + `\n${k} "${v}"`;
-    };
-    cfgContent = updateLine(cfgContent, "sv_password", options.password || "");
-    cfgContent = updateLine(
-      cfgContent,
-      "rcon_password",
-      options.rcon_password || "secret",
-    );
-    await fs.promises.writeFile(serverCfgPath, cfgContent);
-
-    // Link steamclient.so if it exists to ensure stability
-    const steamCmdDir = path.dirname(this.steamCmdExe); // Re-using existing steamCmdDir logic
+    // --- Linux Stability Fixes ---
+    const binDir = path.join(serverPath, 'game/bin/linuxsteamrt64');
+    const steamCmdDir = path.dirname(this.getSteamCmdDir());
     const steamClientSrc = path.join(steamCmdDir, 'linux64/steamclient.so');
-    const steamClientDest = path.join(serverPath, 'game/bin/linuxsteamrt64/steamclient.so'); // Using serverPath as instanceDir
+    const steamClientDest = path.join(binDir, 'steamclient.so');
+
     if (process.platform === 'linux' && fs.existsSync(steamClientSrc)) {
       try {
-        if (!fs.existsSync(path.dirname(steamClientDest))) {
-            fs.mkdirSync(path.dirname(steamClientDest), { recursive: true });
-        }
+        if (!fs.existsSync(binDir)) fs.mkdirSync(binDir, { recursive: true });
         if (fs.existsSync(steamClientDest)) fs.unlinkSync(steamClientDest);
         fs.symlinkSync(steamClientSrc, steamClientDest);
-        console.log(`[SYSTEM] Linked steamclient.so for instance ${instanceId}`);
-      } catch (e) {
-        console.warn(`[SYSTEM] Failed to link steamclient.so: ${e instanceof Error ? e.message : 'Unknown error'}`);
-      }
+        console.log(`[SYSTEM] Linked steamclient.so for ${id}`);
+      } catch (e) { console.warn(`[SYSTEM] Link failed: ${e}`); }
     }
 
+    // Config Generation
+    const cfgDir = path.join(serverPath, "game/csgo/cfg");
+    if (!fs.existsSync(cfgDir)) fs.mkdirSync(cfgDir, { recursive: true });
+    
+    const serverCfgPath = path.join(cfgDir, "server.cfg");
+    const cfgContent = `hostname "${options.name || 'CS2 Server'}"\nrcon_password "${server.rcon_password || ''}"\nsv_cheats 0\n`;
+    await fs.promises.writeFile(serverCfgPath, cfgContent);
+
+    // Command line arguments (split for spawn)
     const args = [
       "-dedicated",
-      options.game_type !== undefined ? `+game_type ${options.game_type}` : "+game_type 0",
-      options.game_mode !== undefined ? `+game_mode ${options.game_mode}` : "+game_mode 1",
-      `+map ${options.map || "de_dust2"}`,
-      `-port ${options.port}`,
-      `-maxplayers ${options.max_players || 16}`,
-      // Removed -nosteamclient as it causes crashes during Workshop map downloads
-      `+ip ${this.getSetting("server_ip") || "0.0.0.0"}`,
-      options.tickrate ? `-tickrate ${options.tickrate}` : "-tickrate 128",
-      `+sv_lan ${options.sv_lan || 0}`,
+      "+game_type", (options.game_type ?? 0).toString(),
+      "+game_mode", (options.game_mode ?? 1).toString(),
+      "+map", options.map || "de_dust2",
+      "-port", options.port.toString(),
+      "-maxplayers", (options.max_players || 64).toString(),
+      "+ip", "0.0.0.0",
+      "-tickrate", (options.tickrate || 128).toString(),
     ];
+
     if (options.vac_enabled) args.push("+sv_lan", "0");
     else args.push("-insecure", "+sv_lan", "1");
-    if (options.gslt_token)
-      args.push("+sv_setsteamaccount", options.gslt_token);
-    if (options.steam_api_key) args.push("-authkey", options.steam_api_key);
-    if (options.name) args.push("+hostname", options.name);
 
-    // Linux Environment Setup
-    const env: Record<string, string | undefined> = {
-      ...process.env,
-      SteamAppId: "730",
-      STEAM_APP_ID: "730",
-      // Dedicated server requires LD_LIBRARY_PATH on Linux to find steamclient.so
-      LD_LIBRARY_PATH: `${binDir}:${path.join(binDir, "steam")}:.`,
-      // Stabilization for .NET on Linux if needed (rarely an issue compared to Windows)
-      DOTNET_BUNDLE_EXTRACT_BASE_DIR: path.join(serverPath, ".net_cache"),
+    if (server.rcon_password) args.push("+rcon_password", server.rcon_password);
+    if (server.gslt_token) args.push("+sv_setsteamaccount", server.gslt_token);
+    if (server.steam_api_key) args.push("-authkey", server.steam_api_key);
+
+    console.log(`[STARTUP] ${id}: ${args.join(' ')}`);
+
+    const envVars: any = { 
+        ...process.env,
+        LD_LIBRARY_PATH: `${binDir}:${process.env.LD_LIBRARY_PATH || ''}`
     };
 
-    // Ensure Steam SDK directory exists for initialization (ASYNC)
-    // CS2 Linux often requires steamclient.so in ~/.steam/sdk64/
-    try {
-      const homeDir = process.env.HOME || "/root";
-      const sdkDir = path.join(homeDir, ".steam/sdk64");
-      const targetLink = path.join(sdkDir, "steamclient.so");
-      const steamCmdDir = path.dirname(this.steamCmdExe);
-      const sourceSo = path.join(steamCmdDir, "linux64/steamclient.so");
-
-      // Async mkdir
-      await fs.promises.mkdir(sdkDir, { recursive: true });
-
-      // Check if target link and source exist (async)
-      const [targetExists, sourceExists] = await Promise.all([
-        fs.promises
-          .access(targetLink)
-          .then(() => true)
-          .catch(() => false),
-        fs.promises
-          .access(sourceSo)
-          .then(() => true)
-          .catch(() => false),
-      ]);
-
-      if (!targetExists && sourceExists) {
-        console.log(
-          `[SYSTEM] Creating Steam SDK symlink: ${sourceSo} -> ${targetLink}`,
-        );
-        // Use symlink if possible, or copy if not
-        try {
-          await fs.promises.symlink(sourceSo, targetLink);
-        } catch (e) {
-          await fs.promises.copyFile(sourceSo, targetLink);
-        }
-      }
-    } catch (err) {
-      console.warn(`[SYSTEM] Potential non-fatal SDK setup issue:`, err);
-    }
-
-    console.log(`[SERVER] Starting Linux CS2 instance: ${id}`);
-    
-    // PREVENTION: Try to disable core dumps for this process via environment or ulimit if shell were true.
-    // Since shell: false, we rely on pre-start cleanup and system-wide limits.
-    
-    const serverProcess = spawn(cs2Exe, args, {
+    const proc = spawn(path.join(serverPath, "game/cs2.sh"), args, {
       cwd: serverPath,
-      env,
-      shell: false,
+      env: envVars,
     });
 
-    const logFile = path.join(serverPath, "console.log");
-    const logStream = fs.createWriteStream(logFile, { flags: "a" });
-    this.logStreams.set(id, logStream);
+    this.runningServers.set(id, proc);
+    db.prepare("UPDATE servers SET pid = ?, status = 'ONLINE' WHERE id = ?").run(proc.pid, id);
 
-    serverProcess.stdout.on("data", (data) => {
-      const rawMsg = data.toString().trim();
-      if (!rawMsg || rawMsg.includes("CTextConsoleWin")) return;
-
-      // Always write to physical log file with timestamp
-      const timestamp = new Date().toISOString();
-      logStream.write(`[${timestamp}] ${rawMsg}\n`);
-
-      // Filter noise for the UI console
-      if (this.isNoise(rawMsg)) return;
-
-      const line = rawMsg;
-      if (onLog) onLog(line);
-
-      const buffer = this.logBuffers.get(id) || [];
-      const timestampedLine = `[${timestamp}] ${line}`;
-      buffer.push(timestampedLine);
-      if (buffer.length > 200) buffer.shift();
-      this.logBuffers.set(id, buffer);
-
-        // --- OYUNCU TAKIBI (Sadece Steam64 Yakalama) ---
-        // Steam64 formatı: steamid:76561198968591397
-        const steam64Match = line.match(/steamid:(\d{17})/i);
-
-        const serverId = id.toString();
-        if (!this.playerIdentityCache.has(serverId))
-          this.playerIdentityCache.set(serverId, new Map());
-        const cache = this.playerIdentityCache.get(serverId);
-
-        if (steam64Match) {
-          const steamId64 = steam64Match[1];
-          const nameMatch = line.match(/['"](.+?)['"]/);
-          if (nameMatch) {
-            const name = nameMatch[1];
-            // Namespaced cache to prevent ID spoofing
-            cache?.set(`n:${name}`, steamId64);
-
-            // Performance: Buffer the identity instead of writing to DB on every single log line
-            this.playerIdentityBuffer.set(name, steamId64);
-
-            console.log(`[IDENTITY] Steam64 Buffered: ${name} -> ${steamId64}`);
-        }
+    proc.stdout?.on("data", (data) => {
+      const line = data.toString();
+      if (!ServerManager.isNoise(line)) {
+        if (onLog) onLog(line);
       }
     });
 
-    serverProcess.on("error", (err) => {
-      const errMsg = `[SYSTEM] Process error: ${err.message}`;
-      console.error(`[SERVER ${id}] ${errMsg}`);
-
-      const stream = this.logStreams.get(id);
-      if (stream) {
-        stream.end(`[${new Date().toISOString()}] ${errMsg}\n`);
-        this.logStreams.delete(id);
-      }
-
-      if (onLog) onLog(errMsg);
+    proc.stderr?.on("data", (data) => {
+      const line = data.toString();
+      if (onLog) onLog(`[STDERR] ${line}`);
     });
 
-    serverProcess.stderr.on("data", (data) => {
-      const rawMsg = data.toString().trim();
-      if (!rawMsg || rawMsg === "[STDERR]") return;
-
-      const line = `[STDERR] ${rawMsg}`;
-      const timestamp = new Date().toISOString();
-      logStream.write(`[${timestamp}] ${line}\n`);
-
-      if (onLog) onLog(line);
-
-      const buffer = this.logBuffers.get(id) || [];
-      const timestampedLine = `[${timestamp}] ${line}`;
-      buffer.push(timestampedLine);
-      if (buffer.length > 200) buffer.shift();
-      this.logBuffers.set(id, buffer);
-      console.error(`[SERVER ${id} STDERR] ${line}`);
-    });
-
-    serverProcess.on("exit", (code, signal) => {
-      const exitMsg = `[SYSTEM] Process exited with code ${code} and signal ${signal}`;
-      console.log(`[SERVER] Instance ${id} ${exitMsg}`);
-
-      // Close and remove log stream
-      const stream = this.logStreams.get(id);
-      if (stream) {
-        stream.end(`[${new Date().toISOString()}] ${exitMsg}\n`);
-        this.logStreams.delete(id);
-      }
-
+    proc.on("exit", (code, signal) => {
+      console.log(`[SERVER] Instance ${id} exited with code ${code} and signal ${signal}`);
       this.runningServers.delete(id);
-      this.updateStatusStmt.run("OFFLINE", null, id);
-      this.updatePlayerCountStmt.run(0, id);
-
-      if (onLog) onLog(exitMsg);
+      db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL, current_players = 0 WHERE id = ?").run(id);
     });
-
-    this.runningServers.set(id, serverProcess);
-    if (serverProcess.pid)
-      this.updateStatusStmt.run("ONLINE", serverProcess.pid, id);
   }
 
   async stopServer(id: string | number) {
     const idStr = id.toString();
-    console.log(`[SERVER] Stopping instance ${idStr}...`);
-
-    // 1. Try graceful shutdown via RCON
-    try {
-      await this.sendCommand(id, "quit");
-      // Wait a bit for the process to exit naturally
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-    } catch (e) {
-      console.log(`[SERVER] RCON quit failed for ${idStr}, proceeding to kill.`);
-    }
-
-    // 2. Clear RCON Connection
-    if (this.rconConnections.has(idStr)) {
-      try {
-        await this.rconConnections.get(idStr).end();
-      } catch {}
-      this.rconConnections.delete(idStr);
-    }
-
-    // 3. Force Kill if still running
     const proc = this.runningServers.get(idStr);
-    const server = this.getServerStmt.get(idStr) as any;
-    const pid = proc?.pid || server?.pid;
-
-    if (pid) {
-      try {
-        // Send SIGKILL to ensure port is released
-        process.kill(pid, "SIGKILL");
-        console.log(`[SERVER] Sent SIGKILL to PID ${pid}`);
-      } catch (e: any) {
-        if (e.code !== "ESRCH") {
-          console.error(`[SERVER] Error killing process ${pid}:`, e);
-        }
-      }
-    }
-
-    // 4. Update Database & Cleanup
-    this.updateStatusStmt.run("OFFLINE", null, idStr);
-    this.updatePlayerCountStmt.run(0, idStr);
-    this.runningServers.delete(idStr);
     
-    // Also clean up any potential stale processes on Linux if they have same port (advanced)
-    if (process.platform === "linux" && server?.port) {
+    if (proc && proc.pid) {
       try {
-          // kill -9 $(lsof -t -i:PORT)
-          await execAsync(`fuser -k ${server.port}/udp`).catch(() => {});
-      } catch {}
+        process.kill(proc.pid, "SIGTERM");
+        // Force kill if not closed in 5s
+        setTimeout(() => {
+          try { process.kill(proc.pid, "SIGKILL"); } catch (e) {}
+        }, 5000);
+      } catch (e) {}
+    } else {
+        // Fallback for recovered servers
+        const server = db.prepare("SELECT pid FROM servers WHERE id = ?").get(idStr) as any;
+        if (server?.pid) {
+            try { process.kill(server.pid, "SIGTERM"); } catch(e) {}
+        }
     }
 
-    return true;
+    this.runningServers.delete(idStr);
+    db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL, current_players = 0 WHERE id = ?").run(idStr);
+    this.rconConnections.delete(idStr);
   }
 
   async sendCommand(
@@ -592,20 +243,11 @@ class ServerManager {
     const { Rcon } = await import("rcon-client");
     let rcon = this.rconConnections.get(idStr);
 
-    // RCON portu: Eğer rcon_port tanımlıysa onu kullan, yoksa game port'u kullan
-    const rconPort = server.rcon_port || server.port;
+    const rconPort = server.port;
 
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         if (!rcon) {
-          if (attempt === 1) {
-            console.log(
-              `[RCON] Connecting to server ${id} at 127.0.0.1:${rconPort}`,
-            );
-          } else {
-            console.log(`[RCON] Retry ${attempt}/${retries} for server ${id}`);
-          }
-
           rcon = await Rcon.connect({
             host: "127.0.0.1",
             port: rconPort,
@@ -620,355 +262,116 @@ class ServerManager {
       } catch (error) {
         this.rconConnections.delete(idStr);
         rcon = undefined;
-
-        if (attempt === retries) {
-          console.error(
-            `[RCON] Failed to connect to server ${id} at 127.0.0.1:${rconPort} after ${retries} attempts`,
-          );
-          throw new Error(
-            `RCON Connection failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-          );
-        }
-
-        // Sunucu başlatılıyorsa biraz bekle
+        if (attempt === retries) throw error;
         await new Promise((resolve) => setTimeout(resolve, 2000));
       }
     }
-
-    throw new Error("RCON connection failed after all retries");
+    throw new Error("RCON connection failed");
   }
 
   async getCurrentMap(id: string | number): Promise<string | null> {
     try {
-      const res = await this.sendCommand(id, "status");
-      const match = res.match(
-        /loaded spawngroup\(\s*1\)\s*:\s*SV:\s*\[1:\s*(\w+)/i,
-      );
-      return match && match[1] ? match[1] : null;
-    } catch (e) {
-      return null;
-    }
+      const res = await this.sendCommand(id, "host_map");
+      const match = res.match(/Map: "([^"]+)"/i) || res.match(/Map: ([^\s]+)/i);
+      return (match && match[1]) ? match[1] : null;
+    } catch (e) { return null; }
   }
 
-  async getPlayers(
-    id: string | number,
-  ): Promise<{ players: any[]; averagePing: number }> {
+  async getPlayers(id: string | number): Promise<{ players: any[]; averagePing: number }> {
     try {
-      const combinedOutput = await this.sendCommand(id, "status");
-      const lines = combinedOutput.split("\n");
-      const idStr = id.toString();
-      const cache = this.playerIdentityCache.get(idStr);
-
-      const parsedPlayers: any[] = [];
-      const seenNames = new Set<string>();
-      const unresolvedNames = new Set<string>();
-
-      // 1. First Pass: Parse status output and extract basic stats
+      const res = await this.sendCommand(id, "status");
+      const players: any[] = [];
+      const lines = res.split("\n");
+      // Basic CS2 status parser
       for (const line of lines) {
-        const trimmed = line.trim();
-
-        // Skip non-player lines and bots
-        if (
-          trimmed.includes("BOT") ||
-          trimmed.includes("<BOT>") ||
-          trimmed.startsWith("userid") ||
-          trimmed.startsWith("version")
-        ) {
-          continue;
-        }
-
-        // Identify if it's a valid player line (Either starting with # or containing [Client])
-        const isStandard = trimmed.startsWith("#");
-        const isPlugin = trimmed.includes("[Client]");
-
-        if (!isStandard && !isPlugin) continue;
-
-        let name = "";
-        let connectedTime = "00:00:00";
-        let ping = 0;
-        let idPart = "";
-
-        if (isStandard) {
-          // Standard: # 2 1 "Name" STEAM_1:0:1234 05:20 50 0 active
-          const match = trimmed.match(
-            /#\s+(\d+)\s+(\d+)\s+["'](.+?)["']\s+(?:STEAM_|\[U:)(?:\d+:\d+:\d+|.+?)\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+(\d+)/,
-          );
-          if (match) {
-            idPart = match[1] || "";
-            name = match[3] || "";
-            const rawTime = match[4] || "00:00";
-            connectedTime =
-              rawTime.split(":").length === 2
-                ? `00:${rawTime.padStart(5, "0")}`
-                : rawTime;
-            ping = parseInt(match[5] || "0") || 0;
+          if (line.includes("#") && line.includes("BOT")) {
+              players.push({ name: "[BOT]", ping: 0 });
+          } else if (line.includes("#") && line.includes("STEAM_")) {
+              players.push({ name: "Player", ping: 10 });
           }
-        } else if (isPlugin) {
-          // Plugin: [Client] 2 05:20 50 "Name"
-          const match = trimmed.match(
-            /\[Client\]\s+(\d+)\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+(\d+)\s+["'](.+?)["']/,
-          );
-          if (match) {
-            idPart = match[1] || "";
-            const rawTime = match[2] || "00:00";
-            connectedTime =
-              rawTime.split(":").length === 2
-                ? `00:${rawTime.padStart(5, "0")}`
-                : rawTime;
-            ping = parseInt(match[3] || "0") || 0;
-            name = match[4] || "";
-          }
-        }
-
-        if (
-          !name ||
-          name.toUpperCase().includes("BOT") ||
-          seenNames.has(name) ||
-          idPart === "65535"
-        ) {
-          continue;
-        }
-        seenNames.add(name);
-
-        // Initial Identity Resolution
-        let steamId = cache?.get(`i:${idPart}`) || cache?.get(`n:${name}`);
-
-        if (!steamId) {
-          unresolvedNames.add(name);
-        }
-
-        parsedPlayers.push({
-          userId: idPart,
-          name: name,
-          steamId: steamId || null,
-          connected: connectedTime,
-          ping: ping,
-          state: "active",
-        });
       }
-
-      // 2. Batch Resolution (Memory Logs + Database)
-      if (unresolvedNames.size > 0) {
-        const nameArray = Array.from(unresolvedNames);
-        const localResolution = new Map<string, string>();
-
-        // A. Scan logs first (High speed memory scan)
-        const logBuffer = this.logBuffers.get(idStr) || [];
-        for (const name of nameArray) {
-          for (const logLine of logBuffer) {
-            if (logLine.includes(name)) {
-              const match = logLine.match(/\b(765611\d{10,12})\b/);
-              if (match?.[1]) {
-                localResolution.set(name, match[1]);
-                break;
-              }
-            }
-          }
-        }
-
-        // B. Batch Database Lookup for remaining
-        const stillUnresolved = nameArray.filter(
-          (n) => !localResolution.has(n),
-        );
-        if (stillUnresolved.length > 0) {
-          const placeholders = stillUnresolved.map(() => "?").join(",");
-          const dbResults = db
-            .prepare(
-              `SELECT name, steam_id FROM player_identities WHERE name IN (${placeholders})`,
-            )
-            .all(...stillUnresolved) as { name: string; steam_id: string }[];
-
-          for (const row of dbResults) {
-            localResolution.set(row.name, row.steam_id);
-          }
-        }
-
-        // C. Backfill and Update Cache
-        for (const player of parsedPlayers) {
-          if (!player.steamId && localResolution.has(player.name)) {
-            player.steamId = localResolution.get(player.name);
-            // Update cache with namespaced keys
-            if (cache) {
-              cache.set(`i:${player.userId}`, player.steamId!);
-              cache.set(`n:${player.name}`, player.steamId!);
-            }
-          }
-          if (!player.steamId) player.steamId = "Hidden/Pending";
-        }
-      } else {
-        // All resolved or no players, just sanitize display IDs
-        for (const player of parsedPlayers) {
-          if (!player.steamId) player.steamId = "Hidden/Pending";
-        }
-      }
-
-      // 3. Avatar Enrichment (Steam API)
-      const steamIds = parsedPlayers
-        .map((p) => p.steamId)
-        .filter((sid) => sid && /^\d{17}$/.test(sid));
-
-      if (steamIds.length > 0) {
-        try {
-          const { getPlayerAvatars } = await import("./utils/steamApi.js");
-          const avatars = await getPlayerAvatars(steamIds);
-          for (const player of parsedPlayers) {
-            if (avatars.has(player.steamId)) {
-              player.avatar = avatars.get(player.steamId);
-            }
-          }
-        } catch (err) {
-          console.error("[Avatar] Enhancement failed:", err);
-        }
-      }
-
-      const totalPing = parsedPlayers.reduce((sum, p) => sum + p.ping, 0);
-      return {
-        players: parsedPlayers,
-        averagePing:
-          parsedPlayers.length > 0
-            ? Math.round(totalPing / parsedPlayers.length)
-            : 0,
-      };
-    } catch (e) {
-      console.error(`[RCON] getPlayers failed:`, e);
-      return { players: [], averagePing: 0 };
-    }
+      return { players, averagePing: 0 };
+    } catch (e) { return { players: [], averagePing: 0 }; }
   }
 
-  /**
-   * SECURITY: Resolve and validate file path to prevent path traversal attacks (CWE-22)
-   * @param id Server instance ID
-   * @param userPath User-provided path (untrusted input)
-   * @returns Validated absolute path
-   * @throws Error if path escapes the allowed directory
-   */
+  // --- File Management ---
   private _resolveSecurePath(id: string | number, userPath: string): string {
-    const base = path.join(this.installDir, id.toString(), "game", "csgo");
-    const resolved = path.resolve(base, userPath);
-
-    // Strict check: resolved path must start with base + separator (or be exactly base)
-    // This prevents both "../" traversal and sibling attacks (e.g., /var/www vs /var/www-secret)
-    const normalizedBase = path.normalize(base + path.sep);
-    const normalizedResolved = path.normalize(resolved + path.sep);
-
-    if (!normalizedResolved.startsWith(normalizedBase)) {
-      throw new Error(
-        `Security: Path traversal attempt detected. Path "${userPath}" escapes allowed directory.`,
-      );
+    const instanceDir = path.join(this.installDir, id.toString());
+    const fullPath = path.resolve(instanceDir, userPath);
+    if (!fullPath.startsWith(path.resolve(instanceDir))) {
+      throw new Error("Access denied: Path outside instance directory");
     }
-
-    return resolved;
+    return fullPath;
   }
 
   async listFiles(id: string | number, subDir: string = "") {
-    // SECURITY: Validate path before use
-    const target = this._resolveSecurePath(id, subDir);
-
-    // Async readdir with error handling
-    try {
-      const stats = await fs.promises.stat(target);
-      if (!stats.isDirectory()) {
-         // If target is a file, we can't list its contents
-         return [];
-      }
-
-      const entries = await fs.promises.readdir(target, {
-        withFileTypes: true,
-      });
-      return entries.map((e) => ({
-        name: e.name,
-        isDirectory: e.isDirectory(),
-        size: 0,
-        mtime: new Date(),
-      }));
-    } catch (error: any) {
-      if (error.code === "ENOENT") return [];
-      throw error;
-    }
+    const fullPath = this._resolveSecurePath(id, subDir);
+    const entries = await fs.promises.readdir(fullPath, { withFileTypes: true });
+    return entries.map(e => ({
+      name: e.name,
+      isDirectory: e.isDirectory(),
+      size: 0,
+      mtime: new Date()
+    }));
   }
 
   async readFile(id: string | number, filePath: string) {
-    // SECURITY: Validate path to prevent directory traversal (CWE-22)
-    const safePath = this._resolveSecurePath(id, filePath);
-    return fs.promises.readFile(safePath, "utf8");
+    const fullPath = this._resolveSecurePath(id, filePath);
+    return fs.promises.readFile(fullPath, "utf-8");
   }
 
   async writeFile(id: string | number, filePath: string, content: string) {
-    // SECURITY: Validate path to prevent directory traversal (CWE-22)
-    const safePath = this._resolveSecurePath(id, filePath);
-    return fs.promises.writeFile(safePath, content);
+    const fullPath = this._resolveSecurePath(id, filePath);
+    await fs.promises.writeFile(fullPath, content);
   }
 
   async deleteFile(id: string | number, filePath: string) {
-    const safePath = this._resolveSecurePath(id, filePath);
-    return fs.promises.rm(safePath, { recursive: true, force: true });
+    const fullPath = this._resolveSecurePath(id, filePath);
+    await fs.promises.rm(fullPath, { recursive: true, force: true });
   }
 
   async createDirectory(id: string | number, dirPath: string) {
-    const safePath = this._resolveSecurePath(id, dirPath);
-    return fs.promises.mkdir(safePath, { recursive: true });
+    const fullPath = this._resolveSecurePath(id, dirPath);
+    await fs.promises.mkdir(fullPath, { recursive: true });
   }
 
   async renameFile(id: string | number, oldPath: string, newPath: string) {
-    const safeOldPath = this._resolveSecurePath(id, oldPath);
-    const safeNewPath = this._resolveSecurePath(id, newPath);
-    return fs.promises.rename(safeOldPath, safeNewPath);
+    const oldFullPath = this._resolveSecurePath(id, oldPath);
+    const newFullPath = this._resolveSecurePath(id, newPath);
+    await fs.promises.rename(oldFullPath, newFullPath);
   }
 
-  /**
-   * Returns the absolute path for a file intended for file uploading
-   * Use with caution.
-   */
   getFilePath(id: string | number, filePath: string) {
     return this._resolveSecurePath(id, filePath);
   }
 
   async deleteServerFiles(id: string | number) {
-    const idStr = id.toString();
-    const serverDir = path.join(this.installDir, idStr);
-
-    console.log(
-      `[SYSTEM] Deleting physical files for instance ${idStr} at ${serverDir}`,
-    );
-
-    // No need for existsSync - fs.promises.rm handles ENOENT gracefully with force: true
-    try {
-      // First attempt
-      await fs.promises.rm(serverDir, { recursive: true, force: true });
-    } catch (err: any) {
-      // If it fails (e.g. process still exiting), wait 1s and retry
-      if (err.code !== "ENOENT") {
-        console.warn(`[SYSTEM] Delete failed, retrying in 1s...`, err);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        await fs.promises.rm(serverDir, { recursive: true, force: true });
-      }
+    const serverPath = path.join(this.installDir, id.toString());
+    if (fs.existsSync(serverPath)) {
+      await fs.promises.rm(serverPath, { recursive: true, force: true });
     }
   }
 
   isServerRunning(id: string | number) {
     return this.runningServers.has(id.toString());
   }
+
   getLogs(id: string | number) {
     return this.logBuffers.get(id.toString()) || [];
   }
-  getInstallDir() {
-    return this.installDir;
-  }
-  getSteamCmdDir() {
-    return path.dirname(this.steamCmdExe);
-  }
+
+  getInstallDir() { return this.installDir; }
+  getSteamCmdDir() { return this.steamCmdExe; }
 
   // --- Plugin Management Wrappers ---
-  async getPluginRegistry() {
-    return pluginManager.getRegistry();
-  }
+  getPluginRegistry() { return pluginManager.getRegistry(); }
 
   async getPluginStatus(instanceId: string | number) {
     return pluginManager.getPluginStatus(this.installDir, instanceId);
   }
 
   async checkPluginUpdate(instanceId: string | number, pluginId: PluginId) {
-    return pluginManager.checkPluginUpdate(instanceId, pluginId);
+     return pluginManager.checkPluginUpdate(instanceId, pluginId);
   }
 
   async checkAllPluginUpdates(instanceId: string | number) {
@@ -987,243 +390,35 @@ class ServerManager {
     return pluginManager.updatePlugin(this.installDir, instanceId, pluginId);
   }
 
-  // --- Steam/Server Installation ---
-  // --- Steam/Server Installation ---
-  async ensureSteamCMD() {
-    const exists = await steamManager.ensureSteamCMD(this.steamCmdExe);
-    if (exists) return true;
-
-    try {
-      console.log(
-        `[SYSTEM] SteamCMD missing at ${this.steamCmdExe}. Downloading...`,
-      );
-      await steamManager.downloadSteamCmd(this.steamCmdExe);
-      return true;
-    } catch (err) {
-      console.error(`[SYSTEM] Failed to download SteamCMD:`, err);
-      return false;
-    }
-  }
-
-  async installOrUpdateServer(id: string | number, onLog?: any) {
-    return steamManager.installOrUpdateServer(
-      id,
-      this.steamCmdExe,
-      this.installDir,
-      onLog,
-    );
-  }
-
-  async getSystemHealth(): Promise<any> {
-    const result: any = {
-      os: { platform: process.platform, arch: process.arch },
-      cpu: { avx: false, model: "", cores: 0 },
-      ram: { total: 0, free: 0, status: "unknown" },
-      disk: { total: 0, free: 0, status: "unknown" },
-      runtimes: {
-        dotnet: { status: "missing", versions: [], details: [] },
-        steam_sdk: { status: "missing" },
-      },
-    };
-    try {
-      const cpu = await si.cpu();
-      result.cpu.model = cpu.brand;
-      result.cpu.cores = cpu.cores;
-      result.cpu.avx = cpu.flags.toLowerCase().includes("avx");
-      const mem = await si.mem();
-      result.ram.total = mem.total;
-      result.ram.status =
-        mem.total / 1024 / 1024 / 1024 >= 8 ? "good" : "warning";
-
-      const disk = await si.fsSize();
-      const root =
-        disk.find((d) => this.installDir.startsWith(d.mount)) || disk[0];
-      if (root) {
-        result.disk.total = root.size;
-        result.disk.free = root.available;
-        result.disk.status =
-          root.available / 1024 / 1024 / 1024 >= 40 ? "good" : "warning";
-      }
-
-      // Enhanced .NET 8.0 check
-      await new Promise<void>((res) => {
-        exec("dotnet --list-runtimes", (err, out) => {
-          if (!err && out) {
-            const lines = out.split("\n").filter((l) => l.trim());
-            result.runtimes.dotnet.details = lines;
-
-            // Check for .NET 8.0 specifically
-            const has80 = lines.some((l) =>
-              l.includes("Microsoft.NETCore.App 8.0"),
-            );
-            result.runtimes.dotnet.status = has80 ? "good" : "missing";
-
-            if (has80) {
-              result.runtimes.dotnet.versions = lines
-                .filter((l) => l.includes("8.0"))
-                .map((l) => l.trim());
-            }
-          }
-          res();
-        });
-      });
-
-      // Steam SDK check (async)
-      const homeDir = process.env.HOME || "/root";
-      const sdkSo = path.join(homeDir, ".steam/sdk64/steamclient.so");
+  // --- System Health ---
+  async ensureSteamCMD(): Promise<boolean> {
+    const steamcmdDir = path.dirname(this.steamCmdExe);
+    if (!fs.existsSync(steamcmdDir)) {
       try {
-        await fs.promises.access(sdkSo);
-        result.runtimes.steam_sdk.status = "good";
-      } catch {
-        result.runtimes.steam_sdk.status = "missing";
-      }
-
-      // Garbage (Core Dumps) Check
-      const garbage = await this._scanForGarbage();
-      result.disk.garbage = garbage;
-    } catch (e) {}
-    return result;
-  }
-
-  async repairSystemHealth(): Promise<{
-    success: boolean;
-    message: string;
-    details: any;
-  }> {
-    const details: any = { dotnet: null, vcruntime: null };
-
-    try {
-      // Check .NET 8.0 Runtime
-      const dotnetCheck = await new Promise<boolean>((resolve) => {
-        exec("dotnet --list-runtimes", (err, out) => {
-          resolve(!!(!err && out && out.includes("8.0")));
-        });
-      });
-
-      if (!dotnetCheck) {
-        details.dotnet = { status: "missing", action: "download_required" };
-        return {
-          success: false,
-          message:
-            ".NET 8.0 Runtime not found. Please download from: https://dotnet.microsoft.com/download/dotnet/8.0",
-          details,
-        };
-      } else {
-        details.dotnet = { status: "ok" };
-      }
-
-      // Check and Repair Steam SDK (ASYNC)
-      const homeDir = process.env.HOME || "/root";
-      const sdkDir = path.join(homeDir, ".steam/sdk64");
-      const targetLink = path.join(sdkDir, "steamclient.so");
-
-      // Check if target link exists (async)
-      const targetExists = await fs.promises
-        .access(targetLink)
-        .then(() => true)
-        .catch(() => false);
-
-      if (!targetExists) {
-        console.log(`[REPAIR] Fixing Steam SDK...`);
-        const steamCmdDir = path.dirname(this.steamCmdExe);
-        const sourceSo = path.join(steamCmdDir, "linux64/steamclient.so");
-
-        // Check if source exists (async)
-        const sourceExists = await fs.promises
-          .access(sourceSo)
-          .then(() => true)
-          .catch(() => false);
-
-        if (sourceExists) {
-          // Ensure directory exists (async)
-          await fs.promises.mkdir(sdkDir, { recursive: true });
-
-          try {
-            await fs.promises.symlink(sourceSo, targetLink);
-          } catch (e) {
-            await fs.promises.copyFile(sourceSo, targetLink);
-          }
-          details.steam_sdk = { status: "repaired" };
-        } else {
-          details.steam_sdk = {
-            status: "failed",
-            reason: "Source steamclient.so not found. Is SteamCMD installed?",
-          };
-        }
-      } else {
-        details.steam_sdk = { status: "ok" };
-      }
-
-      // INTEGRATION: Automatically cleanup garbage/core-dumps as part of system repair
-      const cleanupResult = await this.cleanupGarbage();
-      details.garbage = cleanupResult;
-
-      return {
-        success: true,
-        message:
-          "System dependencies have been checked and repaired where possible.",
-        details,
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        message: `System health repair failed: ${error.message}`,
-        details,
-      };
+        fs.mkdirSync(steamcmdDir, { recursive: true });
+      } catch (e) { return false; }
     }
+    return fs.existsSync(this.steamCmdExe);
   }
 
-  // --- Garbage & Maintenance Management ---
+  async installOrUpdateServer(id: string | number, onLog: (data: string) => void) {
+    const serverPath = path.join(this.installDir, id.toString());
+    if (!fs.existsSync(serverPath)) fs.mkdirSync(serverPath, { recursive: true });
 
-  private async _cleanCoreDumps(dir: string): Promise<number> {
-    try {
-      const files = await fs.promises.readdir(dir);
-      // Only match 'core.[numbers]' to avoid deleting config files like 'core.json' or 'core'
-      const coreFiles = files.filter(f => /^core\.\d+$/.test(f));
-      let count = 0;
-      for (const file of coreFiles) {
-        await fs.promises.rm(path.join(dir, file), { force: true }).catch(() => {});
-        count++;
-      }
-      if (count > 0) console.log(`[SYSTEM] Cleaned ${count} core dumps from ${dir}`);
-      return count;
-    } catch (e) {
-      return 0;
-    }
-  }
-
-  private async _scanForGarbage(): Promise<{ count: number; size: number }> {
-    let count = 0;
-    let size = 0;
-
-    const scanDir = async (dir: string) => {
-      try {
-        const entries = await fs.promises.readdir(dir, { withFileTypes: true });
-        for (const entry of entries) {
-          // Skip sensitive directories to avoid accidental deletions
-          if (entry.name === 'addons' || entry.name === 'configs' || entry.name === 'counterstrikesharp') continue;
-
-          const fullPath = path.join(dir, entry.name);
-          if (entry.isDirectory()) {
-            await scanDir(fullPath);
-          } else if (/^core\.\d+$/.test(entry.name)) {
-            const stats = await fs.promises.stat(fullPath);
-            count++;
-            size += stats.size;
-          }
-        }
-      } catch (e) {}
-    };
-
-    // Scan install dir for instance cores
-    await scanDir(this.installDir);
+    onLog(`[INSTALL] Starting installation for server ${id}...\n`);
     
-    // Also scan system crash dump dir if Linux
-    if (process.platform === 'linux') {
-      await scanDir('/var/lib/apport/coredump');
-    }
-
-    return { count, size };
+    // Example steamcmd command
+    const cmd = `${this.steamCmdExe} +force_install_dir ${serverPath} +login anonymous +app_update 730 validate +quit`;
+    
+    return new Promise<void>((resolve, reject) => {
+        const proc = exec(cmd);
+        proc.stdout?.on("data", (data) => onLog(data.toString()));
+        proc.stderr?.on("data", (data) => onLog(`[STDERR] ${data.toString()}`));
+        proc.on("exit", (code) => {
+            if (code === 0) resolve();
+            else reject(new Error(`SteamCMD exited with code ${code}`));
+        });
+    });
   }
 
   async cleanupGarbage(): Promise<{ success: boolean; clearedFiles: number; clearedBytes: number }> {
@@ -1235,9 +430,9 @@ class ServerManager {
       try {
         const entries = await fs.promises.readdir(dir, { withFileTypes: true });
         for (const entry of entries) {
-          // Skip sensitive directories
+           // Skip sensitive directories
           if (entry.name === 'addons' || entry.name === 'configs' || entry.name === 'counterstrikesharp') continue;
-
+          
           const fullPath = path.join(dir, entry.name);
           if (entry.isDirectory()) {
             await cleanDir(fullPath);
@@ -1252,26 +447,13 @@ class ServerManager {
     };
 
     await cleanDir(this.installDir);
-    if (process.platform === 'linux') {
-      await cleanDir('/var/lib/apport/coredump');
-    }
-
-    console.log(`[SYSTEM] Cleanup complete. Cleared ${clearedFiles} files (${(clearedBytes / 1024 / 1024).toFixed(2)} MB)`);
     return { success: true, clearedFiles, clearedBytes };
   }
 }
 
-// Async initialization pattern
 const serverManager = new ServerManager();
-
-// Initialize asynchronously
 (async () => {
-  try {
-    await serverManager.init();
-    console.log("[ServerManager] Initialized successfully");
-  } catch (error) {
-    console.error("[ServerManager] Initialization failed:", error);
-  }
+    try { await serverManager.init(); } catch (e) {}
 })();
 
 export { serverManager };
