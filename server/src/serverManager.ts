@@ -552,9 +552,9 @@ class ServerManager {
 
         onLog(`[INSTALL] Commencing update for instance ${id}...\n`);
         
-        // Fix permission denied for steamcmd
+        // Fix permission denied for steamcmd - Use shell chmod for better reliability
         if (process.platform === 'linux' && fs.existsSync(this.steamCmdExe)) {
-            try { fs.chmodSync(this.steamCmdExe, 0o755); } catch {}
+            try { execSync(`chmod +x "${this.steamCmdExe}"`); } catch {}
         }
 
         const cmd = `${this.steamCmdExe} +force_install_dir ${serverPath} +login anonymous +app_update 730 validate +quit`;
