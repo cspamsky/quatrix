@@ -83,8 +83,8 @@ const ServerSettings = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-4 text-gray-600">
-          <Server className="w-10 h-10 animate-pulse opacity-20" />
-          <span className="text-xs font-black tracking-widest uppercase">LOADING SETTINGS</span>
+          <Server className="w-10 h-10 opacity-20" />
+          <span className="text-xs font-bold tracking-widest uppercase">LOADING SETTINGS</span>
         </div>
       </div>
     )
@@ -99,7 +99,7 @@ const ServerSettings = () => {
   }
 
   return (
-    <div className="p-6 h-full flex flex-col animate-in fade-in duration-500">
+    <div className="p-6 h-full flex flex-col">
       <header className="mb-8">
         <button
           onClick={() => navigate('/instances')}
@@ -108,40 +108,40 @@ const ServerSettings = () => {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Instances
         </button>
-        <h2 className="text-3xl font-black text-white tracking-tighter flex items-center gap-3">
-          SERVER SETTINGS
+        <h2 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
+          Server Settings
           <span className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full font-bold tracking-widest uppercase">
             Configuration
           </span>
         </h2>
-        <p className="text-sm text-gray-400 mt-2 font-medium">Fine-tune your Counter-Strike 2 server parameters and security protocols.</p>
+        <p className="text-sm text-gray-400 mt-2">Manage your Counter-Strike 2 server parameters and security protocols.</p>
       </header>
 
       <form onSubmit={handleSave} className="space-y-8 flex-1">
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
           {/* Server Information */}
-          <div className="bg-[#111827] rounded-2xl border border-gray-800 p-8 shadow-xl">
-            <h3 className="text-xl font-black text-white mb-8 flex items-center gap-3 uppercase tracking-tight">
-              <Server className="w-6 h-6 text-primary" />
-              Instance Core
+          <div className="bg-[#111827] rounded-2xl border border-gray-800 p-8">
+            <h3 className="text-lg font-bold text-white mb-8 flex items-center gap-3">
+              <Server className="w-5 h-5 text-primary" />
+              Instance Information
             </h3>
             <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
-                  Server Identity Name
+                <label className="text-sm font-semibold text-gray-400">
+                  Server Name
                 </label>
                 <input
                   type="text"
                   value={server.name}
                   onChange={(e) => setServer({ ...server, name: e.target.value })}
-                  className="w-full px-5 py-4 bg-black/20 border border-gray-800 rounded-xl text-white font-bold focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all placeholder:text-gray-700"
+                  className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all placeholder:text-gray-700"
                   placeholder="Quatrix Dedicated Server"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
+                  <label className="text-sm font-semibold text-gray-400">
                     Primary Map
                   </label>
                   <div className="relative">
@@ -149,7 +149,7 @@ const ServerSettings = () => {
                     <select
                       value={server.map}
                       onChange={(e) => setServer({ ...server, map: e.target.value })}
-                      className="w-full pl-12 pr-5 py-4 bg-black/20 border border-gray-800 rounded-xl text-white font-bold focus:border-primary outline-none transition-all appearance-none cursor-pointer"
+                      className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all cursor-pointer"
                     >
                       <option value="de_dust2">de_dust2</option>
                       <option value="de_mirage">de_mirage</option>
@@ -164,8 +164,8 @@ const ServerSettings = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
-                    Capacity Limit
+                  <label className="text-sm font-semibold text-gray-400">
+                    Max Players
                   </label>
                   <div className="relative">
                     <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 w-4 h-4" />
@@ -175,7 +175,7 @@ const ServerSettings = () => {
                       max="64"
                       value={server.max_players}
                       onChange={(e) => setServer({ ...server, max_players: parseInt(e.target.value) })}
-                      className="w-full pl-12 pr-5 py-4 bg-black/20 border border-gray-800 rounded-xl text-white font-bold focus:border-primary outline-none transition-all"
+                      className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -183,8 +183,8 @@ const ServerSettings = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
-                    Game Mode Selection
+                  <label className="text-sm font-semibold text-gray-400">
+                    Game Mode
                   </label>
                   <select
                     value={`${server.game_type}-${server.game_mode}`}
@@ -192,7 +192,7 @@ const ServerSettings = () => {
                       const [type, mode] = e.target.value.split('-').map(Number)
                       setServer({ ...server, game_type: type, game_mode: mode })
                     }}
-                    className="w-full px-5 py-4 bg-black/20 border border-gray-800 rounded-xl text-white font-bold focus:border-primary outline-none transition-all"
+                    className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all"
                   >
                     {GAME_MODES.map((mode) => (
                       <option key={`${mode.type}-${mode.mode}`} value={`${mode.type}-${mode.mode}`}>
@@ -203,8 +203,8 @@ const ServerSettings = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
-                    Network Port
+                  <label className="text-sm font-semibold text-gray-400">
+                    Server Port
                   </label>
                   <input
                     type="number"
@@ -212,7 +212,7 @@ const ServerSettings = () => {
                     max="65535"
                     value={server.port}
                     onChange={(e) => setServer({ ...server, port: parseInt(e.target.value) })}
-                    className="w-full px-5 py-4 bg-black/20 border border-gray-800 rounded-xl text-white font-bold font-mono focus:border-primary outline-none transition-all"
+                    className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono focus:border-primary outline-none transition-all"
                   />
                 </div>
               </div>
@@ -220,16 +220,16 @@ const ServerSettings = () => {
           </div>
 
           {/* Security Settings */}
-          <div className="bg-[#111827] rounded-2xl border border-gray-800 p-8 shadow-xl">
-            <h3 className="text-xl font-black text-white mb-8 flex items-center gap-3 uppercase tracking-tight">
-              <Shield className="w-6 h-6 text-primary" />
-              Security & Auth
+          <div className="bg-[#111827] rounded-2xl border border-gray-800 p-8">
+            <h3 className="text-lg font-bold text-white mb-8 flex items-center gap-3">
+              <Shield className="w-5 h-5 text-primary" />
+              Security Settings
             </h3>
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
-                    Access Password
+                  <label className="text-sm font-semibold text-gray-400">
+                    Server Password
                   </label>
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 w-4 h-4" />
@@ -237,15 +237,15 @@ const ServerSettings = () => {
                       type="password"
                       value={server.password || ''}
                       onChange={(e) => setServer({ ...server, password: e.target.value })}
-                      className="w-full pl-12 pr-5 py-4 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all"
-                      placeholder="Public access if empty"
+                      className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all"
+                      placeholder="Optional"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
-                    RCON CMD Password
+                  <label className="text-sm font-semibold text-gray-400">
+                    RCON Password
                   </label>
                   <div className="relative">
                     <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 w-4 h-4" />
@@ -253,39 +253,36 @@ const ServerSettings = () => {
                       type="password"
                       value={server.rcon_password || ''}
                       onChange={(e) => setServer({ ...server, rcon_password: e.target.value })}
-                      className="w-full pl-12 pr-5 py-4 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all"
-                      placeholder="Remote console access"
+                      className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all"
+                      placeholder="Required"
                     />
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
-                  GSLT (Game Server Login Token)
+                <label className="text-sm font-semibold text-gray-400">
+                  GSLT Token
                 </label>
                 <input
                   type="text"
                   value={server.gslt_token || ''}
                   onChange={(e) => setServer({ ...server, gslt_token: e.target.value })}
-                  className="w-full px-5 py-4 bg-black/20 border border-gray-800 rounded-xl text-white font-mono text-xs focus:border-primary outline-none transition-all"
-                  placeholder="GSLT from Steam"
+                  className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono text-sm focus:border-primary outline-none transition-all"
+                  placeholder="Steam Game Server Login Token"
                 />
-                <p className="text-[10px] text-gray-600 font-bold tracking-tight">
-                  Tokens are mandatory for external server listing. Get one at <a href="https://steamcommunity.com/dev/managegameservers" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Steam GSA Management</a>
-                </p>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
-                  Steam Web API Authentication
+                <label className="text-sm font-semibold text-gray-400">
+                  Steam Web API Key
                 </label>
                 <input
                   type="text"
                   value={server.steam_api_key || ''}
                   onChange={(e) => setServer({ ...server, steam_api_key: e.target.value })}
-                  className="w-full px-5 py-4 bg-black/20 border border-gray-800 rounded-xl text-white font-mono text-xs focus:border-primary outline-none transition-all"
-                  placeholder="Web API Key"
+                  className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono text-sm focus:border-primary outline-none transition-all"
+                  placeholder="Your Steam Web API Key"
                 />
               </div>
 
@@ -302,8 +299,8 @@ const ServerSettings = () => {
                     <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full peer-checked:translate-x-6 transition-all duration-300"></div>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-sm font-bold text-gray-300 group-hover:text-white transition-colors">Valve Anti-Cheat (VAC)</span>
-                    <span className="text-[10px] text-gray-600 font-black uppercase tracking-widest">Enhanced server protection</span>
+                    <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-colors">Valve Anti-Cheat (VAC)</span>
+                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Enhanced Protection</span>
                   </div>
                 </label>
               </div>
@@ -312,27 +309,22 @@ const ServerSettings = () => {
         </div>
 
         {/* Global Action Footer */}
-        <div className="flex items-center justify-between p-8 bg-[#111827] rounded-2xl border border-gray-800 shadow-2xl">
-          <div className="hidden lg:block">
-            <p className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em]">Warning: Major changes require server restart</p>
-          </div>
-          <div className="flex items-center gap-4 w-full lg:w-auto">
-            <button
-              type="button"
-              onClick={() => navigate('/instances')}
-              className="flex-1 lg:flex-none px-8 py-4 bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 hover:text-white rounded-xl font-black text-xs tracking-widest transition-all"
-            >
-              DISCARD
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex-1 lg:flex-none px-12 py-4 bg-primary hover:bg-blue-600 text-white rounded-xl font-black text-xs tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-lg shadow-primary/20 disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              {saving ? 'UPDATING...' : 'COMMIT CHANGES'}
-            </button>
-          </div>
+        <div className="flex items-center justify-end gap-4 p-6 bg-[#111827] rounded-2xl border border-gray-800">
+          <button
+            type="button"
+            onClick={() => navigate('/instances')}
+            className="px-6 py-2 text-gray-400 hover:text-white transition-colors font-semibold"
+          >
+            Discard
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-8 py-2 bg-primary hover:bg-blue-600 text-white rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50"
+          >
+            <Save className="w-4 h-4" />
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
         </div>
       </form>
     </div>
