@@ -475,6 +475,16 @@ class ServerManager {
     getInstallDir() { return this.installDir; }
     getSteamCmdDir() { return this.steamCmdExe; }
     isServerRunning(id: string | number) { return this.runningServers.has(id.toString()); }
+
+    async ensureSteamCMD(): Promise<boolean> {
+        const steamcmdDir = path.dirname(this.steamCmdExe);
+        if (!fs.existsSync(steamcmdDir)) {
+            try {
+                fs.mkdirSync(steamcmdDir, { recursive: true });
+            } catch { return false; }
+        }
+        return fs.existsSync(this.steamCmdExe);
+    }
 }
 
 export const serverManager = new ServerManager();
