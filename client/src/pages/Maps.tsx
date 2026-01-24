@@ -7,7 +7,10 @@ import {
   Server as ServerIcon,
   Loader2,
   Map as MapIcon,
-  Globe
+  Globe,
+  Plus,
+  Trash2,
+  X
 } from 'lucide-react'
 import { apiFetch } from '../utils/api'
 import toast from 'react-hot-toast'
@@ -15,6 +18,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 interface CS2Map {
   id: string
+  workshop_id?: string
   name: string
   displayName: string
   type: 'Defusal' | 'Hostage' | 'Workshop'
@@ -34,6 +38,8 @@ const Maps = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<'all' | 'Defusal' | 'Hostage' | 'Workshop'>('all')
   const [selectedServerId, setSelectedServerId] = useState<number | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [newWorkshopId, setNewWorkshopId] = useState('')
 
   // 1. Fetch Servers
   const { data: servers = [] } = useQuery<Instance[]>({
@@ -47,39 +53,90 @@ const Maps = () => {
     }
   }, [servers, selectedServerId])
 
-  // 2. Fetch Maps
-  const { data: maps = [], isLoading: mapsLoading } = useQuery<CS2Map[]>({
-    queryKey: ['server-maps', selectedServerId],
-    queryFn: async () => {
-      const currentServer = servers.find(s => s.id === selectedServerId)
-      const currentMapName = currentServer?.map || 'de_dust2'
-      
-      // Mock Data - In production, this would be an API call
-      return [
-        { id: '1', name: 'de_dust2', displayName: 'Dust II', type: 'Defusal', image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1000' },
-        { id: '2', name: 'de_inferno', displayName: 'Inferno', type: 'Defusal', image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=1000' },
-        { id: '3', name: 'de_mirage', displayName: 'Mirage', type: 'Defusal', image: 'https://images.unsplash.com/photo-1542751110-97427bbecf20?q=80&w=1000' },
-        { id: '4', name: 'de_nuke', displayName: 'Nuke', type: 'Defusal', image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=1000' },
-        { id: '5', name: 'de_overpass', displayName: 'Overpass', type: 'Defusal', image: 'https://images.unsplash.com/photo-1542751110-97427bbecf20?q=80&w=1000' },
-        { id: '6', name: 'de_ancient', displayName: 'Ancient', type: 'Defusal', image: 'https://images.unsplash.com/photo-1533134486753-c833f0ed4866?q=80&w=1000' },
-        { id: '7', name: 'cs_italy', displayName: 'Italy', type: 'Hostage', image: 'https://images.unsplash.com/photo-1533134486753-c833f0ed4866?q=80&w=1000' }
-      ].map(m => ({ ...m, isActive: m.name === currentMapName })) as CS2Map[]
-    },
-    enabled: !!selectedServerId
+  // 2. Fetch Workshop Maps from DB
+  const { data: workshopMaps = [], isLoading: workshopLoading } = useQuery({
+    queryKey: ['workshop-maps'],
+    queryFn: () => apiFetch('/api/maps/workshop').then(res => res.json()),
   })
 
+  // 3. Combine Static Maps and Workshop Maps
+  const maps = useMemo(() => {
+    const currentServer = servers.find(s => s.id === selectedServerId)
+    const currentMapName = currentServer?.map || 'de_dust2'
+
+    const staticMaps: CS2Map[] = [
+      { id: '1', name: 'de_dust2', displayName: 'Dust II', type: 'Defusal', image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1000', isActive: currentMapName === 'de_dust2' },
+      { id: '2', name: 'de_inferno', displayName: 'Inferno', type: 'Defusal', image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=1000', isActive: currentMapName === 'de_inferno' },
+      { id: '3', name: 'de_mirage', displayName: 'Mirage', type: 'Defusal', image: 'https://images.unsplash.com/photo-1542751110-97427bbecf20?q=80&w=1000', isActive: currentMapName === 'de_mirage' },
+      { id: '4', name: 'de_nuke', displayName: 'Nuke', type: 'Defusal', image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=1000', isActive: currentMapName === 'de_nuke' },
+      { id: '5', name: 'de_overpass', displayName: 'Overpass', type: 'Defusal', image: 'https://images.unsplash.com/photo-1542751110-97427bbecf20?q=80&w=1000', isActive: currentMapName === 'de_overpass' },
+      { id: '6', name: 'de_ancient', displayName: 'Ancient', type: 'Defusal', image: 'https://images.unsplash.com/photo-1533134486753-c833f0ed4866?q=80&w=1000', isActive: currentMapName === 'de_ancient' },
+      { id: '7', name: 'cs_italy', displayName: 'Italy', type: 'Hostage', image: 'https://images.unsplash.com/photo-1533134486753-c833f0ed4866?q=80&w=1000', isActive: currentMapName === 'cs_italy' }
+    ]
+
+    const wMaps: CS2Map[] = workshopMaps.map((m: any) => ({
+      id: `w-${m.id}`,
+      workshop_id: m.workshop_id,
+      name: m.workshop_id,
+      displayName: m.name,
+      type: 'Workshop',
+      image: m.image_url || 'https://images.unsplash.com/photo-1533134486753-c833f0ed4866?q=80&w=1000',
+      isActive: currentMapName === m.workshop_id
+    }))
+
+    return [...staticMaps, ...wMaps]
+  }, [servers, selectedServerId, workshopMaps])
+
+  // 4. Mutations
   const changeMapMutation = useMutation({
-    mutationFn: (mapName: string) => apiFetch(`/api/servers/${selectedServerId}/rcon`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ command: `map ${mapName}` })
-    }).then(res => res.json()),
+    mutationFn: (map: CS2Map) => {
+      const command = map.type === 'Workshop' ? `host_workshop_map ${map.workshop_id}` : `map ${map.name}`
+      return apiFetch(`/api/servers/${selectedServerId}/rcon`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command })
+      }).then(async res => {
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.message || 'RCON Failure')
+        return data
+      })
+    },
     onSuccess: () => {
-      toast.success('Command sent!')
+      toast.success('Map change requested!')
       queryClient.invalidateQueries({ queryKey: ['servers'] })
     },
-    onError: () => toast.error('RCON Failure')
+    onError: (error: any) => {
+      toast.error(error.message || 'RCON Failure - Is the server online?')
+    }
   })
+
+  const addWorkshopMutation = useMutation({
+    mutationFn: (workshopId: string) => apiFetch('/api/maps/workshop', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workshop_id: workshopId })
+    }).then(res => res.json()),
+    onSuccess: () => {
+      toast.success('Workshop map added!')
+      setNewWorkshopId('')
+      setIsModalOpen(false)
+      queryClient.invalidateQueries({ queryKey: ['workshop-maps'] })
+    },
+    onError: () => toast.error('Failed to add workshop map')
+  })
+
+  const removeWorkshopMutation = useMutation({
+    mutationFn: (id: string) => apiFetch(`/api/maps/workshop/${id.replace('w-', '')}`, {
+      method: 'DELETE'
+    }).then(res => res.json()),
+    onSuccess: () => {
+      toast.success('Workshop map removed')
+      queryClient.invalidateQueries({ queryKey: ['workshop-maps'] })
+    }
+  })
+
+  const selectedServer = useMemo(() => servers.find(s => s.id === selectedServerId), [servers, selectedServerId])
+  const isServerOnline = selectedServer?.status === 'ONLINE'
 
   const filteredMaps = useMemo(() => {
     return maps.filter(m => {
@@ -93,13 +150,12 @@ const Maps = () => {
 
   return (
     <div className="p-6 font-display max-h-screen overflow-y-auto scrollbar-hide">
-      {/* Dynamic Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
         <div>
           <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
             <MapIcon className="text-primary" /> Map Explorer
           </h2>
-          <p className="text-sm text-gray-500 mt-1">Deploy new battlegrounds to your node instantly</p>
+          <p className="text-sm text-gray-500 mt-1">Deploy battlegrounds or workshop content to your node</p>
         </div>
 
         <div className="flex items-center gap-3 bg-[#0c1424] p-1.5 rounded-2xl border border-gray-800/50">
@@ -120,7 +176,6 @@ const Maps = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Sidebar Controls */}
         <div className="lg:col-span-3 space-y-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
@@ -145,15 +200,17 @@ const Maps = () => {
             ))}
           </div>
 
-          <button className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 text-white py-4 rounded-xl font-bold text-xs uppercase tracking-[0.2em] transition-all">
-            <Globe size={16} /> Add Workshop
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-primary text-white py-4 rounded-xl font-bold text-xs uppercase tracking-[0.2em] transition-all shadow-lg shadow-primary/20"
+          >
+            <Plus size={16} /> Add Workshop
           </button>
         </div>
 
-        {/* Map Grid Area */}
         <div className="lg:col-span-9">
           {activeMap && (
-            <div className="mb-8 p-4 bg-primary/5 border border-primary/20 rounded-3xl flex items-center justify-between">
+            <div className="mb-8 p-4 bg-primary/5 border border-primary/20 rounded-3xl flex items-center justify-between animate-in fade-in slide-in-from-top-4 duration-500">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl overflow-hidden border border-primary/30">
                   <img src={activeMap.image} className="w-full h-full object-cover" />
@@ -167,18 +224,19 @@ const Maps = () => {
                 </div>
               </div>
               <button 
-                onClick={() => changeMapMutation.mutate(activeMap.name)}
-                className="px-6 py-2 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all"
+                onClick={() => changeMapMutation.mutate(activeMap)}
+                disabled={changeMapMutation.isPending || !isServerOnline}
+                className="px-6 py-2 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all disabled:opacity-50"
               >
                 {changeMapMutation.isPending ? <RefreshCcw size={16} className="animate-spin" /> : 'Restart'}
               </button>
             </div>
           )}
 
-          {mapsLoading ? (
+          {workshopLoading ? (
             <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-gray-800 rounded-3xl">
               <Loader2 className="animate-spin text-primary mb-4" />
-              <p className="text-xs text-gray-500 font-bold uppercase">Scanning Node Files...</p>
+              <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Connecting to Steam Cloud...</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -195,14 +253,25 @@ const Maps = () => {
                       <h4 className="text-white font-bold text-lg">{map.displayName}</h4>
                       <p className="text-gray-400 text-[10px] font-mono">{map.name}</p>
                     </div>
-                    {!map.isActive && (
-                      <button 
-                        onClick={() => changeMapMutation.mutate(map.name)}
-                        className="p-3 bg-primary text-white rounded-xl shadow-xl shadow-primary/40 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0"
-                      >
-                        <Play size={18} fill="white" />
-                      </button>
-                    )}
+                    <div className="flex gap-2">
+                      {map.type === 'Workshop' && (
+                        <button 
+                          onClick={() => removeWorkshopMutation.mutate(map.id)}
+                          className="p-3 bg-red-500/10 text-red-500 rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                      {!map.isActive && (
+                        <button 
+                          onClick={() => changeMapMutation.mutate(map)}
+                          disabled={changeMapMutation.isPending || !isServerOnline}
+                          className="p-3 bg-primary text-white rounded-xl shadow-xl shadow-primary/40 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 disabled:opacity-50"
+                        >
+                          <Play size={18} fill="white" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {map.isActive && (
@@ -216,6 +285,46 @@ const Maps = () => {
           )}
         </div>
       </div>
+
+      {/* Workshop Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#111827] border border-gray-800 rounded-3xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-gray-800 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <Globe className="text-primary" size={20} />
+                <h3 className="text-white font-bold">Add Workshop Content</h3>
+              </div>
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-8 space-y-6">
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-3 ml-1">Workshop Map ID</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. 3070176466"
+                  className="w-full bg-[#0c1424] border border-gray-800 rounded-2xl py-4 px-6 text-white focus:border-primary transition-all outline-none text-lg font-mono placeholder:text-gray-700"
+                  value={newWorkshopId}
+                  onChange={(e) => setNewWorkshopId(e.target.value)}
+                  autoFocus
+                />
+                <p className="mt-3 text-[10px] text-gray-600 flex items-center gap-2">
+                  <Plus size={10} /> Find the ID in the Steam Workshop URL
+                </p>
+              </div>
+              <button 
+                onClick={() => addWorkshopMutation.mutate(newWorkshopId)}
+                disabled={!newWorkshopId || addWorkshopMutation.isPending}
+                className="w-full bg-primary hover:bg-blue-600 disabled:opacity-50 text-white py-4 rounded-2xl font-bold uppercase tracking-widest text-xs transition-all shadow-xl shadow-primary/20"
+              >
+                {addWorkshopMutation.isPending ? 'Verifying...' : 'Link to Server'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

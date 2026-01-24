@@ -186,4 +186,15 @@ db.exec(`
   )
 `);
 
+// Create workshop_maps table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS workshop_maps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workshop_id TEXT UNIQUE NOT NULL,
+    name TEXT,
+    image_url TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
 export default db;
