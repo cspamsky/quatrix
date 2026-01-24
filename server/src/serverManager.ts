@@ -596,6 +596,22 @@ class ServerManager {
         });
     }
 
+    async getSystemHealth() {
+        const steamCmdReady = await this.ensureSteamCMD();
+        const installDirExists = fs.existsSync(this.installDir);
+        
+        return {
+            success: true,
+            status: steamCmdReady && installDirExists ? "HEALTHY" : "WARNING",
+            details: {
+                steamCmd: steamCmdReady ? "READY" : "MISSING",
+                installDir: installDirExists ? "EXISTS" : "MISSING",
+                platform: process.platform,
+                installPath: this.installDir
+            }
+        };
+    }
+
     async cleanupGarbage(): Promise<{ success: boolean; clearedFiles: number; clearedBytes: number }> {
         console.log(`[SYSTEM] Starting garbage cleanup...`);
         let clearedFiles = 0;
