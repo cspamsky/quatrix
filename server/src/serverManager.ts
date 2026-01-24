@@ -143,14 +143,23 @@ class ServerManager {
             "-nosteamclient",
             "-port", options.port.toString(),
             "-maxplayers", (options.max_players || 64).toString(),
-            "-port", options.port.toString(),
-            "-maxplayers", (options.max_players || 64).toString(),
-            "+map", options.map || "de_dust2",
-            "+game_type", (options.game_type ?? 0).toString(),
-            "+game_mode", (options.game_mode ?? 1).toString(),
+            "+ip", "0.0.0.0",
+            "-tickrate", (options.tickrate || 128).toString(),
             "-nojoy",
-            "+sv_lan", "0"
+            "+sv_lan", "0",
+            "+hostname", options.name || server.name || "Quatrix Server"
         ];
+
+        // Be smart about map vs workshop map
+        const mapVal = options.map || "de_dust2";
+        if (/^\d+$/.test(mapVal)) {
+            args.push("+host_workshop_map", mapVal);
+        } else {
+            args.push("+map", mapVal);
+        }
+
+        args.push("+game_type", (options.game_type ?? 0).toString());
+        args.push("+game_mode", (options.game_mode ?? 1).toString());
 
         if (server.rcon_password) args.push("+rcon_password", server.rcon_password);
         if (server.gslt_token) args.push("+sv_setsteamaccount", server.gslt_token);
@@ -399,7 +408,7 @@ class ServerManager {
         const steamLibDir = path.dirname(this.getSteamCmdDir());
         const steamLib64 = path.join(steamLibDir, "linux64");
 
-        return {
+        const envVars: any = {
             ...process.env,
             HOME: "/root",
             USER: "root",
@@ -412,6 +421,14 @@ class ServerManager {
             SDL_VIDEODRIVER: "offscreen",
             SteamAppId: "730"
         };
+
+        // PRELOAD steamclient.so to prevent SIGSEGV during early Steam API calls by plugins
+        const steamClientPath = path.join(steamLib64, "steamclient.so");
+        if (fs.existsSync(steamClientPath)) {
+            envVars.LD_PRELOAD = steamClientPath;
+        }
+
+        return envVars;
     }
 
     // --- File Operations ---
