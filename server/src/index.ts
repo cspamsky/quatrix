@@ -154,7 +154,7 @@ setInterval(async () => {
       console.log(`[SYNC] Synced maps for ${validUpdates.length} servers.`);
     }
   } catch (err) { /* silent map sync fail */ }
-}, 5000); // Check every 5 seconds for faster UI updates
+}, 10000); // Check every 10 seconds for UI updates
 
 // 3. System Initialization
 serverManager.ensureSteamCMD().then(success => {

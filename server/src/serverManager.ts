@@ -298,11 +298,12 @@ class ServerManager {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         if (!rcon || !rcon.authenticated) {
+          // Use 0.0.0.0 for better local binding consistency on some Linux distros
           rcon = new Rcon({
-            host: "127.0.0.1",
+            host: "0.0.0.0",
             port: server.port,
             password: server.rcon_password,
-            timeout: 5000,
+            timeout: 10000, // Increase timeout for CS2
           });
 
           rcon.on("error", (err: any) => {
@@ -319,10 +320,10 @@ class ServerManager {
         this.rconConnections.delete(idStr);
         rcon = undefined;
         if (attempt === retries) {
-            console.error(`[RCON] Final failure for ${idStr}:`, error.message);
-            throw new Error(error.message || "RCON command failed");
+            console.error(`[RCON] Failed to reach server ${idStr} at 0.0.0.0:${server.port}:`, error.message);
+            throw new Error(`RCON Failed: ${error.message}`);
         }
-        await new Promise(r => setTimeout(r, 1000));
+        await new Promise(r => setTimeout(r, 2000));
       }
     }
     throw new Error("RCON unreachable");
