@@ -338,9 +338,9 @@ class ServerManager {
         }
 
         const args = [
-            "+login", "anonymous", 
-            "+force_install_dir", serverPath, 
             "+@sSteamCmdForcePlatformType", "linux", 
+            "+force_install_dir", serverPath, 
+            "+login", "anonymous", 
             "+app_update", "730", "validate", 
             "+quit"
         ];
