@@ -167,6 +167,19 @@ class ServerManager {
 
         const envVars = this.getEnvironmentVariables(serverPath, binDir);
 
+        // Ensure ~/.steam/sdk64 exists (Hardcoded requirement for many CS2 Linux builds)
+        try {
+            const steamSdkPath = path.join(process.env.HOME || '/root', '.steam/sdk64');
+            if (!fs.existsSync(steamSdkPath)) fs.mkdirSync(steamSdkPath, { recursive: true });
+            
+            const steamClientLib = await this.findSteamClientLib();
+            if (steamClientLib && !fs.existsSync(path.join(steamSdkPath, 'steamclient.so'))) {
+                fs.copyFileSync(steamClientLib, path.join(steamSdkPath, 'steamclient.so'));
+            }
+        } catch (e) {
+            console.warn(`[SYSTEM] ~/.steam/sdk64 setup failed: ${e}`);
+        }
+
         console.log(`[STARTUP] Instance ${id}: cleaning up port ${options.port}...`);
         try {
             // Forcefully kill any process using the game port (UDP)
@@ -422,10 +435,17 @@ class ServerManager {
             SteamAppId: "730"
         };
 
-        // PRELOAD steamclient.so to prevent SIGSEGV during early Steam API calls by plugins
+        // CRITICAL PRELOADS: steamclient.so for API stability, tcmalloc for memory stability
+        const preloads: string[] = [];
+        
         const steamClientPath = path.join(steamLib64, "steamclient.so");
-        if (fs.existsSync(steamClientPath)) {
-            envVars.LD_PRELOAD = steamClientPath;
+        if (fs.existsSync(steamClientPath)) preloads.push(steamClientPath);
+        
+        const tcmalloc = "/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4";
+        if (fs.existsSync(tcmalloc)) preloads.push(tcmalloc);
+
+        if (preloads.length > 0) {
+            envVars.LD_PRELOAD = preloads.join(":");
         }
 
         return envVars;
