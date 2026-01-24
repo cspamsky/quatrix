@@ -147,4 +147,18 @@ router.post("/health/repair", async (req: any, res) => {
   }
 });
 
+// POST /api/servers/cleanup
+router.post("/cleanup", async (req: any, res) => {
+  try {
+    const result = await serverManager.cleanupGarbage();
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      message: "Garbage cleanup failed", 
+      details: { error: error.message } 
+    });
+  }
+});
+
 export default router;

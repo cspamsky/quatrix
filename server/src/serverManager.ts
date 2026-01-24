@@ -293,7 +293,7 @@ class ServerManager {
       throw new Error(`CS2 binary not found at ${cs2Exe}`);
     }
 
-    // Parallel Initialization: Writing steam_appid.txt and creating cfg directory concurrently
+    // Parallel Initialization: Writing steam_appid.txt, creating cfg directory, and cleaning core dumps concurrently
     const cfgDir = path.join(serverPath, "game", "csgo", "cfg");
 
     await Promise.all([
@@ -301,6 +301,8 @@ class ServerManager {
       fs.promises.mkdir(cfgDir, { recursive: true }).catch((error) => {
         if (error.code !== "EEXIST") throw error;
       }),
+      // AUTO-CLEAN: Remove core dumps in binary directory before starting to prevent disk inflation
+      this._cleanCoreDumps(binDir)
     ]);
     const serverCfgPath = path.join(cfgDir, "server.cfg");
 
@@ -400,6 +402,10 @@ class ServerManager {
     }
 
     console.log(`[SERVER] Starting Linux CS2 instance: ${id}`);
+    
+    // PREVENTION: Try to disable core dumps for this process via environment or ulimit if shell were true.
+    // Since shell: false, we rely on pre-start cleanup and system-wide limits.
+    
     const serverProcess = spawn(cs2Exe, args, {
       cwd: serverPath,
       env,
@@ -1030,6 +1036,10 @@ class ServerManager {
       } catch {
         result.runtimes.steam_sdk.status = "missing";
       }
+
+      // Garbage (Core Dumps) Check
+      const garbage = await this._scanForGarbage();
+      result.disk.garbage = garbage;
     } catch (e) {}
     return result;
   }
@@ -1103,6 +1113,10 @@ class ServerManager {
         details.steam_sdk = { status: "ok" };
       }
 
+      // INTEGRATION: Automatically cleanup garbage/core-dumps as part of system repair
+      const cleanupResult = await this.cleanupGarbage();
+      details.garbage = cleanupResult;
+
       return {
         success: true,
         message:
@@ -1116,6 +1130,86 @@ class ServerManager {
         details,
       };
     }
+  }
+
+  // --- Garbage & Maintenance Management ---
+
+  private async _cleanCoreDumps(dir: string): Promise<number> {
+    try {
+      const files = await fs.promises.readdir(dir);
+      const coreFiles = files.filter(f => f.startsWith('core.'));
+      let count = 0;
+      for (const file of coreFiles) {
+        await fs.promises.rm(path.join(dir, file), { force: true }).catch(() => {});
+        count++;
+      }
+      if (count > 0) console.log(`[SYSTEM] Cleaned ${count} core dumps from ${dir}`);
+      return count;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  private async _scanForGarbage(): Promise<{ count: number; size: number }> {
+    let count = 0;
+    let size = 0;
+
+    const scanDir = async (dir: string) => {
+      try {
+        const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            await scanDir(fullPath);
+          } else if (entry.name.startsWith('core.')) {
+            const stats = await fs.promises.stat(fullPath);
+            count++;
+            size += stats.size;
+          }
+        }
+      } catch (e) {}
+    };
+
+    // Scan install dir for instance cores
+    await scanDir(this.installDir);
+    
+    // Also scan system crash dump dir if Linux
+    if (process.platform === 'linux') {
+      await scanDir('/var/lib/apport/coredump');
+    }
+
+    return { count, size };
+  }
+
+  async cleanupGarbage(): Promise<{ success: boolean; clearedFiles: number; clearedBytes: number }> {
+    console.log(`[SYSTEM] Starting garbage cleanup...`);
+    let clearedFiles = 0;
+    let clearedBytes = 0;
+
+    const cleanDir = async (dir: string) => {
+      try {
+        const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            await cleanDir(fullPath);
+          } else if (entry.name.startsWith('core.')) {
+            const stats = await fs.promises.stat(fullPath);
+            await fs.promises.rm(fullPath, { force: true }).catch(() => {});
+            clearedFiles++;
+            clearedBytes += stats.size;
+          }
+        }
+      } catch (e) {}
+    };
+
+    await cleanDir(this.installDir);
+    if (process.platform === 'linux') {
+      await cleanDir('/var/lib/apport/coredump');
+    }
+
+    console.log(`[SYSTEM] Cleanup complete. Cleared ${clearedFiles} files (${(clearedBytes / 1024 / 1024).toFixed(2)} MB)`);
+    return { success: true, clearedFiles, clearedBytes };
   }
 }
 
