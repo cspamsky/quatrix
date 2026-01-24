@@ -14,7 +14,9 @@ import {
   Upload,
   Search,
   Download,
-  Edit2
+  Edit2,
+  Copy,
+  ExternalLink
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
@@ -38,10 +40,19 @@ const FileManager = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, file: FileStat } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetchFiles(currentPath)
+    
+    const handleClick = () => setContextMenu(null)
+    window.addEventListener('click', handleClick)
+    window.addEventListener('contextmenu', handleClick)
+    return () => {
+      window.removeEventListener('click', handleClick)
+      window.removeEventListener('contextmenu', handleClick)
+    }
   }, [id, currentPath])
 
   const fetchFiles = async (path: string) => {
@@ -226,6 +237,20 @@ const FileManager = () => {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  const handleContextMenu = (e: React.MouseEvent, file: FileStat) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const y = e.clientY + 220 > window.innerHeight ? e.clientY - 220 : e.clientY
+    const x = e.clientX + 160 > window.innerWidth ? e.clientX - 160 : e.clientX
+    setContextMenu({ x, y, file })
+  }
+
+  const copyPathToClipboard = (file: FileStat) => {
+    const fullPath = currentPath ? `${currentPath}/${file.name}` : file.name
+    navigator.clipboard.writeText(fullPath)
+    toast.success('Path copied to clipboard')
+  }
+
   const formatSize = (bytes: number) => {
     if (bytes === 0) return '-'
     const k = 1024
@@ -350,7 +375,7 @@ const FileManager = () => {
               </div>
             </div>
             <textarea 
-              className="flex-1 bg-black/30 text-gray-300 p-8 font-mono text-sm outline-none resize-none custom-scrollbar leading-relaxed"
+              className="flex-1 bg-black/30 text-gray-300 p-8 font-mono text-sm outline-none resize-none scrollbar-hide leading-relaxed"
               spellCheck={false}
               autoFocus
               value={editingFile.content}
@@ -358,7 +383,7 @@ const FileManager = () => {
             />
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
+          <div className="flex-1 overflow-y-auto scrollbar-hide">
             <table className="w-full text-left border-collapse">
               <thead className="bg-black/40 text-gray-500 text-[10px] uppercase font-black tracking-[0.2em] sticky top-0 z-10">
                 <tr>
@@ -404,8 +429,9 @@ const FileManager = () => {
                 ) : filteredFiles.map((file, i) => (
                   <tr 
                     key={i} 
-                    className="hover:bg-white/[0.03] cursor-pointer group transition-all border-l-4 border-transparent hover:border-primary group"
+                    className={`hover:bg-white/[0.03] cursor-pointer group transition-all border-l-4 border-transparent hover:border-primary group ${contextMenu?.file.name === file.name ? 'bg-primary/5 border-primary' : ''}`}
                     onClick={() => handleEdit(file)}
+                    onContextMenu={(e) => handleContextMenu(e, file)}
                   >
                     <td className="px-8 py-4 flex items-center gap-4">
                       <div className="p-2 rounded-lg bg-gray-900/50 group-hover:bg-gray-800 transition-all border border-gray-800/50">
@@ -508,6 +534,61 @@ const FileManager = () => {
           <span className="text-primary/50">ENCRYPTED TRANSFER</span>
         </div>
       </footer>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div 
+          className="fixed z-[999] bg-[#1a2233]/95 backdrop-blur-xl border border-gray-700/50 rounded-xl shadow-2xl overflow-hidden min-w-[180px] animate-in fade-in zoom-in-95 duration-100 py-1.5"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-4 py-2 border-b border-gray-800/50 mb-1">
+            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest truncate max-w-[140px]">
+              {contextMenu.file.name}
+            </p>
+          </div>
+
+          <button 
+            onClick={() => { handleEdit(contextMenu.file); setContextMenu(null); }}
+            className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-primary transition-all text-left"
+          >
+            {contextMenu.file.isDirectory ? <ExternalLink size={14} /> : <Edit2 size={14} />}
+            {contextMenu.file.isDirectory ? 'OPEN FOLDER' : 'EDIT FILE'}
+          </button>
+
+          <button 
+            onClick={() => { handleRename(contextMenu.file); setContextMenu(null); }}
+            className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-gray-800 transition-all text-left"
+          >
+            <RefreshCw size={14} /> RENAME
+          </button>
+
+          {!contextMenu.file.isDirectory && (
+            <button 
+              onClick={() => { handleDownload(contextMenu.file); setContextMenu(null); }}
+              className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-gray-800 transition-all text-left"
+            >
+              <Download size={14} /> DOWNLOAD
+            </button>
+          )}
+
+          <button 
+            onClick={() => { copyPathToClipboard(contextMenu.file); setContextMenu(null); }}
+            className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-gray-800 transition-all text-left"
+          >
+            <Copy size={14} /> COPY PATH
+          </button>
+
+          <div className="h-px bg-gray-800/50 my-1 mx-2" />
+
+          <button 
+            onClick={() => { handleDelete(contextMenu.file); setContextMenu(null); }}
+            className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-red-500 hover:text-white hover:bg-red-500 transition-all text-left"
+          >
+            <Trash2 size={14} /> DELETE
+          </button>
+        </div>
+      )}
     </div>
   )
 }

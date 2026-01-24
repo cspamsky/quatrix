@@ -855,6 +855,12 @@ class ServerManager {
 
     // Async readdir with error handling
     try {
+      const stats = await fs.promises.stat(target);
+      if (!stats.isDirectory()) {
+         // If target is a file, we can't list its contents
+         return [];
+      }
+
       const entries = await fs.promises.readdir(target, {
         withFileTypes: true,
       });
