@@ -1,4 +1,4 @@
-import { spawn, exec } from "child_process";
+import { spawn, exec, execSync } from "child_process";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -143,7 +143,8 @@ class ServerManager {
             "-nosteamclient",
             "-port", options.port.toString(),
             "-maxplayers", (options.max_players || 64).toString(),
-            "+ip", "0.0.0.0",
+            "-port", options.port.toString(),
+            "-maxplayers", (options.max_players || 64).toString(),
             "+map", options.map || "de_dust2",
             "+game_type", (options.game_type ?? 0).toString(),
             "+game_mode", (options.game_mode ?? 1).toString(),
@@ -157,8 +158,17 @@ class ServerManager {
 
         const envVars = this.getEnvironmentVariables(serverPath, binDir);
 
+        console.log(`[STARTUP] Instance ${id}: cleaning up port ${options.port}...`);
+        try {
+            // Forcefully kill any process using the game port (UDP)
+            execSync(`fuser -k -n udp ${options.port} 2>/dev/null || true`);
+        } catch (e) {}
+
         console.log(`[STARTUP] Instance ${id}: spawning process...`);
         const proc = spawn(cs2Script, args, { cwd: serverPath, env: envVars });
+
+        // Initialize / Clear log buffer
+        this.logBuffers.set(id, []);
 
         this.runningServers.set(id, proc);
         db.prepare("UPDATE servers SET pid = ?, status = 'ONLINE' WHERE id = ?").run(proc.pid, id);
@@ -193,14 +203,27 @@ class ServerManager {
         proc.stdout?.on("data", (data: any) => {
             const lines = data.toString().split("\n");
             lines.forEach((line: string) => {
-                if (line.trim() && !LOG_NOISE_PATTERNS.some(p => p.test(line))) {
-                    if (onLog) onLog(line);
+                const trimmedLine = line.trim();
+                if (trimmedLine && !LOG_NOISE_PATTERNS.some(p => p.test(trimmedLine))) {
+                    if (onLog) onLog(trimmedLine);
+                    
+                    // Buffer logs (keep last 500 lines)
+                    let buffer = this.logBuffers.get(id) || [];
+                    buffer.push(trimmedLine);
+                    if (buffer.length > 500) buffer.shift();
+                    this.logBuffers.set(id, buffer);
                 }
             });
         });
 
         proc.stderr?.on("data", (data: any) => {
-            if (onLog) onLog(`[STDERR] ${data.toString()}`);
+            const line = `[STDERR] ${data.toString()}`;
+            if (onLog) onLog(line);
+            
+            let buffer = this.logBuffers.get(id) || [];
+            buffer.push(line);
+            if (buffer.length > 500) buffer.shift();
+            this.logBuffers.set(id, buffer);
         });
 
         proc.on("exit", (code: any, signal: any) => {
@@ -323,40 +346,44 @@ class ServerManager {
             }
         }
 
-        // Metamod VDF Deployment
+        // Metamod VDF Deployment (Standard Source2 Format)
         const metamodVdfPath = path.join(serverPath, "game/csgo/addons/metamod.vdf");
-        if (fs.existsSync(path.join(serverPath, "game/csgo/addons/metamod")) && !fs.existsSync(metamodVdfPath)) {
-            const vdf = `"Plugin"\n{\n\t"file"\t"../csgo/addons/metamod/bin/linuxsteamrt64/metamod"\n}\n`;
-            try { fs.writeFileSync(metamodVdfPath, vdf); } catch {}
+        if (fs.existsSync(path.join(serverPath, "game/csgo/addons/metamod"))) {
+            // Critical: Source 2 relative path from game/csgo folder
+            const vdf = `"Plugin"\n{\n\t"file"\t"addons/metamod/bin/linuxsteamrt64/metamod"\n}\n`;
+            try { 
+                fs.writeFileSync(metamodVdfPath, vdf); 
+            } catch {}
         }
     }
 
     private async findSteamClientLib(): Promise<string> {
         const potentialDirs = [
             path.dirname(this.steamCmdExe),
-            path.join(__dirname, "../data/steamcmd"),
-            "/root/quatrix/server/data/steamcmd",
+            path.join(path.dirname(this.steamCmdExe), "linux64"),
+            path.join(__dirname, "../data/steamcmd/linux64"),
+            "/root/quatrix/server/data/steamcmd/linux64",
             "/root/.steam/sdk64"
         ];
 
         for (const dir of potentialDirs) {
-            const p1 = path.join(dir, 'linux64/steamclient.so');
-            const p2 = path.join(dir, 'steamclient.so');
-            if (fs.existsSync(p1)) return p1;
-            if (fs.existsSync(p2)) return p2;
+            const p = path.join(dir, 'steamclient.so');
+            if (fs.existsSync(p)) return p;
         }
         return "";
     }
 
     private getEnvironmentVariables(serverPath: string, binDir: string): any {
         const cssDotnetDir = path.join(serverPath, "game/csgo/addons/counterstrikesharp/dotnet");
-        const steamClientSrc = path.dirname(this.steamCmdExe); // Rough estimate for LD_LIBRARY_PATH
+        const steamLibDir = path.dirname(this.getSteamCmdDir());
+        const steamLib64 = path.join(steamLibDir, "linux64");
 
         return {
             ...process.env,
             HOME: "/root",
             USER: "root",
-            LD_LIBRARY_PATH: `${binDir}:${path.join(binDir, 'steam')}:${steamClientSrc}:${process.env.LD_LIBRARY_PATH || ''}`,
+            // Priority: Server Binaries -> Steam API -> System
+            LD_LIBRARY_PATH: `${binDir}:${path.join(binDir, 'steam')}:${steamLib64}:${steamLibDir}:${process.env.LD_LIBRARY_PATH || ''}`,
             DOTNET_ROOT: cssDotnetDir,
             DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "1",
             DOTNET_BUNDLE_EXTRACT_BASE_DIR: path.join(serverPath, ".net_cache"),
@@ -475,6 +502,7 @@ class ServerManager {
     getInstallDir() { return this.installDir; }
     getSteamCmdDir() { return this.steamCmdExe; }
     isServerRunning(id: string | number) { return this.runningServers.has(id.toString()); }
+    getLogs(id: string | number) { return this.logBuffers.get(id.toString()) || []; }
 
     async ensureSteamCMD(): Promise<boolean> {
         const steamcmdDir = path.dirname(this.steamCmdExe);
