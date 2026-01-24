@@ -333,14 +333,27 @@ class ServerManager {
 
   async getCurrentMap(id: string | number): Promise<string | null> {
     try {
-      const res = await this.sendCommand(id, "host_map");
-      const match = res.match(/Map: "([^"]+)"/i) || res.match(/Map: ([^\s]+)/i);
-      const currentMap = (match && match[1]) ? match[1] : null;
+      const res = await this.sendCommand(id, "status");
+      
+      // Try to extract map from spawngroup line (more reliable for workshop maps)
+      // Example: "loaded spawngroup(  1)  : SV:  [1: awp_lego_2 | main lump | mapload]"
+      const spawnGroupMatch = res.match(/loaded spawngroup\(\s*1\)\s*:\s*SV:\s*\[1:\s*([^\s|]+)/i);
+      
+      // Fallback to hostname line if spawngroup not found
+      // Example: "hostname : Demo Server"
+      let currentMap = (spawnGroupMatch && spawnGroupMatch[1]) ? spawnGroupMatch[1].trim() : null;
+      
+      if (!currentMap) {
+        // Try old method as final fallback
+        const mapMatch = res.match(/Map: "([^"]+)"/i) || res.match(/Map: ([^\s]+)/i);
+        currentMap = (mapMatch && mapMatch[1]) ? mapMatch[1] : null;
+      }
       
       // Check if map changed and emit real-time update
       if (currentMap) {
         const server = this.getServerStmt.get(id.toString()) as any;
         if (server && server.map !== currentMap) {
+          console.log(`[MAP SYNC] Server ${id}: ${server.map} -> ${currentMap}`);
           db.prepare("UPDATE servers SET map = ? WHERE id = ?").run(currentMap, id.toString());
           if (this.io) {
             this.io.emit('server_update', { serverId: parseInt(id.toString()) });
