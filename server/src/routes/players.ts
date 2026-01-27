@@ -37,8 +37,8 @@ router.post("/:id/players/:userId/ban", async (req: any, res) => {
         const { id, userId } = req.params;
         const { duration, reason, playerName, steamId, ipAddress } = req.body; // duration in minutes, 0 for permanent
         
-        // Use CSS ban for persistent bans (requires CounterStrikeSharp)
-        // Format: css_ban <steamid|name|userid> <duration> <reason>
+        // Use CSS addban for persistent bans (requires CS2-SimpleAdmin)
+        // Format: css_addban <steamid|name|userid> <duration> <reason>
         const durationMinutes = parseInt(duration) || 0;
         const banReason = reason || 'Banned by admin';
         
@@ -47,11 +47,11 @@ router.post("/:id/players/:userId/ban", async (req: any, res) => {
         
         if (steamId && steamId !== 'Hidden/Pending') {
             // Prefer Steam ID for accuracy
-            banCmd = `css_ban ${steamId} ${durationMinutes} "${banReason}"`;
+            banCmd = `css_addban ${steamId} ${durationMinutes} "${banReason}"`;
             kickCmd = `css_kick ${steamId} "${banReason}"`;
         } else {
             // Fallback to user ID
-            banCmd = `css_ban #${userId} ${durationMinutes} "${banReason}"`;
+            banCmd = `css_addban #${userId} ${durationMinutes} "${banReason}"`;
             kickCmd = `css_kick #${userId} "${banReason}"`;
         }
         
