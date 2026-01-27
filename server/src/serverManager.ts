@@ -384,12 +384,16 @@ class ServerManager {
         const targetLink = path.join(sdkDir, "steamclient.so");
         const steamCmdDir = path.dirname(this.steamCmdExe);
         
-        // Potential locations for steamclient.so
+        // Potential locations for steamclient.so based on your 'find' results
         const possibleSources = [
           path.join(steamCmdDir, "linux64/steamclient.so"),
+          path.join(steamCmdDir, "linux32/steamclient.so"),
           path.join(steamCmdDir, "steamclient.so"),
           path.join(serverPath, "game/bin/linuxsteamrt64/steamclient.so"),
         ];
+
+        // Ensure directory exists regardless of target existence
+        await fs.promises.mkdir(sdkDir, { recursive: true });
 
         const targetExists = await fs.promises.access(targetLink).then(() => true).catch(() => false);
 
@@ -404,15 +408,15 @@ class ServerManager {
 
           if (sourceFound) {
             console.log(`[SYSTEM] Auto-fixing Steam SDK: ${sourceFound} -> ${targetLink}`);
-            await fs.promises.mkdir(sdkDir, { recursive: true });
             try {
-              // Try symlink first, if it fails (e.g. on some filesystems), copy the file
-              await fs.promises.symlink(sourceFound, targetLink);
-            } catch (e) {
+              // Try copying directly for maximum compatibility with WSL/Docker filesystems
               await fs.promises.copyFile(sourceFound, targetLink);
+            } catch (e) {
+              // Fallback to symlink if copy fails
+              await fs.promises.symlink(sourceFound, targetLink).catch(() => {});
             }
           } else {
-            console.warn(`[SYSTEM] Could not find steamclient.so in any of the expected locations.`);
+            console.warn(`[SYSTEM] Could not find steamclient.so in any confirmed locations.`);
           }
         }
       } catch (err) {
