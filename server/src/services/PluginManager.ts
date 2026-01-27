@@ -177,19 +177,33 @@ export class PluginManager {
    * Downloads are disabled; the pool must be populated manually.
    */
   async ensurePluginInPool(pluginId: PluginId): Promise<string> {
-    const pluginPoolPath = this.getPoolDir(pluginId);
+    const info = (this.pluginRegistry as any)[pluginId];
+    const candidateNames = new Set([
+        pluginId.toLowerCase(),
+        (info.folderName || "").toLowerCase(),
+        (info.name || "").toLowerCase().replace(/[^a-z0-9]/g, "")
+    ].filter(Boolean));
 
-    // Check if we already have it in the pool
-    if (fs.existsSync(pluginPoolPath)) {
-      const items = await fs.promises.readdir(pluginPoolPath);
-      if (items.length > 0) {
-        console.log(`[PLUGIN] Syncing ${pluginId} from local pool.`);
-        return pluginPoolPath;
-      }
+    // List the pool directory once
+    const poolItems = await fs.promises.readdir(POOL_DIR);
+    
+    // Find a match regardless of case
+    const matchedFolder = poolItems.find(item => 
+        candidateNames.has(item.toLowerCase())
+    );
+
+    if (matchedFolder) {
+        const fullPath = path.join(POOL_DIR, matchedFolder);
+        const items = await fs.promises.readdir(fullPath);
+        if (items.length > 0) {
+            console.log(`[PLUGIN] Syncing ${pluginId} from pool folder: ${matchedFolder}`);
+            return fullPath;
+        }
     }
 
+    const expectedPath = path.join(POOL_DIR, info.folderName || pluginId);
     throw new Error(
-      `Plugin "${pluginId}" not found in local pool. Please add its files to: ${pluginPoolPath}`,
+      `Plugin "${pluginId}" not found in local pool. Please add its files to: ${expectedPath}`,
     );
   }
 
