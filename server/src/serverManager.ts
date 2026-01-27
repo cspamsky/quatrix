@@ -329,11 +329,12 @@ class ServerManager {
     };
     cfgContent = updateLine(cfgContent, "sv_password", options.password || "");
     cfgContent = updateLine(
-      cfgContent,
+        cfgContent,
       "rcon_password",
       options.rcon_password || "secret",
     );
     await fs.promises.writeFile(serverCfgPath, cfgContent);
+    console.log(`[SERVER] Generated config at ${serverCfgPath}`);
 
     const args = [
       "-dedicated",
@@ -352,6 +353,8 @@ class ServerManager {
       "0.0.0.0",
       "-tickrate",
       (options.tickrate || 128).toString(),
+      "+exec",
+      "server.cfg"
     ];
     if (options.vac_enabled) args.push("+sv_lan", "0");
     else args.push("-insecure", "+sv_lan", "1");
@@ -640,11 +643,13 @@ class ServerManager {
         rcon = undefined;
 
         if (attempt === retries) {
+          const isAlive = this.runningServers.has(idStr);
+          const errorMsg = error instanceof Error ? error.message : "Unknown error";
           console.error(
-            `[RCON] Failed to connect to server ${id} at 127.0.0.1:${rconPort} after ${retries} attempts`,
+            `[RCON] Critical Failure for server ${id} at 127.0.0.1:${rconPort} after ${retries} attempts. Server Running: ${isAlive}. Error: ${errorMsg}`,
           );
           throw new Error(
-            `RCON Connection failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+            `RCON Connection failed. Server is ${isAlive ? "ONLINE" : "OFFLINE"}. Reason: ${errorMsg}`,
           );
         }
 
