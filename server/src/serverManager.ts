@@ -678,6 +678,7 @@ class ServerManager {
   ): Promise<{ players: any[]; averagePing: number }> {
     try {
       const combinedOutput = await this.sendCommand(id, "status");
+      console.log("[DEBUG] Raw status output:", combinedOutput);
       const lines = combinedOutput.split("\n");
       const idStr = id.toString();
       const cache = this.playerIdentityCache.get(idStr);
