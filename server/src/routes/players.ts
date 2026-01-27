@@ -40,45 +40,22 @@ router.post("/:id/players/:userId/ban", async (req: any, res) => {
         const durationMinutes = parseInt(duration) || 0;
         const banReason = reason || 'Banned by admin';
         
-        if (!steamId || steamId === 'Hidden/Pending') {
-            return res.status(400).json({ message: 'Steam ID required for ban' });
-        }
-        
-        // 1. Send RCON commands to the server
-        try {
-            // Ban the player currently in-game using their UserID
-            await serverManager.sendCommand(id, `banid ${durationMinutes} ${userId}`);
-            // Tell the server to write its current memory ban list to files
-            await serverManager.sendCommand(id, `writeid`);
-            // Also notify SimpleAdmin
-            await serverManager.sendCommand(id, `css_addban ${steamId} ${durationMinutes} "${banReason}"`);
-        } catch (rconError) {
-            console.log('[BAN] RCON commands sent, some might have failed if player already left:', rconError);
+        // 1. Send the CSS addban command (handles both memory ban and database record for the plugin)
+        // css_addban <steamid|name|#userid> <duration> <reason>
+        let cmd = '';
+        if (steamId && steamId !== 'Hidden/Pending') {
+            cmd = `css_addban ${steamId} ${durationMinutes} "${banReason}"`;
+        } else {
+            cmd = `css_addban #${userId} ${durationMinutes} "${banReason}"`;
         }
 
-        // 2. FORCE PERSISTENCE: Manually write to banned_user.cfg
         try {
-            const fs = await import('fs');
-            const path = await import('path');
-            // Get server instance directory (you'll need to make sure this path is correct for your setup)
-            // Typically: D:\PROJE\quatrix\server\data\instances\{id}\game\csgo\cfg\banned_user.cfg
-            // For VDS/Linux it's usually /root/quatrix/server/data/instances/...
-            
-            // We use the serverManager's logic to find the file
-            const server = db.prepare('SELECT * FROM servers WHERE id = ?').get(id) as any;
-            if (server) {
-                const cfgPath = path.join(process.cwd(), 'data', 'instances', id.toString(), 'game', 'csgo', 'cfg', 'banned_user.cfg');
-                const banLine = `banid ${durationMinutes} ${steamId}\n`;
-                
-                // Append to file (or create if not exists)
-                fs.appendFileSync(cfgPath, banLine);
-                console.log(`[BAN] Manually added ${steamId} to ${cfgPath}`);
-            }
-        } catch (fsError) {
-            console.error('[BAN] Failed to manually write to banned_user.cfg:', fsError);
+            await serverManager.sendCommand(id, cmd);
+        } catch (rconError) {
+            console.error('[BAN] RCON css_addban failed:', rconError);
         }
         
-        // 3. Record in our web panel database
+        // 2. Record in our web panel database for History page
         const expiresAt = durationMinutes > 0 
             ? new Date(Date.now() + durationMinutes * 60 * 1000).toISOString()
             : null;
@@ -90,8 +67,8 @@ router.post("/:id/players/:userId/ban", async (req: any, res) => {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
             id,
-            playerName || `User`,
-            steamId,
+            playerName || `User #${userId}`,
+            steamId || null,
             ipAddress || null,
             banReason,
             durationMinutes,
@@ -99,7 +76,7 @@ router.post("/:id/players/:userId/ban", async (req: any, res) => {
             expiresAt
         );
         
-        res.json({ success: true, message: `Player banned successfully` });
+        res.json({ success: true, message: `Player banned via SimpleAdmin` });
     } catch (error: any) {
         res.status(500).json({ message: error.message || "Failed to ban player" });
     }
