@@ -395,9 +395,18 @@ class ServerManager {
         // Ensure directory exists regardless of target existence
         await fs.promises.mkdir(sdkDir, { recursive: true });
 
-        const targetExists = await fs.promises.access(targetLink).then(() => true).catch(() => false);
+        // Check using lstat to detect symlinks (even dangling ones)
+        const targetStat = await fs.promises.lstat(targetLink).catch(() => null);
 
-        if (!targetExists) {
+        // If target doesn't exist OR it's a dangling symlink, we repair
+        const targetValid = await fs.promises.access(targetLink).then(() => true).catch(() => false);
+
+        if (!targetValid) {
+          // If it exists but is invalid (dangling symlink), remove it first
+          if (targetStat) {
+            await fs.promises.rm(targetLink, { force: true }).catch(() => {});
+          }
+
           let sourceFound = "";
           for (const source of possibleSources) {
             if (await fs.promises.access(source).then(() => true).catch(() => false)) {
@@ -407,12 +416,10 @@ class ServerManager {
           }
 
           if (sourceFound) {
-            console.log(`[SYSTEM] Auto-fixing Steam SDK: ${sourceFound} -> ${targetLink}`);
+            console.log(`[SYSTEM] Auto-fixing Steam SDK (Fresh Copy): ${sourceFound} -> ${targetLink}`);
             try {
-              // Try copying directly for maximum compatibility with WSL/Docker filesystems
               await fs.promises.copyFile(sourceFound, targetLink);
             } catch (e) {
-              // Fallback to symlink if copy fails
               await fs.promises.symlink(sourceFound, targetLink).catch(() => {});
             }
           } else {
