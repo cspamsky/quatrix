@@ -39,32 +39,22 @@ router.post("/:id/players/:userId/ban", async (req: any, res) => {
         
         // Use CSS addban for persistent bans (requires CS2-SimpleAdmin)
         // Format: css_addban <steamid|name|userid> <duration> <reason>
+        // Note: css_addban automatically kicks the player
         const durationMinutes = parseInt(duration) || 0;
         const banReason = reason || 'Banned by admin';
         
         let banCmd = '';
-        let kickCmd = '';
         
         if (steamId && steamId !== 'Hidden/Pending') {
             // Prefer Steam ID for accuracy
             banCmd = `css_addban ${steamId} ${durationMinutes} "${banReason}"`;
-            kickCmd = `css_kick ${steamId} "${banReason}"`;
         } else {
             // Fallback to user ID
             banCmd = `css_addban #${userId} ${durationMinutes} "${banReason}"`;
-            kickCmd = `css_kick #${userId} "${banReason}"`;
         }
         
-        // Execute ban command
+        // Execute ban command (automatically kicks player)
         await serverManager.sendCommand(id, banCmd);
-        
-        // Kick player from server
-        try {
-            await serverManager.sendCommand(id, kickCmd);
-        } catch (kickError) {
-            console.error('[BAN] Failed to kick player after ban:', kickError);
-            // Continue anyway, ban is still applied
-        }
         
         // Record ban in database
         const expiresAt = durationMinutes > 0 
@@ -87,7 +77,7 @@ router.post("/:id/players/:userId/ban", async (req: any, res) => {
             expiresAt
         );
         
-        res.json({ success: true, message: `Player ${userId} banned and kicked` });
+        res.json({ success: true, message: `Player banned successfully` });
     } catch (error: any) {
         res.status(500).json({ message: error.message || "Failed to ban player" });
     }
