@@ -708,18 +708,33 @@ class ServerManager {
           continue;
         }
 
-        // Identify if it's a valid player line (Either starting with # or containing [Client])
-        const isStandard = trimmed.startsWith("#");
+        // Identify format type
+        const isCSS = trimmed.includes("SteamID64:");
+        const isStandard = trimmed.startsWith("#") || /^\s*\d+\s+\d{1,2}:\d{2}/.test(trimmed);
         const isPlugin = trimmed.includes("[Client]");
 
-        if (!isStandard && !isPlugin) continue;
+        if (!isCSS && !isStandard && !isPlugin) continue;
 
         let name = "";
         let connectedTime = "00:00:00";
         let ping = 0;
         let idPart = "";
+        let steamId64 = "";
 
-        if (isStandard) {
+        if (isCSS) {
+          // CSS Format: • [#2] "Pamsky" (IP Address: "159.146.35.163" SteamID64: "76561198968591397")
+          const match = trimmed.match(
+            /•\s*\[#(\d+)\]\s*["'](.+?)["']\s*\(.*?SteamID64:\s*["'](\d{17})["']\)/,
+          );
+          if (match) {
+            idPart = match[1] || "";
+            name = match[2] || "";
+            steamId64 = match[3] || "";
+            // CSS doesn't provide ping/time in this format, use defaults
+            connectedTime = "00:00:00";
+            ping = 0;
+          }
+        } else if (isStandard) {
           // CS2 Standard Format: 2    02:59   25    0     active 786432 159.146.35.163:14887 'Pamsky'
           // Pattern: id time ping loss state rate ip:port 'name'
           const match = trimmed.match(
@@ -763,7 +778,7 @@ class ServerManager {
         seenNames.add(name);
 
         // Initial Identity Resolution
-        let steamId = cache?.get(`i:${idPart}`) || cache?.get(`n:${name}`);
+        let steamId = steamId64 || cache?.get(`i:${idPart}`) || cache?.get(`n:${name}`);
 
         if (!steamId) {
           unresolvedNames.add(name);
