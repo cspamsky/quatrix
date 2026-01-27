@@ -9,18 +9,18 @@
       "CS2-SimpleAdmin/1.0.0": {
         "dependencies": {
           "CS2-SimpleAdminApi": "1.0.0",
-          "CounterStrikeSharp.API": "1.0.346",
+          "CounterStrikeSharp.API": "1.0.361",
           "Dapper": "2.1.66",
-          "MySqlConnector": "2.5.0-beta.1",
+          "MySqlConnector": "2.5.0",
           "System.Data.SQLite.Core": "1.0.119",
-          "System.Linq.Async": "7.0.0-preview.1.g24680b5469",
-          "ZLinq": "1.5.3"
+          "System.Linq.Async": "7.0.0",
+          "ZLinq": "1.5.4"
         },
         "runtime": {
           "CS2-SimpleAdmin.dll": {}
         }
       },
-      "CounterStrikeSharp.API/1.0.346": {
+      "CounterStrikeSharp.API/1.0.361": {
         "dependencies": {
           "McMaster.NETCore.Plugins": "1.4.0",
           "Microsoft.Extensions.Hosting": "8.0.0",
@@ -437,7 +437,7 @@
           }
         }
       },
-      "MySqlConnector/2.5.0-beta.1": {
+      "MySqlConnector/2.5.0": {
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
           "Microsoft.Extensions.Logging.Abstractions": "8.0.2"
@@ -560,34 +560,34 @@
           }
         }
       },
-      "System.Interactive.Async/7.0.0-preview.1.g24680b5469": {
+      "System.Interactive.Async/7.0.0": {
         "dependencies": {
-          "System.Linq.AsyncEnumerable": "10.0.0-rc.1.25451.107"
+          "System.Linq.AsyncEnumerable": "10.0.0"
         },
         "runtime": {
-          "lib/net8.0/System.Interactive.Async.dll": {
+          "lib/net6.0/System.Interactive.Async.dll": {
             "assemblyVersion": "7.0.0.0",
-            "fileVersion": "7.0.0.0"
+            "fileVersion": "7.0.0.45496"
           }
         }
       },
-      "System.Linq.Async/7.0.0-preview.1.g24680b5469": {
+      "System.Linq.Async/7.0.0": {
         "dependencies": {
-          "System.Interactive.Async": "7.0.0-preview.1.g24680b5469",
-          "System.Linq.AsyncEnumerable": "10.0.0-rc.1.25451.107"
+          "System.Interactive.Async": "7.0.0",
+          "System.Linq.AsyncEnumerable": "10.0.0"
         },
         "runtime": {
           "lib/netstandard2.1/System.Linq.Async.dll": {
             "assemblyVersion": "7.0.0.0",
-            "fileVersion": "7.0.0.0"
+            "fileVersion": "7.0.0.45496"
           }
         }
       },
-      "System.Linq.AsyncEnumerable/10.0.0-rc.1.25451.107": {
+      "System.Linq.AsyncEnumerable/10.0.0": {
         "runtime": {
           "lib/net8.0/System.Linq.AsyncEnumerable.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.25.45207"
+            "fileVersion": "10.0.25.52411"
           }
         }
       },
@@ -599,17 +599,17 @@
           }
         }
       },
-      "ZLinq/1.5.3": {
+      "ZLinq/1.5.4": {
         "runtime": {
           "lib/net8.0/ZLinq.dll": {
-            "assemblyVersion": "1.5.3.0",
-            "fileVersion": "1.5.3.0"
+            "assemblyVersion": "1.5.4.0",
+            "fileVersion": "1.5.4.0"
           }
         }
       },
       "CS2-SimpleAdminApi/1.0.0": {
         "dependencies": {
-          "CounterStrikeSharp.API": "1.0.346"
+          "CounterStrikeSharp.API": "1.0.361"
         },
         "runtime": {
           "CS2-SimpleAdminApi.dll": {
@@ -626,12 +626,12 @@
       "serviceable": false,
       "sha512": ""
     },
-    "CounterStrikeSharp.API/1.0.346": {
+    "CounterStrikeSharp.API/1.0.361": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-9+d1YJLS+Pk386345crfxF5FQlv9E0Eu/L+ChM9DnqrMZsVZpN/V2O9flX1lDGEXyKFthJrTPx43hACrjzV4bA==",
-      "path": "counterstrikesharp.api/1.0.346",
-      "hashPath": "counterstrikesharp.api.1.0.346.nupkg.sha512"
+      "sha512": "sha512-AhTF9MRd/FLJ/rO2+/FxzESvdpieRC8wY5X4HxrwS5MV7Qn5YWP5sk5XU0Cksa/50YbjmrJRg6mH8B9J2wdtTQ==",
+      "path": "counterstrikesharp.api/1.0.361",
+      "hashPath": "counterstrikesharp.api.1.0.361.nupkg.sha512"
     },
     "Dapper/2.1.66": {
       "type": "package",
@@ -857,12 +857,12 @@
       "path": "microsoft.extensions.primitives/8.0.0",
       "hashPath": "microsoft.extensions.primitives.8.0.0.nupkg.sha512"
     },
-    "MySqlConnector/2.5.0-beta.1": {
+    "MySqlConnector/2.5.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-cRppmyeAGx2OgDftTCHDUeyiX+RrPKSNH9pk9aEzqxrs8Q2Z/7JCd4Btc7dM3ewgR7a01r1mXB6wx8BWixvwTQ==",
-      "path": "mysqlconnector/2.5.0-beta.1",
-      "hashPath": "mysqlconnector.2.5.0-beta.1.nupkg.sha512"
+      "sha512": "sha512-hoAwfHHF8DlRRqwHOhN3u1KLi+XbX/4LPS7Anfa+SYC97vRyIfdEOEEfj1L50q01Ik8aDNvmDrNmu/VPFiAiaQ==",
+      "path": "mysqlconnector/2.5.0",
+      "hashPath": "mysqlconnector.2.5.0.nupkg.sha512"
     },
     "Scrutor/4.2.2": {
       "type": "package",
@@ -920,26 +920,26 @@
       "path": "system.diagnostics.eventlog/8.0.0",
       "hashPath": "system.diagnostics.eventlog.8.0.0.nupkg.sha512"
     },
-    "System.Interactive.Async/7.0.0-preview.1.g24680b5469": {
+    "System.Interactive.Async/7.0.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-+szATIG2qi/gacnQRPWt+NYLsnoc+8nJOGGVyUEvvYKNB0L43B/uH1QE4BlPkWoNVn2HCoRC7xLELmvZ87tNcA==",
-      "path": "system.interactive.async/7.0.0-preview.1.g24680b5469",
-      "hashPath": "system.interactive.async.7.0.0-preview.1.g24680b5469.nupkg.sha512"
+      "sha512": "sha512-Ckj+tg2BVOZ0oLp7FAbjfvRyA/BMkUhVxROLd+x22zncRR6KD7CdFzAYp+9Mo2cedxAMo2X9ZNyhZu68jdDITw==",
+      "path": "system.interactive.async/7.0.0",
+      "hashPath": "system.interactive.async.7.0.0.nupkg.sha512"
     },
-    "System.Linq.Async/7.0.0-preview.1.g24680b5469": {
+    "System.Linq.Async/7.0.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-8hjN0yC3D56Qa0WimqLLlpWQkC6Y4hasmCug/8dxfXUX8+0CYRjnCLBQkQTjVrUnnV6LumQGoKCz7X1fD/RkMg==",
-      "path": "system.linq.async/7.0.0-preview.1.g24680b5469",
-      "hashPath": "system.linq.async.7.0.0-preview.1.g24680b5469.nupkg.sha512"
+      "sha512": "sha512-A2Wci92Oyuodi8YLMQCJJ0vHqzgRFgEUG1K6tQNcoxHd3w05B1LvGzXvxQnGYPIL4Cr4hicHytpk2F2Jx8TZHg==",
+      "path": "system.linq.async/7.0.0",
+      "hashPath": "system.linq.async.7.0.0.nupkg.sha512"
     },
-    "System.Linq.AsyncEnumerable/10.0.0-rc.1.25451.107": {
+    "System.Linq.AsyncEnumerable/10.0.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-rSbbRADnx1qz9sePyjJ2kRlPyPFVAbettclbG2kh2XlVVxuqpOvDvuhvzyqjr4dsw48fwRauv7faBU18m2pV6w==",
-      "path": "system.linq.asyncenumerable/10.0.0-rc.1.25451.107",
-      "hashPath": "system.linq.asyncenumerable.10.0.0-rc.1.25451.107.nupkg.sha512"
+      "sha512": "sha512-t1jnw7So3eeZVemma+82w+Y394oPX1bebkr3gY3IzyotP3kKC/JWwGRz2WssoUFODWWvkACT2hXliumgCHu9LQ==",
+      "path": "system.linq.asyncenumerable/10.0.0",
+      "hashPath": "system.linq.asyncenumerable.10.0.0.nupkg.sha512"
     },
     "Tomlyn/0.19.0": {
       "type": "package",
@@ -948,12 +948,12 @@
       "path": "tomlyn/0.19.0",
       "hashPath": "tomlyn.0.19.0.nupkg.sha512"
     },
-    "ZLinq/1.5.3": {
+    "ZLinq/1.5.4": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-tY/n1/qup0fmX1JqubxD9IoD0gOCU9sJqYujiPbeEJFYzAhGLvxUtayXl8LhocnOBw9PewPqWb0QtMnQUfM/0A==",
-      "path": "zlinq/1.5.3",
-      "hashPath": "zlinq.1.5.3.nupkg.sha512"
+      "sha512": "sha512-Ogt0vjeHVPKJFOqcoEeHpBft4b1HD6CnOpeQSHWK2WPq0kMtietggm/2viwW44hdalf4F2mYeyWomDXMw9rv1g==",
+      "path": "zlinq/1.5.4",
+      "hashPath": "zlinq.1.5.4.nupkg.sha512"
     },
     "CS2-SimpleAdminApi/1.0.0": {
       "type": "project",

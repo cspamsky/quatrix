@@ -67,7 +67,7 @@ export const pluginRegistry = {
     },
     simpleadmin: {
         name: 'CS2-SimpleAdmin',
-        currentVersion: '1.7.8-beta-8',
+        currentVersion: '1.7.8-beta-10b1',
         category: 'cssharp' as const,
         tags: ['admin', 'utility'],
         description: 'User-friendly admin management system',
