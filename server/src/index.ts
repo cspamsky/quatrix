@@ -4,7 +4,7 @@ import { Server, type Socket } from "socket.io";
 import cors from "cors";
 import si from "systeminformation";
 import db from "./db.js";
-import serverManager from "./serverManager.js";
+import { serverManager } from "./serverManager.js";
 import { apiLimiter } from "./middleware/rateLimiter.js";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -33,7 +33,13 @@ const io = new Server(httpServer, {
 app.set('io', io);
 
 // Inject Socket.IO into ServerManager for real-time updates
-serverManager.setSocketIO(io);
+console.log(`[DEBUG] serverManager type: ${typeof serverManager}`);
+console.log(`[DEBUG] has setSocketIO: ${typeof serverManager?.setSocketIO === 'function'}`);
+if (serverManager && typeof serverManager.setSocketIO === 'function') {
+  serverManager.setSocketIO(io);
+} else {
+  console.error('[CRITICAL] serverManager.setSocketIO is not a function!', serverManager);
+}
 
 const PORT = process.env.PORT || 3001;
 const isProduction = process.env.NODE_ENV === 'production';

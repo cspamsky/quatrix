@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import db from "../db.js";
-import serverManager from "../serverManager.js";
+import { serverManager } from "../serverManager.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { createServerLimiter } from "../middleware/rateLimiter.js";
 

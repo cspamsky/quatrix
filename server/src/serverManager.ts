@@ -28,6 +28,7 @@ class ServerManager {
   private io: any = null;
 
   public setSocketIO(io: any) {
+    console.log(`[ServerManager] Socket.IO injected`);
     this.io = io;
   }
 
@@ -1208,4 +1209,5 @@ const serverManager = new ServerManager();
   }
 })();
 
+export { serverManager };
 export default serverManager;
