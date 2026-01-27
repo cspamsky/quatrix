@@ -42,16 +42,29 @@ router.post("/:id/players/:userId/ban", async (req: any, res) => {
         const durationMinutes = parseInt(duration) || 0;
         const banReason = reason || 'Banned by admin';
         
-        let cmd = '';
+        let banCmd = '';
+        let kickCmd = '';
+        
         if (steamId && steamId !== 'Hidden/Pending') {
             // Prefer Steam ID for accuracy
-            cmd = `css_ban ${steamId} ${durationMinutes} "${banReason}"`;
+            banCmd = `css_ban ${steamId} ${durationMinutes} "${banReason}"`;
+            kickCmd = `css_kick ${steamId} "${banReason}"`;
         } else {
             // Fallback to user ID
-            cmd = `css_ban #${userId} ${durationMinutes} "${banReason}"`;
+            banCmd = `css_ban #${userId} ${durationMinutes} "${banReason}"`;
+            kickCmd = `css_kick #${userId} "${banReason}"`;
         }
         
-        await serverManager.sendCommand(id, cmd);
+        // Execute ban command
+        await serverManager.sendCommand(id, banCmd);
+        
+        // Kick player from server
+        try {
+            await serverManager.sendCommand(id, kickCmd);
+        } catch (kickError) {
+            console.error('[BAN] Failed to kick player after ban:', kickError);
+            // Continue anyway, ban is still applied
+        }
         
         // Record ban in database
         const expiresAt = durationMinutes > 0 
@@ -74,7 +87,7 @@ router.post("/:id/players/:userId/ban", async (req: any, res) => {
             expiresAt
         );
         
-        res.json({ success: true, message: `Player ${userId} banned` });
+        res.json({ success: true, message: `Player ${userId} banned and kicked` });
     } catch (error: any) {
         res.status(500).json({ message: error.message || "Failed to ban player" });
     }
