@@ -37,26 +37,27 @@ router.post("/:id/players/:userId/ban", async (req: any, res) => {
         const { id, userId } = req.params;
         const { duration, reason, playerName, steamId, ipAddress } = req.body; // duration in minutes, 0 for permanent
         
-        // Use CSS addban for persistent bans (requires CS2-SimpleAdmin)
-        // Format: css_addban <steamid|name|userid> <duration> <reason>
-        // Note: css_addban automatically kicks the player
+        // Use CS2 native writeid for persistent bans (writes to banned_user.cfg)
+        // Format: writeid <minutes> <steamid>
+        // Then use css_addban for database tracking
         const durationMinutes = parseInt(duration) || 0;
         const banReason = reason || 'Banned by admin';
         
-        let banCmd = '';
-        
-        if (steamId && steamId !== 'Hidden/Pending') {
-            // Prefer Steam ID for accuracy
-            banCmd = `css_addban ${steamId} ${durationMinutes} "${banReason}"`;
-        } else {
-            // Fallback to user ID
-            banCmd = `css_addban #${userId} ${durationMinutes} "${banReason}"`;
+        if (!steamId || steamId === 'Hidden/Pending') {
+            return res.status(400).json({ message: 'Steam ID required for ban' });
         }
         
-        // Execute ban command (automatically kicks player)
-        await serverManager.sendCommand(id, banCmd);
+        // Execute CS2 native ban (persistent across restarts)
+        await serverManager.sendCommand(id, `writeid ${durationMinutes} ${steamId}`);
         
-        // Record ban in database
+        // Also add to SimpleAdmin database for tracking
+        try {
+            await serverManager.sendCommand(id, `css_addban ${steamId} ${durationMinutes} "${banReason}"`);
+        } catch (cssError) {
+            console.log('[BAN] CSS addban failed, but native ban applied:', cssError);
+        }
+        
+        // Record ban in our database
         const expiresAt = durationMinutes > 0 
             ? new Date(Date.now() + durationMinutes * 60 * 1000).toISOString()
             : null;
@@ -68,8 +69,8 @@ router.post("/:id/players/:userId/ban", async (req: any, res) => {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
             id,
-            playerName || `User #${userId}`,
-            steamId || null,
+            playerName || `User`,
+            steamId,
             ipAddress || null,
             banReason,
             durationMinutes,
