@@ -366,18 +366,20 @@ class ServerManager {
     let mapName = options.map || "de_dust2";
     let workshopId: string | null = null;
 
+    let knownWorkshop: { workshop_id: string; map_file?: string } | undefined;
+
     // 1. Double check regex for workshop path or ID
     const workshopMatch = mapName.match(/workshop\/(\d+)/i) || mapName.match(/^(\d{8,})$/);
     if (workshopMatch) {
       workshopId = workshopMatch[1];
     } else {
       // 2. Flexible lookup: Check map_file, name (case insensitive), or replacing spaces with underscores
-      const knownWorkshop = db.prepare(`
-        SELECT workshop_id FROM workshop_maps 
+      knownWorkshop = db.prepare(`
+        SELECT workshop_id, map_file FROM workshop_maps 
         WHERE LOWER(map_file) = LOWER(?) 
         OR LOWER(name) = LOWER(?) 
         OR LOWER(REPLACE(name, ' ', '_')) = LOWER(?)
-      `).get(mapName, mapName, mapName) as { workshop_id: string } | undefined;
+      `).get(mapName, mapName, mapName) as any;
       
       if (knownWorkshop) {
         workshopId = knownWorkshop.workshop_id;
@@ -385,8 +387,18 @@ class ServerManager {
     }
     
     if (workshopId) {
+      console.log(`[SERVER] Detected Workshop Map Attempt: ${mapName} (ID: ${workshopId})`);
       args.push("+host_workshop_map", workshopId);
+      
+      // CRITICAL: Always provide +map even with host_workshop_map. 
+      // CS2 supports using the Workshop ID directly with the +map command.
+      if (knownWorkshop?.map_file) {
+        args.push("+map", `workshop/${workshopId}/${knownWorkshop.map_file}`);
+      } else {
+        args.push("+map", workshopId);
+      }
     } else {
+      console.log(`[SERVER] Detected Standard Map: ${mapName}`);
       args.push("+map", mapName);
     }
 
@@ -395,7 +407,7 @@ class ServerManager {
       options.port.toString(),
       "-maxplayers",
       (options.max_players || 16).toString(),
-      "-nosteamclient",
+      // REMOVED -nosteamclient as it often breaks workshop downloads on Linux
       "+ip",
       "0.0.0.0",
       "-tickrate",
