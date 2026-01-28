@@ -129,39 +129,58 @@ setInterval(async () => {
   } catch (err) { /* silent stats fail */ }
 }, 2000);
 
-// 2. Map Sync Task (Every 30 seconds)
+// 2. Map Sync Task (Every 10 seconds)
 setInterval(async () => {
-  try {
-    const servers = db.prepare("SELECT id, map FROM servers WHERE status = 'ONLINE'").all() as any[];
-    if (servers.length === 0) return;
+    try {
+        const servers = db.prepare("SELECT id, map FROM servers WHERE status = 'ONLINE'").all() as any[];
+        if (servers.length === 0) return;
 
-    // First, fetch current maps via RCON (Parallel/Network bound)
-    const updateTasks = await Promise.all(servers.map(async (server) => {
-      const currentMap = await serverManager.getCurrentMap(server.id);
-      if (currentMap && currentMap !== server.map) {
-        return { id: server.id, map: currentMap };
-      }
-      return null;
-    }));
+        // 1. Fetch current maps via RCON (Parallel/Network bound)
+        const updateTasks = await Promise.all(servers.map(async (server) => {
+            const currentMap = await serverManager.getCurrentMap(server.id);
+            
+            // Auto-discovery of Workshop Maps: 
+            // If it's a workshop map and we don't know it, try to fetch details
+            if (currentMap && currentMap.includes('workshop/')) {
+                const workshopIdMatch = currentMap.match(/workshop\/(\d+)/);
+                if (workshopIdMatch) {
+                    const workshopId = workshopIdMatch[1];
+                    const existing = db.prepare("SELECT id FROM workshop_maps WHERE workshop_id = ?").get(workshopId);
+                    
+                    if (!existing && workshopId) {
+                        console.log(`[SYNC] Discovering new workshop map: ${workshopId}`);
+                        // Trigger background registration (direct utility call)
+                        const wid = workshopId; // Local copy to ensure string type
+                        import("./utils/workshop.js").then(m => m.registerWorkshopMap(wid))
+                            .catch(e => console.warn(`[SYNC] Auto-registration failed for ${workshopId}:`, e.message));
+                    }
+                }
+            }
 
-    const validUpdates = updateTasks.filter((u): u is { id: any, map: string } => u !== null);
+            if (currentMap && currentMap !== server.map) {
+                return { id: server.id, map: currentMap };
+            }
+            return null;
+        }));
 
-    // Then, flush all changes to DB in a SINGLE write transaction
-    if (validUpdates.length > 0) {
-      const updateStmt = db.prepare("UPDATE servers SET map = ? WHERE id = ?");
-      const batchUpdate = db.transaction((data) => {
-        for (const update of data) {
-          updateStmt.run(update.map, update.id);
+        const validUpdates = updateTasks.filter((u): u is { id: any, map: string } => u !== null);
+
+        // 2. Flush all changes to DB in a SINGLE write transaction
+        if (validUpdates.length > 0) {
+            const updateStmt = db.prepare("UPDATE servers SET map = ? WHERE id = ?");
+            const batchUpdate = db.transaction((data) => {
+                for (const update of data) {
+                    updateStmt.run(update.map, update.id);
+                }
+            });
+
+            batchUpdate(validUpdates);
+            
+            // Notify clients
+            validUpdates.forEach(u => io.emit('server_update', { serverId: u.id }));
+            console.log(`[SYNC] Synced maps for ${validUpdates.length} servers.`);
         }
-      });
-
-      batchUpdate(validUpdates);
-      
-      // Notify clients
-      validUpdates.forEach(u => io.emit('server_update', { serverId: u.id }));
-      console.log(`[SYNC] Synced maps for ${validUpdates.length} servers.`);
-    }
-  } catch (err) { /* silent map sync fail */ }
+    } catch (err) { /* silent map sync fail */ }
 }, 10000); // Check every 10 seconds for UI updates
 
 // 3. System Initialization

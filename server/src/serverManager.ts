@@ -664,10 +664,23 @@ class ServerManager {
   public async getCurrentMap(id: string | number): Promise<string | null> {
     try {
       const res = await this.sendCommand(id, "status");
-      const match = res.match(
-        /loaded spawngroup\(\s*1\)\s*:\s*SV:\s*\[1:\s*(\w+)/i,
+      
+      // 1. Try standard 'map :' line (Most reliable)
+      // Example: map : workshop/3070176466/de_dust2
+      const mapLineMatch = res.match(/map\s+:\s+(.+)/i);
+      if (mapLineMatch && mapLineMatch[1]) {
+        return mapLineMatch[1].trim();
+      }
+
+      // 2. Try 'loaded spawngroup' (Internal engine state)
+      const spawnMatch = res.match(
+        /loaded spawngroup\(\s*1\)\s*:\s*SV:\s*\[1:\s*([\w\/]+)/i,
       );
-      return match && match[1] ? match[1] : null;
+      if (spawnMatch && spawnMatch[1]) {
+        return spawnMatch[1].trim();
+      }
+
+      return null;
     } catch (e) {
       return null;
     }
