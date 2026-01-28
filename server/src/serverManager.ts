@@ -354,26 +354,26 @@ class ServerManager {
     await fs.promises.writeFile(serverCfgPath, cfgContent);
     console.log(`[SERVER] Generated config at ${serverCfgPath}`);
 
-    const args = [
-      "-dedicated",
-      "+game_type",
-      (options.game_type ?? 0).toString(),
-      "+game_mode",
-      (options.game_mode ?? 0).toString(),
-    ];
+    const args = ["-dedicated"];
+
+    if (options.steam_api_key) {
+      args.push("-authkey", options.steam_api_key);
+    }
+
+    args.push(
+      "+game_type", (options.game_type ?? 0).toString(),
+      "+game_mode", (options.game_mode ?? 0).toString()
+    );
 
     // Detect if the map is a workshop map
     let mapName = options.map || "de_dust2";
     let workshopId: string | null = null;
-
     let knownWorkshop: { workshop_id: string; map_file?: string } | undefined;
 
-    // 1. Double check regex for workshop path or ID
     const workshopMatch = mapName.match(/workshop\/(\d+)/i) || mapName.match(/^(\d{8,})$/);
     if (workshopMatch) {
       workshopId = workshopMatch[1];
     } else {
-      // 2. Flexible lookup: Check map_file, name (case insensitive), or replacing spaces with underscores
       knownWorkshop = db.prepare(`
         SELECT workshop_id, map_file FROM workshop_maps 
         WHERE LOWER(map_file) = LOWER(?) 
@@ -386,19 +386,13 @@ class ServerManager {
       }
     }
     
+    let workshopIdToSwitch: string | null = null;
     if (workshopId) {
-      console.log(`[SERVER] Detected Workshop Map Attempt: ${mapName} (ID: ${workshopId})`);
-      args.push("+host_workshop_map", workshopId);
-      
-      // CRITICAL: Always provide +map even with host_workshop_map. 
-      // CS2 supports using the Workshop ID directly with the +map command.
-      if (knownWorkshop?.map_file) {
-        args.push("+map", `workshop/${workshopId}/${knownWorkshop.map_file}`);
-      } else {
-        args.push("+map", workshopId);
-      }
+      console.log(`[SERVER] Workshop map detected. Starting on de_dust2 first for stability, then will auto-switch to ID: ${workshopId}`);
+      args.push("+map", "de_dust2");
+      workshopIdToSwitch = workshopId;
     } else {
-      console.log(`[SERVER] Detected Standard Map: ${mapName}`);
+      console.log(`[SERVER] Launching Standard Map: ${mapName}`);
       args.push("+map", mapName);
     }
 
@@ -407,7 +401,6 @@ class ServerManager {
       options.port.toString(),
       "-maxplayers",
       (options.max_players || 16).toString(),
-      // REMOVED -nosteamclient as it often breaks workshop downloads on Linux
       "+ip",
       "0.0.0.0",
       "-tickrate",
@@ -499,6 +492,21 @@ class ServerManager {
       env,
       shell: false,
     });
+
+    // Handle the automated workshop switch after a delay
+    if (workshopIdToSwitch) {
+      const targetId = workshopIdToSwitch;
+      setTimeout(async () => {
+        try {
+          console.log(`[SERVER] Triggering automated workshop switch to ${targetId} for instance ${id}...`);
+          // Use more retries for this initial boot switch
+          await this.sendCommand(id, `host_workshop_map ${targetId}`, 10);
+          console.log(`[SERVER] Successfully switched to workshop map ${targetId}`);
+        } catch (e) {
+          console.error(`[SERVER] Automated workshop switch failed for ${id}. Error:`, e);
+        }
+      }, 20000); // 20 seconds is usually enough for boot + steam init
+    }
 
     const logFile = path.join(serverPath, "console.log");
     const logStream = fs.createWriteStream(logFile, { flags: "a" });
