@@ -83,7 +83,7 @@ const Maps = () => {
       name: m.workshop_id,
       displayName: m.name,
       type: 'Workshop',
-      image: m.image_url || 'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=1000',
+      image: m.image_url || 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_dust2_png.png',
       isActive: currentMapName === m.workshop_id
     }))
 

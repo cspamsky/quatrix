@@ -46,7 +46,11 @@ router.get("/", (req: any, res) => {
         s.map = wm.map_file OR
         s.map = wm.workshop_id OR 
         s.map LIKE '%' || wm.workshop_id || '%' OR
-        LOWER(s.map) = LOWER(wm.map_file)
+        s.map LIKE '%/' || wm.map_file OR
+        s.map LIKE '%\' || wm.map_file OR
+        LOWER(s.map) = LOWER(wm.map_file) OR
+        LOWER(s.map) LIKE '%/' || LOWER(wm.map_file) OR
+        LOWER(s.map) LIKE '%\' || LOWER(wm.map_file)
       )
       WHERE s.user_id = ?
     `).all(req.user.id);
