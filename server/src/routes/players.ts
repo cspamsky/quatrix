@@ -46,20 +46,21 @@ router.post("/:id/players/:userId/ban", async (req: any, res) => {
         }
 
         try {
-            console.log(`[BAN DEBUG] Attempting to ban ${playerName} (UserID: ${userId}, SteamID: ${steamId})`);
+            console.log(`[BAN DEBUG] STARTING OPTIMIZED BAN for ${playerName} (#${userId})`);
 
-            // 1. TRY KICKING FIRST (Essential to see if RCON works)
-            const kickRes = await serverManager.sendCommand(id, `kickid ${userId} "${banReason}"`);
-            console.log(`[BAN DEBUG] Kick Result: ${kickRes}`);
+            // 1. BAN WHILE ONLINE (Using the #ID format they are currently using)
+            // This is the most reliable way for SimpleAdmin to link the session to the ban.
+            const cssBanRes = await serverManager.sendCommand(id, `css_ban #${userId} ${durationMinutes} "${banReason}"`);
+            console.log(`[BAN DEBUG] CSS Online Ban Result: ${cssBanRes}`);
 
-            // 2. TRY NATIVE BAN
-            const nativeBanRes = await serverManager.sendCommand(id, `banid ${durationMinutes} ${steamId}`);
-            await serverManager.sendCommand(id, `writeid`);
-            console.log(`[BAN DEBUG] Native Ban Result: ${nativeBanRes}`);
+            // 2. OFFLINE RECORD (For persistence backup)
+            await serverManager.sendCommand(id, `css_addban ${steamId} ${durationMinutes} "${banReason}"`);
 
-            // 3. TRY SIMPLEADMIN BAN
-            const cssBanRes = await serverManager.sendCommand(id, `css_addban ${steamId} ${durationMinutes} "${banReason}"`);
-            console.log(`[BAN DEBUG] CSS Ban Result: ${cssBanRes}`);
+            // 3. FORCE KICK (Just in case the ban command didn't disconnect them)
+            await serverManager.sendCommand(id, `kickid ${userId} "${banReason}"`);
+            
+            // 4. SYNC (Force SimpleAdmin to reload/flush if possible)
+            await serverManager.sendCommand(id, `css_reload_admins`); // Sometimes helps refresh the ban list
             
         } catch (rconError) {
             console.error('[BAN ERROR] RCON failure:', rconError);
