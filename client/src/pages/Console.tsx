@@ -7,6 +7,7 @@ import {
   RotateCcw,
   RefreshCw,
   MoveRight,
+  Server
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import socket from '../utils/socket'
@@ -381,18 +382,19 @@ const Console = () => {
         <div className="flex items-center gap-4">
           <div className="flex flex-col items-end">
             <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Switch Server</span>
-            <select 
-              value={id || ""} 
-              onChange={(e) => navigate(`/console/${e.target.value}`)}
-              className="bg-[#111827] border border-gray-800 text-white text-sm rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-primary/50 transition-all min-w-[200px]"
-            >
-              <option value="" disabled>Select a server...</option>
-              {allServers.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+            <div className="relative group">
+              <Server className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
+              <select 
+                className="bg-[#111827] border border-gray-800 text-white pl-10 pr-4 py-2 rounded-xl focus:ring-2 focus:ring-primary/50 transition-all outline-none text-sm min-w-[200px]"
+                value={id || ''}
+                onChange={(e) => navigate(`/console/${e.target.value}`)}
+              >
+                <option value="" disabled>Select server...</option>
+                {allServers.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       </header>
