@@ -7,7 +7,8 @@ import {
   LogOut,
   Layers,
   Terminal,
-  ShieldAlert
+  ShieldAlert,
+  ShieldCheck
 } from 'lucide-react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import Logo from './Logo'
@@ -29,6 +30,7 @@ const Layout = ({ children }: LayoutProps) => {
     { path: '/players', icon: Users, label: 'Player List' },
     { path: '/bans', icon: ShieldAlert, label: 'Ban History' },
     { path: '/plugins', icon: Puzzle, label: 'Plugins' },
+    { path: '/admins', icon: ShieldCheck, label: 'Admin Management' },
     { path: '/settings', icon: Settings, label: 'Settings' },
   ]
 

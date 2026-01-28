@@ -8,7 +8,7 @@ import {
   RefreshCw,
   MoveRight,
 } from "lucide-react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import socket from '../utils/socket'
 import { generateUUID } from "../utils/uuid";
 import { COMMON_COMMANDS } from "../config/consoleCommands";
@@ -24,19 +24,22 @@ interface Server {
   id: number;
   status: string;
   name: string;
+  port: number;
 }
 
 const Console = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [server, setServer] = useState<Server | null>(null);
+  const [allServers, setAllServers] = useState<Server[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([
     {
       id: generateUUID(),
       timestamp: new Date().toLocaleTimeString(),
       type: "INFO",
       message: id
-        ? `Connected to Instance ${id} Console...`
-        : "Global Console Access. Please select an instance from the Servers page to see live logs.",
+        ? `Connecting to Instance Console...`
+        : "Please select an instance to view live console logs.",
     },
   ]);
   const [command, setCommand] = useState("");
@@ -51,10 +54,13 @@ const Console = () => {
     const fetchServerData = async () => {
       try {
         const response = await apiFetch(`/api/servers`);
-
         const data = await response.json();
-        const currentServer = data.find((s: any) => s.id.toString() === id);
-        if (currentServer) setServer(currentServer);
+        setAllServers(data);
+        
+        if (id) {
+          const currentServer = data.find((s: any) => s.id.toString() === id);
+          if (currentServer) setServer(currentServer);
+        }
       } catch (error) {
         console.error("Failed to fetch server info:", error);
       }
@@ -169,6 +175,20 @@ const Console = () => {
       socket.off(eventName);
       socket.off("status_update");
     };
+  }, [id]);
+
+  // Reset logs when server changes
+  useEffect(() => {
+    setLogs([
+      {
+        id: generateUUID(),
+        timestamp: new Date().toLocaleTimeString(),
+        type: "INFO",
+        message: id
+          ? `Connected to ${server?.name || 'Instance'} Console...`
+          : "Please select an instance to view live console logs.",
+      },
+    ]);
   }, [id]);
 
   // --- Auto-scroll Effect ---
@@ -350,8 +370,26 @@ const Console = () => {
             Server Console
           </h2>
           <p className="text-sm text-gray-400 mt-1">
-            CS2 Server Panel - Manage your competitive battlefield with ease
+            Real-time server interaction and monitoring
           </p>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Switch Server</span>
+            <select 
+              value={id || ""} 
+              onChange={(e) => navigate(`/console/${e.target.value}`)}
+              className="bg-[#111827] border border-gray-800 text-white text-sm rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-primary/50 transition-all min-w-[200px]"
+            >
+              <option value="" disabled>Select a server...</option>
+              {allServers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </header>
 

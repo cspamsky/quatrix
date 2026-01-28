@@ -22,6 +22,7 @@ const Maps = lazy(() => import('./pages/Maps'))
 const ServerSettings = lazy(() => import('./pages/ServerSettings'))
 const FileManager = lazy(() => import('./pages/FileManager'))
 const BanHistory = lazy(() => import('./pages/BanHistory'))
+const Admins = lazy(() => import('./pages/Admins'))
 
 // Loading component with react-loading-icons
 const PageLoader = () => (
@@ -89,6 +90,7 @@ const App = () => {
             <Route path="/bans" element={<ProtectedRoute><Layout><BanHistory /></Layout></ProtectedRoute>} />
             <Route path="/maps" element={<ProtectedRoute><Layout><Maps /></Layout></ProtectedRoute>} />
             <Route path="/plugins" element={<ProtectedRoute><Layout><Plugins /></Layout></ProtectedRoute>} />
+            <Route path="/admins" element={<ProtectedRoute><Layout><Admins /></Layout></ProtectedRoute>} />
 
             {/* Default route redirects to dashboard if logged in, otherwise login */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
