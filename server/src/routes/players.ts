@@ -46,20 +46,23 @@ router.post("/:id/players/:userId/ban", async (req: any, res) => {
         }
 
         try {
-            // LAYER 1: SimpleAdmin (The most reliable for CS2 plugins)
-            // Try banning by #userid first (immediate) then by steamid (offline/persistence)
-            await serverManager.sendCommand(id, `css_addban #${userId} ${durationMinutes} "${banReason}"`);
-            await serverManager.sendCommand(id, `css_addban ${steamId} ${durationMinutes} "${banReason}"`);
-            
-            // LAYER 2: CS2 Native Ban (Emergency Fallback)
-            await serverManager.sendCommand(id, `banid ${durationMinutes} ${steamId}`);
-            await serverManager.sendCommand(id, `writeid`); 
-            
-            // LAYER 3: Force Kick
-            await serverManager.sendCommand(id, `kickid ${userId} "${banReason}"`);
+            console.log(`[BAN DEBUG] Attempting to ban ${playerName} (UserID: ${userId}, SteamID: ${steamId})`);
+
+            // 1. TRY KICKING FIRST (Essential to see if RCON works)
+            const kickRes = await serverManager.sendCommand(id, `kickid ${userId} "${banReason}"`);
+            console.log(`[BAN DEBUG] Kick Result: ${kickRes}`);
+
+            // 2. TRY NATIVE BAN
+            const nativeBanRes = await serverManager.sendCommand(id, `banid ${durationMinutes} ${steamId}`);
+            await serverManager.sendCommand(id, `writeid`);
+            console.log(`[BAN DEBUG] Native Ban Result: ${nativeBanRes}`);
+
+            // 3. TRY SIMPLEADMIN BAN
+            const cssBanRes = await serverManager.sendCommand(id, `css_addban ${steamId} ${durationMinutes} "${banReason}"`);
+            console.log(`[BAN DEBUG] CSS Ban Result: ${cssBanRes}`);
             
         } catch (rconError) {
-            console.error('[BAN] RCON error during triple-ban:', rconError);
+            console.error('[BAN ERROR] RCON failure:', rconError);
         }
         
         // 2. Record in our web panel database for History page
