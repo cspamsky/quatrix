@@ -1,20 +1,18 @@
 // CS2 Map Images - Using official Steam CDN assets only
 export const mapImages: Record<string, string> = {
-  'de_dust2': 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_dust2_png.png',
-  'de_mirage': 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_mirage_png.png',
-  'de_inferno': 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_inferno_png.png',
-  'de_nuke': 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_nuke_png.png',
-  'de_ancient': 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_ancient_png.png',
-  'de_anubis': 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_anubis_png.png',
-  'de_vertigo': 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_vertigo_png.png',
-  'de_overpass': 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_overpass_png.png',
-  'de_train': 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_train_png.png',
-  'de_cache': 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_cache_png.png',
-  'de_cbble': 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_cbble_png.png',
-  'cs_italy': 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_cs_italy_png.png',
-  'cs_office': 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_cs_office_png.png',
+  'de_dust2': '/images/maps/de_dust2.webp',
+  'de_mirage': '/images/maps/de_mirage.webp',
+  'de_inferno': '/images/maps/de_inferno.webp',
+  'de_nuke': '/images/maps/de_nuke_cs2.webp',
+  'de_ancient': '/images/maps/de_ancient.webp',
+  'de_anubis': '/images/maps/de_anubis.webp',
+  'de_vertigo': '/images/maps/de_vertigo.webp',
+  'de_overpass': '/images/maps/de_overpass.webp',
+  'de_train': '/images/maps/de_train.webp',
+  'cs_italy': '/images/maps/de_italy.webp',
+  'cs_office': '/images/maps/de_office.webp',
   // Default fallback - Official CS2 key art/background from Steam
-  'default': 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_dust2_png.png'
+  'default': '/images/maps/de_dust2.webp'
 }
 
 export const getMapImage = (mapName: string): string => {

@@ -65,16 +65,16 @@ const Maps = () => {
     const currentMapName = currentServer?.map || 'de_dust2'
 
     const staticMaps: CS2Map[] = [
-      { id: '1', name: 'de_dust2', displayName: 'Dust II', type: 'Defusal', image: 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_dust2_png.png', isActive: currentMapName === 'de_dust2' },
-      { id: '2', name: 'de_inferno', displayName: 'Inferno', type: 'Defusal', image: 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_inferno_png.png', isActive: currentMapName === 'de_inferno' },
-      { id: '3', name: 'de_mirage', displayName: 'Mirage', type: 'Defusal', image: 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_mirage_png.png', isActive: currentMapName === 'de_mirage' },
-      { id: '4', name: 'de_nuke', displayName: 'Nuke', type: 'Defusal', image: 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_nuke_png.png', isActive: currentMapName === 'de_nuke' },
-      { id: '5', name: 'de_overpass', displayName: 'Overpass', type: 'Defusal', image: 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_overpass_png.png', isActive: currentMapName === 'de_overpass' },
-      { id: '6', name: 'de_ancient', displayName: 'Ancient', type: 'Defusal', image: 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_ancient_png.png', isActive: currentMapName === 'de_ancient' },
-      { id: '7', name: 'de_anubis', displayName: 'Anubis', type: 'Defusal', image: 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_anubis_png.png', isActive: currentMapName === 'de_anubis' },
-      { id: '8', name: 'de_vertigo', displayName: 'Vertigo', type: 'Defusal', image: 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_vertigo_png.png', isActive: currentMapName === 'de_vertigo' },
-      { id: '9', name: 'cs_italy', displayName: 'Italy', type: 'Hostage', image: 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_cs_italy_png.png', isActive: currentMapName === 'cs_italy' },
-      { id: '10', name: 'cs_office', displayName: 'Office', type: 'Hostage', image: 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_cs_office_png.png', isActive: currentMapName === 'cs_office' }
+      { id: '1', name: 'de_dust2', displayName: 'Dust II', type: 'Defusal', image: '/images/maps/de_dust2.webp', isActive: currentMapName === 'de_dust2' },
+      { id: '2', name: 'de_inferno', displayName: 'Inferno', type: 'Defusal', image: '/images/maps/de_inferno.webp', isActive: currentMapName === 'de_inferno' },
+      { id: '3', name: 'de_mirage', displayName: 'Mirage', type: 'Defusal', image: '/images/maps/de_mirage.webp', isActive: currentMapName === 'de_mirage' },
+      { id: '4', name: 'de_nuke', displayName: 'Nuke', type: 'Defusal', image: '/images/maps/de_nuke_cs2.webp', isActive: currentMapName === 'de_nuke' },
+      { id: '5', name: 'de_overpass', displayName: 'Overpass', type: 'Defusal', image: '/images/maps/de_overpass.webp', isActive: currentMapName === 'de_overpass' },
+      { id: '6', name: 'de_ancient', displayName: 'Ancient', type: 'Defusal', image: '/images/maps/de_ancient.webp', isActive: currentMapName === 'de_ancient' },
+      { id: '7', name: 'de_anubis', displayName: 'Anubis', type: 'Defusal', image: '/images/maps/de_anubis.webp', isActive: currentMapName === 'de_anubis' },
+      { id: '8', name: 'de_vertigo', displayName: 'Vertigo', type: 'Defusal', image: '/images/maps/de_vertigo.webp', isActive: currentMapName === 'de_vertigo' },
+      { id: '9', name: 'cs_italy', displayName: 'Italy', type: 'Hostage', image: '/images/maps/de_italy.webp', isActive: currentMapName === 'cs_italy' },
+      { id: '10', name: 'cs_office', displayName: 'Office', type: 'Hostage', image: '/images/maps/de_office.webp', isActive: currentMapName === 'cs_office' }
     ]
 
     const wMaps: CS2Map[] = workshopMaps.map((m: any) => ({
@@ -83,7 +83,7 @@ const Maps = () => {
       name: m.workshop_id,
       displayName: m.name,
       type: 'Workshop',
-      image: m.image_url || 'https://cdn.cloudflare.steamstatic.com/apps/730/icons/econ/map_icons/map_de_dust2_png.png',
+      image: m.image_url || '/images/maps/de_dust2.webp',
       isActive: currentMapName === m.workshop_id
     }))
 
