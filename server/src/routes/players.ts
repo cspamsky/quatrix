@@ -37,13 +37,14 @@ router.post("/:id/players/:userId/ban", async (req: any, res) => {
         const { id, userId } = req.params;
         const { duration, reason, playerName, steamId, ipAddress } = req.body;
         
+        // 1. Send the CSS ban command
+        // SimpleAdmin preferred format: css_ban <steamid64> <duration_minutes> <reason>
         const durationMinutes = parseInt(duration) || 0;
-        const banReason = reason || 'Banned by admin';
+        const banReason = reason || 'No reason provided';
         
-        // 1. Send the CSS ban command (standard command for active banning)
-        // Format: css_ban <#userid|name|steamid> <duration> [reason]
         let cmd = '';
         if (steamId && steamId !== 'Hidden/Pending') {
+            // Using SteamID64 is the most reliable way for SimpleAdmin
             cmd = `css_ban ${steamId} ${durationMinutes} "${banReason}"`;
         } else {
             cmd = `css_ban #${userId} ${durationMinutes} "${banReason}"`;
@@ -51,8 +52,10 @@ router.post("/:id/players/:userId/ban", async (req: any, res) => {
 
         try {
             await serverManager.sendCommand(id, cmd);
+            // After banning, force a write to the native ban system just in case
+            await serverManager.sendCommand(id, `writeid`);
         } catch (rconError) {
-            console.error('[BAN] RCON css_ban failed:', rconError);
+            console.error('[BAN] RCON command failed:', rconError);
         }
         
         // 2. Record in our web panel database for History page
