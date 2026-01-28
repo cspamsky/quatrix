@@ -14,10 +14,11 @@ import toast from 'react-hot-toast'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 interface Admin {
-  SteamID64: string;
-  Flags?: string;
-  Immunity?: number;
-  Name?: string;
+  Name: string;
+  identity: string;
+  flags?: string[];
+  immunity?: number;
+  groups?: string[];
 }
 
 interface ServerInfo {
@@ -67,15 +68,15 @@ const Admins = () => {
 
   // Convert object to array for easier display
   const admins = useMemo(() => {
-    return Object.entries(adminsObj).map(([steamId, data]: [string, any]) => ({
-      SteamID64: steamId,
+    return Object.entries(adminsObj).map(([name, data]: [string, any]) => ({
+      Name: name,
       ...data
     })) as Admin[];
   }, [adminsObj]);
 
   const filteredAdmins = admins.filter(admin => 
     (admin.Name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
-    admin.SteamID64.includes(searchQuery)
+    (admin.identity || '').includes(searchQuery)
   );
 
   const handleAddAdmin = async (e: React.FormEvent) => {
@@ -88,10 +89,12 @@ const Admins = () => {
     }
 
     const updatedAdmins = { ...adminsObj };
-    updatedAdmins[newAdmin.steamId] = {
-      Name: newAdmin.name || 'Admin',
-      Flags: [newAdmin.flags], // CounterStrikeSharp expects a HashSet/Array
-      Immunity: Number(newAdmin.immunity)
+    const adminKey = newAdmin.name || `Admin_${newAdmin.steamId.slice(-4)}`;
+    
+    updatedAdmins[adminKey] = {
+      identity: newAdmin.steamId,
+      flags: [newAdmin.flags],
+      immunity: Number(newAdmin.immunity)
     };
 
     try {
@@ -112,11 +115,11 @@ const Admins = () => {
     }
   };
 
-  const handleDeleteAdmin = async (steamId: string) => {
-    if (!selectedServerId || !confirm('Are you sure you want to remove this admin?')) return;
+  const handleDeleteAdmin = async (name: string) => {
+    if (!selectedServerId || !confirm(`Are you sure you want to remove ${name}?`)) return;
 
     const updatedAdmins = { ...adminsObj };
-    delete updatedAdmins[steamId];
+    delete updatedAdmins[name];
 
     try {
       const response = await apiFetch(`/api/servers/${selectedServerId}/admins`, {
@@ -210,39 +213,39 @@ const Admins = () => {
                 </tr>
               ) : (
                 filteredAdmins.map((admin) => (
-                  <tr key={admin.SteamID64} className="hover:bg-white/[0.02] transition-colors group">
+                  <tr key={admin.Name} className="hover:bg-white/[0.02] transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold border border-primary/20">
                           <ShieldCheck size={16} />
                         </div>
-                        <span className="font-bold text-white text-sm">{admin.Name || 'Admin'}</span>
+                        <span className="font-bold text-white text-sm">{admin.Name}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-xs text-primary font-mono select-all">
-                      {admin.SteamID64}
+                      {admin.identity}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
-                        {Array.isArray(admin.Flags) ? (
-                          admin.Flags.map((flag: string) => (
+                        {Array.isArray(admin.flags) ? (
+                          admin.flags.map((flag: string) => (
                             <span key={flag} className="px-2 py-1 bg-gray-800 rounded-md text-[10px] text-gray-400 font-mono border border-gray-700">
                               {flag}
                             </span>
                           ))
                         ) : (
                           <span className="px-2 py-1 bg-gray-800 rounded-md text-[10px] text-gray-400 font-mono border border-gray-700">
-                            {admin.Flags}
+                            {admin.flags}
                           </span>
                         )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <span className="text-sm font-bold text-orange-400">{admin.Immunity}</span>
+                      <span className="text-sm font-bold text-orange-400">{admin.immunity}</span>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button 
-                        onClick={() => handleDeleteAdmin(admin.SteamID64)}
+                        onClick={() => handleDeleteAdmin(admin.Name)}
                         className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-all"
                       >
                         <Trash2 size={14} />
