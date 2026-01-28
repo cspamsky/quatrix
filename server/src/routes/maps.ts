@@ -42,27 +42,33 @@ router.post("/config/:serverId/:mapName", async (req: any, res) => {
         const server = db.prepare("SELECT id, map FROM servers WHERE id = ? AND user_id = ?").get(serverId, req.user.id) as any;
         if (!server) return res.status(404).json({ message: "Server not found" });
 
-        // AUTOMATIC DISCOVERY: If mapName is just a workshop ID, check if we know the real filename
         let finalMapName = mapName;
+        
+        // 1. Check DB first
         const workshopMap = db.prepare("SELECT map_file FROM workshop_maps WHERE workshop_id = ?").get(mapName) as any;
         
         if (workshopMap?.map_file) {
             finalMapName = workshopMap.map_file;
         } else if (/^\d+$/.test(mapName)) {
-            // It's a workshop ID but we don't have the file name in DB.
-            // Let's ask the server directly via RCON what the current map filename is
-            try {
-                const currentMap = await serverManager.getCurrentMap(serverId);
-                if (currentMap && (currentMap.includes(mapName) || server.map.includes(mapName))) {
-                    // Extract actual map name (e.g., from "workshop/123/awp_lego" to "awp_lego")
-                    const parts = currentMap.split('/');
-                    finalMapName = parts[parts.length - 1];
-                    // Update DB so we don't have to ask again
-                    db.prepare("UPDATE workshop_maps SET map_file = ? WHERE workshop_id = ?").run(finalMapName, mapName);
-                    console.log(`[AUTO-DISCOVERY] Linked Workshop ID ${mapName} to filename ${finalMapName}`);
-                }
-            } catch (rconErr) {
-                console.warn("[AUTO-DISCOVERY] Failed to reach server for map name resolution");
+            // 2. Not in workshop_maps, check if server is currently playing this ID
+            // CS2 format: workshop/ID/map_name
+            const currentServerMap = server.map || "";
+            if (currentServerMap.includes(mapName)) {
+                const parts = currentServerMap.split('/');
+                finalMapName = parts[parts.length - 1];
+                
+                // Save to DB so we remember for next time
+                db.prepare("UPDATE workshop_maps SET map_file = ? WHERE workshop_id = ?").run(finalMapName, mapName);
+            } else {
+                // 3. Last resort: Ask RCON
+                try {
+                    const rconMap = await serverManager.getCurrentMap(serverId);
+                    if (rconMap && rconMap.includes(mapName)) {
+                        const parts = rconMap.split('/');
+                        finalMapName = parts[parts.length - 1];
+                        db.prepare("UPDATE workshop_maps SET map_file = ? WHERE workshop_id = ?").run(finalMapName, mapName);
+                    }
+                } catch (e) {}
             }
         }
 
@@ -77,7 +83,11 @@ router.post("/config/:serverId/:mapName", async (req: any, res) => {
         const relativeFilePath = MAP_CFG_DIR + "/" + finalMapName + ".cfg";
         await serverManager.writeFile(serverId, relativeFilePath, content);
         
-        res.json({ success: true, message: `Configuration saved for ${finalMapName}`, discoveredName: finalMapName });
+        res.json({ 
+            success: true, 
+            message: `Configuration saved as ${finalMapName}.cfg`,
+            fileName: finalMapName 
+        });
     } catch (error: any) {
         console.error("Map config save error:", error);
         res.status(500).json({ message: error.message || "Failed to save map config" });
