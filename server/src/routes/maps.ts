@@ -9,7 +9,7 @@ const router = Router();
 
 router.use(authenticateToken);
 
-const MAP_CFG_DIR = "game/csgo/cfg/maps_cfg";
+const MAP_CFG_DIR = "cfg/maps_cfg";
 
 // GET /api/maps/config/:serverId/:mapName
 router.get("/config/:serverId/:mapName", async (req: any, res) => {
@@ -42,16 +42,17 @@ router.post("/config/:serverId/:mapName", async (req: any, res) => {
         const server = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(serverId, req.user.id);
         if (!server) return res.status(404).json({ message: "Server not found" });
 
-        // Mutlak yol üzerinden klasör kontrolü ve oluşturma
+        // Resolve absolute path for directory creation
         const serverDir = serverManager.getFilePath(serverId, "");
-        const cfgDirPath = path.join(serverDir, "game/csgo/cfg/maps_cfg");
+        const cfgDirPath = path.join(serverDir, "game/csgo", MAP_CFG_DIR);
 
         if (!fs.existsSync(cfgDirPath)) {
             console.log(`Creating directory: ${cfgDirPath}`);
             fs.mkdirSync(cfgDirPath, { recursive: true, mode: 0o755 });
         }
 
-        const relativeFilePath = "game/csgo/cfg/maps_cfg/" + mapName + ".cfg";
+        // Relative path for serverManager.writeFile (starts within game/csgo)
+        const relativeFilePath = MAP_CFG_DIR + "/" + mapName + ".cfg";
         await serverManager.writeFile(serverId, relativeFilePath, content);
         
         res.json({ success: true, message: "Map configuration saved" });
