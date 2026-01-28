@@ -90,7 +90,7 @@ const Admins = () => {
     const updatedAdmins = { ...adminsObj };
     updatedAdmins[newAdmin.steamId] = {
       Name: newAdmin.name || 'Admin',
-      Flags: newAdmin.flags,
+      Flags: [newAdmin.flags], // CounterStrikeSharp expects a HashSet/Array
       Immunity: Number(newAdmin.immunity)
     };
 
@@ -223,9 +223,19 @@ const Admins = () => {
                       {admin.SteamID64}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="px-2 py-1 bg-gray-800 rounded-md text-[10px] text-gray-400 font-mono border border-gray-700">
-                        {admin.Flags}
-                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {Array.isArray(admin.Flags) ? (
+                          admin.Flags.map((flag: string) => (
+                            <span key={flag} className="px-2 py-1 bg-gray-800 rounded-md text-[10px] text-gray-400 font-mono border border-gray-700">
+                              {flag}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="px-2 py-1 bg-gray-800 rounded-md text-[10px] text-gray-400 font-mono border border-gray-700">
+                            {admin.Flags}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className="text-sm font-bold text-orange-400">{admin.Immunity}</span>
