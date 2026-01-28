@@ -62,19 +62,20 @@ const Maps = () => {
   // 3. Combine Static Maps and Workshop Maps
   const maps = useMemo(() => {
     const currentServer = servers.find(s => s.id === selectedServerId)
-    const currentMapName = currentServer?.map || 'de_dust2'
+    const currentMapName = currentServer?.map || ''
+    const normalizedCurrent = currentMapName.toLowerCase()
 
     const staticMaps: CS2Map[] = [
-      { id: '1', name: 'de_dust2', displayName: 'Dust II', type: 'Defusal', image: '/images/maps/de_dust2.webp', isActive: currentMapName === 'de_dust2' },
-      { id: '2', name: 'de_inferno', displayName: 'Inferno', type: 'Defusal', image: '/images/maps/de_inferno.webp', isActive: currentMapName === 'de_inferno' },
-      { id: '3', name: 'de_mirage', displayName: 'Mirage', type: 'Defusal', image: '/images/maps/de_mirage.webp', isActive: currentMapName === 'de_mirage' },
-      { id: '4', name: 'de_nuke', displayName: 'Nuke', type: 'Defusal', image: '/images/maps/de_nuke_cs2.webp', isActive: currentMapName === 'de_nuke' },
-      { id: '5', name: 'de_overpass', displayName: 'Overpass', type: 'Defusal', image: '/images/maps/de_overpass.webp', isActive: currentMapName === 'de_overpass' },
-      { id: '6', name: 'de_ancient', displayName: 'Ancient', type: 'Defusal', image: '/images/maps/de_ancient.webp', isActive: currentMapName === 'de_ancient' },
-      { id: '7', name: 'de_anubis', displayName: 'Anubis', type: 'Defusal', image: '/images/maps/de_anubis.webp', isActive: currentMapName === 'de_anubis' },
-      { id: '8', name: 'de_vertigo', displayName: 'Vertigo', type: 'Defusal', image: '/images/maps/de_vertigo.webp', isActive: currentMapName === 'de_vertigo' },
-      { id: '9', name: 'cs_italy', displayName: 'Italy', type: 'Hostage', image: '/images/maps/de_italy.webp', isActive: currentMapName === 'cs_italy' },
-      { id: '10', name: 'cs_office', displayName: 'Office', type: 'Hostage', image: '/images/maps/de_office.webp', isActive: currentMapName === 'cs_office' }
+      { id: '1', name: 'de_dust2', displayName: 'Dust II', type: 'Defusal', image: '/images/maps/de_dust2.webp', isActive: normalizedCurrent.includes('de_dust2') },
+      { id: '2', name: 'de_inferno', displayName: 'Inferno', type: 'Defusal', image: '/images/maps/de_inferno.webp', isActive: normalizedCurrent.includes('de_inferno') },
+      { id: '3', name: 'de_mirage', displayName: 'Mirage', type: 'Defusal', image: '/images/maps/de_mirage.webp', isActive: normalizedCurrent.includes('de_mirage') },
+      { id: '4', name: 'de_nuke', displayName: 'Nuke', type: 'Defusal', image: '/images/maps/de_nuke_cs2.webp', isActive: normalizedCurrent.includes('de_nuke') },
+      { id: '5', name: 'de_overpass', displayName: 'Overpass', type: 'Defusal', image: '/images/maps/de_overpass.webp', isActive: normalizedCurrent.includes('de_overpass') },
+      { id: '6', name: 'de_ancient', displayName: 'Ancient', type: 'Defusal', image: '/images/maps/de_ancient.webp', isActive: normalizedCurrent.includes('de_ancient') },
+      { id: '7', name: 'de_anubis', displayName: 'Anubis', type: 'Defusal', image: '/images/maps/de_anubis.webp', isActive: normalizedCurrent.includes('de_anubis') },
+      { id: '8', name: 'de_vertigo', displayName: 'Vertigo', type: 'Defusal', image: '/images/maps/de_vertigo.webp', isActive: normalizedCurrent.includes('de_vertigo') },
+      { id: '9', name: 'cs_italy', displayName: 'Italy', type: 'Hostage', image: '/images/maps/de_italy.webp', isActive: normalizedCurrent.includes('cs_italy') || normalizedCurrent.includes('de_italy') },
+      { id: '10', name: 'cs_office', displayName: 'Office', type: 'Hostage', image: '/images/maps/de_office.webp', isActive: normalizedCurrent.includes('cs_office') || normalizedCurrent.includes('de_office') }
     ]
 
     const wMaps: CS2Map[] = workshopMaps.map((m: any) => ({
@@ -84,7 +85,7 @@ const Maps = () => {
       displayName: m.name,
       type: 'Workshop',
       image: m.image_url || '/images/maps/de_dust2.webp',
-      isActive: currentMapName === m.workshop_id
+      isActive: normalizedCurrent.includes(m.workshop_id)
     }))
 
     return [...staticMaps, ...wMaps]
@@ -212,27 +213,36 @@ const Maps = () => {
         </div>
 
         <div className="lg:col-span-9">
-          {activeMap && (
+          {selectedServer && (
             <div className="mb-8 p-4 bg-primary/5 border border-primary/20 rounded-3xl flex items-center justify-between animate-in fade-in slide-in-from-top-4 duration-500">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl overflow-hidden border border-primary/30">
-                  <img src={activeMap.image} className="w-full h-full object-cover" />
+                <div className="w-12 h-12 rounded-xl overflow-hidden border border-primary/30 bg-gray-900">
+                  <img 
+                    src={activeMap?.image || '/images/maps/de_dust2.webp'} 
+                    className={`w-full h-full object-cover ${!activeMap ? 'opacity-40 grayscale' : ''}`} 
+                  />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                    <span className="text-[10px] font-black text-primary uppercase tracking-widest">Active Now</span>
+                    <span className={`w-2 h-2 rounded-full animate-pulse ${isServerOnline ? 'bg-green-500' : 'bg-gray-500'}`}></span>
+                    <span className="text-[10px] font-black text-primary uppercase tracking-widest">
+                      {isServerOnline ? 'Active Now' : 'Server Offline'}
+                    </span>
                   </div>
-                  <h3 className="text-white font-bold">{activeMap.displayName}</h3>
+                  <h3 className="text-white font-bold">
+                    {activeMap?.displayName || selectedServer.map || 'Unknown Map'}
+                  </h3>
                 </div>
               </div>
-              <button 
-                onClick={() => changeMapMutation.mutate(activeMap)}
-                disabled={changeMapMutation.isPending || !isServerOnline}
-                className="px-6 py-2 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all disabled:opacity-50"
-              >
-                {changeMapMutation.isPending ? <RefreshCcw size={16} className="animate-spin" /> : 'Restart'}
-              </button>
+              {isServerOnline && activeMap && (
+                <button 
+                  onClick={() => changeMapMutation.mutate(activeMap)}
+                  disabled={changeMapMutation.isPending}
+                  className="px-6 py-2 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all disabled:opacity-50"
+                >
+                  {changeMapMutation.isPending ? <RefreshCcw size={16} className="animate-spin" /> : 'Restart'}
+                </button>
+              )}
             </div>
           )}
 
