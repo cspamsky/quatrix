@@ -9,7 +9,8 @@
     "server"
   ],
   "overrides": {
-    "fast-xml-parser": "^5.3.4"
+    "fast-xml-parser": "^5.3.4",
+    "qs": "^6.14.2"
   },
   "scripts": {
     "dev": "npx concurrently --names \"SERVER,CLIENT\" --prefix-colors \"cyan.bold,magenta.bold\" --prefix \"[{name}]\" \"npm run dev --prefix server\" \"npx wait-on tcp:3001 && npm run dev --prefix client\"",

@@ -5,10 +5,7 @@ import { databaseManager } from './DatabaseManager.js';
 import AdmZip from 'adm-zip';
 import fs from 'fs';
 import path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
+import { spawn } from 'child_process';
 
 export interface BackupMetadata {
   id: string;
@@ -59,13 +56,15 @@ class BackupService {
       throw new Error('Invalid server ID');
     }
 
+    const dataDir = path.resolve(process.cwd(), 'data');
+
     const id = Date.now().toString();
     const filename = `backup_${safeServerId}_${id}.zip`;
-    const targetPath = path.join(this.backupDir, filename);
+    const targetPath = path.resolve(this.backupDir, filename);
 
-    // Prevent directory traversal check (double check)
+    // SECURITY: Absolute path traversal check (Defense in Depth)
     if (!targetPath.startsWith(this.backupDir)) {
-      throw new Error('Invalid backup path');
+      throw new Error('Security Error: Invalid backup target path');
     }
 
     if (taskId) {
@@ -116,9 +115,15 @@ class BackupService {
       }
 
       // 2. Panel Database Backup (SQLite)
-      const sqlitePath = path.join(process.cwd(), 'data', 'database.sqlite');
+      const sqlitePath = path.resolve(dataDir, 'database.sqlite');
       if (fs.existsSync(sqlitePath)) {
-        const sqliteBackupPath = path.join(process.cwd(), 'data', `database_temp_${id}.sqlite`);
+        const sqliteBackupPath = path.resolve(dataDir, `database_temp_${id}.sqlite`);
+
+        // SECURITY: Validate paths
+        if (!sqliteBackupPath.startsWith(dataDir)) {
+          throw new Error('Security Error: Invalid SQLite temp path');
+        }
+
         fs.copyFileSync(sqlitePath, sqliteBackupPath);
         zip.addLocalFile(sqliteBackupPath, '', 'panel_database.sqlite');
         // We'll delete temp file after zip write
@@ -131,10 +136,38 @@ class BackupService {
         if (taskId)
           taskService.updateTask(taskId, { progress: 50, message: 'tasks.messages.dumping_mysql' });
 
-        mysqlBackupFile = path.join(process.cwd(), 'data', `mysql_dump_${serverId}_${id}.sql`);
+        mysqlBackupFile = path.resolve(dataDir, `mysql_dump_${safeServerId}_${id}.sql`);
+
+        // SECURITY: Validate mysqlBackupFile belongs to dataDir
+        if (!mysqlBackupFile.startsWith(dataDir)) {
+          throw new Error('Security Error: Invalid MySQL dump path');
+        }
+
         try {
-          const cmd = `mysqldump -h ${creds.host} -P ${creds.port} -u ${creds.user} -p'${creds.password}' ${creds.database} > "${mysqlBackupFile}"`;
-          await execAsync(cmd);
+          // Use spawn for safe command execution (no shell)
+          const dumpProcess = spawn('mysqldump', [
+            '-h',
+            creds.host,
+            '-P',
+            creds.port.toString(),
+            '-u',
+            creds.user,
+            `-p${creds.password}`,
+            creds.database,
+          ]);
+
+          const writeStream = fs.createWriteStream(mysqlBackupFile);
+          dumpProcess.stdout.pipe(writeStream);
+
+          await new Promise<void>((resolve, reject) => {
+            dumpProcess.on('close', (code) => {
+              if (code === 0) resolve();
+              else reject(new Error(`mysqldump exited with code ${code}`));
+            });
+            dumpProcess.on('error', reject);
+            writeStream.on('error', reject);
+          });
+
           if (fs.existsSync(mysqlBackupFile)) {
             zip.addLocalFile(mysqlBackupFile, '', 'server_database.sql');
           }
@@ -152,9 +185,10 @@ class BackupService {
       await zip.writeZipPromise(targetPath);
 
       // Cleanup temp files
-      const sqliteTemp = path.join(process.cwd(), 'data', `database_temp_${id}.sqlite`);
-      if (fs.existsSync(sqliteTemp)) fs.unlinkSync(sqliteTemp);
-      if (mysqlBackupFile && fs.existsSync(mysqlBackupFile)) fs.unlinkSync(mysqlBackupFile);
+      const sqliteTemp = path.resolve(dataDir, `database_temp_${id}.sqlite`);
+      if (fs.existsSync(sqliteTemp) && sqliteTemp.startsWith(dataDir)) fs.unlinkSync(sqliteTemp);
+      if (mysqlBackupFile && fs.existsSync(mysqlBackupFile) && mysqlBackupFile.startsWith(dataDir))
+        fs.unlinkSync(mysqlBackupFile);
 
       const stats = fs.statSync(targetPath);
 
@@ -180,8 +214,8 @@ class BackupService {
       const err = error as Error;
       console.error('[BackupService] Backup error:', err);
       // Cleanup on failure
-      const sqliteTemp = path.join(process.cwd(), 'data', `database_temp_${id}.sqlite`);
-      if (fs.existsSync(sqliteTemp)) fs.unlinkSync(sqliteTemp);
+      const sqliteTemp = path.resolve(dataDir, `database_temp_${id}.sqlite`);
+      if (fs.existsSync(sqliteTemp) && sqliteTemp.startsWith(dataDir)) fs.unlinkSync(sqliteTemp);
       if (taskId) {
         taskService.failTask(taskId, `tasks.messages.backup_failed`);
       }
@@ -219,7 +253,13 @@ class BackupService {
         }
       | undefined;
     if (row) {
-      const filePath = path.join(this.backupDir, row.filename);
+      const filePath = path.resolve(this.backupDir, row.filename);
+
+      // SECURITY: Path traversal check
+      if (!filePath.startsWith(this.backupDir)) {
+        throw new Error('Security Error: Invalid path detected during deletion');
+      }
+
       if (fs.existsSync(filePath)) {
         await fs.promises.unlink(filePath);
       }
@@ -237,8 +277,13 @@ class BackupService {
     if (!row) throw new Error('Backup not found.');
 
     const serverId = row.server_id;
-    const filePath = path.join(this.backupDir, row.filename);
+    const filePath = path.resolve(this.backupDir, row.filename);
     const instancePath = fileSystemService.getInstancePath(serverId);
+
+    // SECURITY: Robust path validation
+    if (!filePath.startsWith(this.backupDir)) {
+      throw new Error('Security Error: Invalid backup file path for restoration');
+    }
 
     if (!fs.existsSync(filePath)) throw new Error('Backup file not found physically.');
 

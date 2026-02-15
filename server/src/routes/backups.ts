@@ -11,7 +11,11 @@ router.use(authenticateToken);
 // List backups
 router.get('/:serverId', (req: Request, res: Response) => {
   try {
-    const backups = backupService.getBackups(req.params.serverId as string);
+    const serverId = req.params.serverId as string;
+    if (!serverId || !/^[a-zA-Z0-9\-_]+$/.test(serverId)) {
+      return res.status(400).json({ error: 'Invalid server ID format' });
+    }
+    const backups = backupService.getBackups(serverId);
     res.json(backups);
   } catch (error: unknown) {
     const err = error as Error;
@@ -22,12 +26,15 @@ router.get('/:serverId', (req: Request, res: Response) => {
 // Create new backup
 router.post('/:serverId/create', async (req: Request, res: Response) => {
   try {
-    const { serverId } = req.params;
+    const serverId = req.params.serverId as string;
+    if (!serverId || !/^[a-zA-Z0-9\-_]+$/.test(serverId)) {
+      return res.status(400).json({ error: 'Invalid server ID format' });
+    }
     const { comment, type } = req.body as { comment?: string; type?: string };
 
     // Create task
     const taskId = `backup_${Date.now()}`;
-    taskService.createTask(taskId, 'backup_create', { serverId: serverId as string });
+    taskService.createTask(taskId, 'backup_create', { serverId });
 
     // Start backup in background
     const backupType = (type === 'auto' ? 'auto' : 'manual') as 'manual' | 'auto';
@@ -47,11 +54,11 @@ router.post('/:serverId/create', async (req: Request, res: Response) => {
 // Restore from backup
 router.post('/:id/restore', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     // Create task
     const taskId = `restore_${Date.now()}`;
-    taskService.createTask(taskId, 'backup_restore', { backupId: id as string });
+    taskService.createTask(taskId, 'backup_restore', { backupId: id });
 
     // Start restore in background
     backupService.restoreBackup(id as string, taskId).catch((err) => {
