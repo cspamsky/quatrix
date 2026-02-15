@@ -514,10 +514,10 @@ router.post(
         if (safeColumns.length === 0) {
           return res.status(400).json({ message: 'No valid column names provided' });
         }
-        selectedColumns = safeColumns.map((col) => `\`${col}\``).join(', ');
+        selectedColumns = safeColumns.map((col) => databaseManager.escapeIdentifier(col)).join(', ');
       }
 
-      let sql = `SELECT ${selectedColumns} FROM \`${table}\``;
+      let sql = `SELECT ${selectedColumns} FROM ${databaseManager.escapeIdentifier(table)}`;
       const queryParams: unknown[] = Array.isArray(params) ? params : [];
 
       // Build WHERE clause from structured filters using parameter binding
@@ -531,7 +531,7 @@ router.post(
               .json({ message: `Invalid column name in filters: ${rawColumn}` });
           }
 
-          const column = `\`${rawColumn}\``;
+          const column = databaseManager.escapeIdentifier(rawColumn);
 
           if (
             rawCondition !== null &&

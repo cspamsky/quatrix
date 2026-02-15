@@ -202,6 +202,14 @@ export class DatabaseManager {
   }
 
   /**
+   * SECURITY: Escapes a SQL identifier (table name or column name).
+   * This is used for dynamic query building to prevent SQL injection.
+   */
+  public escapeIdentifier(identifier: string): string {
+    return mysql.escapeId(identifier);
+  }
+
+  /**
    * SECURITY: Validates if a SQL query is a safe SELECT statement.
    *
    * This function enforces a strict allowlist-based shape:
@@ -212,14 +220,20 @@ export class DatabaseManager {
    */
   private checkIsSafeSelect(query: string): void {
     const trimmed = query.trim();
+
+    // 1. Limit query length early to prevent complex ReDoS attacks
+    if (trimmed.length > 2000) {
+      throw new Error('Query too long (max 2000 characters)');
+    }
+
     const lower = trimmed.toLowerCase();
 
-    // 1. Only allow SELECT statements
+    // 2. Only allow SELECT statements
     if (!lower.startsWith('select')) {
       throw new Error('Only SELECT queries are allowed.');
     }
 
-    // 2. Block obvious multi-statement and comment patterns
+    // 3. Block obvious multi-statement and comment patterns
     if (
       trimmed.includes('--') ||
       trimmed.includes('/*') ||
@@ -229,29 +243,22 @@ export class DatabaseManager {
       throw new Error('Multiple statements and SQL comments are forbidden.');
     }
 
-    // 3. Normalize whitespace to make pattern matching more reliable
+    // 4. Normalize whitespace to make pattern matching more reliable
     const normalized = lower.replace(/\s+/g, ' ');
 
     /**
-     * 4. Enforce a strict structure:
-     *    - SELECT <anything> FROM <single_identifier>
-     *    - Optional WHERE clause after the FROM target
-     *    - No other trailing tokens (GROUP BY, UNION, etc.)
-     *
-     *    FROM target is limited to letters, numbers, underscores and backticks.
-     *    This aligns with how table names are built in servers.ts.
+     * 5. Enforce a strict structure using a safer regex to prevent ReDoS.
+     *    - We use more specific character classes instead of .+
+     *    - Fields are allowed to contain chars like *, `, a-z, 0-9, _, spaces, etc.
+     *    - Table name is strictly identifier-like.
+     *    - WHERE clause is also cautiously matched.
      */
-    const selectFromPattern = /^select\s+.+?\s+from\s+[`a-z0-9_]+\s*(where\s+.+)?$/;
+    const selectFromPattern = /^select\s+[*`a-z0-9_\s,().-]+\s+from\s+[`a-z0-9_]+\s*(where\s+[^;#]+)?$/;
 
     if (!selectFromPattern.test(normalized)) {
       throw new Error(
         'Query shape is not allowed. Only simple SELECT ... FROM ... [WHERE ...] queries are permitted.'
       );
-    }
-
-    // 5. Limit query length
-    if (trimmed.length > 5000) {
-      throw new Error('Query too long (max 5000 characters)');
     }
   }
 
