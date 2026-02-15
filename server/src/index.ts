@@ -206,13 +206,21 @@ export const logActivity = (
   type: string,
   message: string,
   severity: 'INFO' | 'WARNING' | 'ERROR' | 'SUCCESS' = 'INFO',
-  userId?: number
+  userId?: number,
+  params?: Record<string, unknown>
 ) => {
   try {
+    const paramsJson = params ? JSON.stringify(params) : null;
     db.prepare(
-      'INSERT INTO activity_logs (user_id, type, message, severity) VALUES (?, ?, ?, ?)'
-    ).run(userId || null, type, message, severity);
-    io.emit('activity', { type, message, severity, created_at: new Date().toISOString() });
+      'INSERT INTO activity_logs (user_id, type, message, severity, params) VALUES (?, ?, ?, ?, ?)'
+    ).run(userId || null, type, message, severity, paramsJson);
+    io.emit('activity', {
+      type,
+      message,
+      severity,
+      params,
+      created_at: new Date().toISOString(),
+    });
   } catch (err) {
     console.error('[ACTIVITY] Failed to log activity:', err);
   }

@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '../../utils/api';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../../utils/date';
 
 interface JoinLog {
   id: number;
@@ -20,7 +21,7 @@ interface JoinLogsTabProps {
 import { useSteamAvatars } from '../../hooks/useSteamAvatars';
 
 const JoinLogsTab = ({ selectedServerId }: JoinLogsTabProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -39,18 +40,6 @@ const JoinLogsTab = ({ selectedServerId }: JoinLogsTabProps) => {
     new Set(Array.isArray(logs) ? logs.map((l: JoinLog) => l && l.steam_id).filter(Boolean) : [])
   );
   const { data: avatars = {} } = useSteamAvatars(uniqueSteamIds);
-
-  // Helper for date formatting
-  const formatFullDate = (dateString: string) => {
-    return new Intl.DateTimeFormat('tr-TR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    }).format(new Date(dateString));
-  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -132,7 +121,11 @@ const JoinLogsTab = ({ selectedServerId }: JoinLogsTabProps) => {
                 filteredLogs.map((log: JoinLog) => (
                   <tr key={log.id} className="hover:bg-white/[0.02] transition-colors group">
                     <td className="px-6 py-4 text-xs text-gray-500 font-mono">
-                      {formatFullDate(log.created_at)}
+                      {formatDate(
+                        log.created_at,
+                        t('common.date_formats.time_seconds'),
+                        i18n.language
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">

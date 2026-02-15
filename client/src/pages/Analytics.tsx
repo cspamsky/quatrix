@@ -12,6 +12,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../utils/date';
 import { RefreshCcw, Info } from 'lucide-react';
 
 interface AnalyticsData {
@@ -23,7 +24,7 @@ interface AnalyticsData {
 }
 
 const Analytics = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [range, setRange] = useState('24h');
   const [isMounted, setIsMounted] = useState(false);
 
@@ -46,12 +47,7 @@ const Analytics = () => {
 
   const chartData = (stats || []).map((item) => ({
     ...item,
-    time: new Date(item.timestamp).toLocaleString([], {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }),
+    time: formatDate(item.timestamp, t('common.date_formats.long'), i18n.language),
   }));
 
   interface ChartPayloadEntry {

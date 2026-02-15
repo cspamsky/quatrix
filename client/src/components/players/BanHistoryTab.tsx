@@ -13,6 +13,7 @@ import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../../utils/api';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../../utils/date';
 
 interface BanRecord {
   id: number;
@@ -35,7 +36,7 @@ interface BanHistoryTabProps {
 import { useSteamAvatars } from '../../hooks/useSteamAvatars';
 
 const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [showActiveOnly, setShowActiveOnly] = useState(true);
@@ -58,15 +59,6 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
     new Set(Array.isArray(bans) ? bans.map((b: BanRecord) => b && b.steam_id).filter(Boolean) : [])
   );
   const { data: avatars = {} } = useSteamAvatars(uniqueSteamIds as string[]);
-
-  // Helper for date formatting
-  const formatDate = (dateString: string) => {
-    return new Intl.DateTimeFormat('tr-TR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(new Date(dateString));
-  };
 
   const unbanMutation = useMutation({
     mutationFn: (banId: number) =>
@@ -206,7 +198,7 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-1.5 text-xs text-gray-300 font-mono">
                           <Calendar size={12} className="text-gray-600" />
-                          {formatDate(ban.banned_at)}
+                          {formatDate(ban.banned_at, t('common.date_formats.short'), i18n.language)}
                         </div>
                         <div className="flex items-center gap-1.5 text-[10px] text-gray-500 font-bold uppercase">
                           <Clock size={10} />
@@ -240,7 +232,13 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
                       ) : (
                         <span className="text-[10px] text-gray-600 font-bold uppercase">
                           {t('players.resolved')}{' '}
-                          {ban.unbanned_at ? formatDate(ban.unbanned_at) : ''}
+                          {ban.unbanned_at
+                            ? formatDate(
+                                ban.unbanned_at,
+                                t('common.date_formats.short'),
+                                i18n.language
+                              )
+                            : ''}
                         </span>
                       )}
                     </td>

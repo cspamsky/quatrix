@@ -23,39 +23,12 @@ describe('PluginConfigManager', () => {
 
       const configs = await configManager.discoverConfigs('/install', '1', 'matchzy');
 
-      const expectedJson = path.normalize(
-        path.join(
-          '/install',
-          '1',
-          'game',
-          'csgo',
-          'addons',
-          'counterstrikesharp',
-          'configs',
-          'plugins',
-          'matchzy',
-          'matchzy.json'
-        )
-      );
-      const expectedTxt = path.normalize(
-        path.join(
-          '/install',
-          '1',
-          'game',
-          'csgo',
-          'addons',
-          'counterstrikesharp',
-          'configs',
-          'plugins',
-          'matchzy',
-          'README.txt'
-        )
-      );
+      const expectedJson =
+        'game/csgo/addons/counterstrikesharp/configs/plugins/matchzy/matchzy.json';
+      const expectedTxt = 'game/csgo/addons/counterstrikesharp/configs/plugins/matchzy/README.txt';
 
-      const normalizedConfigs = configs.map((c) => path.normalize(c));
-
-      expect(normalizedConfigs).toContain(expectedJson);
-      expect(normalizedConfigs).toContain(expectedTxt);
+      expect(configs).toContain(expectedJson);
+      expect(configs).toContain(expectedTxt);
     });
   });
 
@@ -79,7 +52,7 @@ describe('PluginConfigManager', () => {
         '/install',
         '1',
         'myplugin',
-        'configs/plugins/myplugin/config.json',
+        'game/csgo/addons/counterstrikesharp/configs/plugins/myplugin/config.json',
         '{}'
       );
 

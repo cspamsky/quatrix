@@ -4,6 +4,7 @@ import { Search, RefreshCw, Trash2, Key, Calendar, Lock, X } from 'lucide-react'
 import toast from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../utils/date';
 
 interface User {
   id: number;
@@ -15,7 +16,7 @@ interface User {
 }
 
 const Users = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
@@ -218,7 +219,7 @@ const Users = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 text-xs text-gray-400">
                         <Calendar size={12} />
-                        {new Date(user.created_at).toLocaleDateString()}
+                        {formatDate(user.created_at, t('common.date_formats.short'), i18n.language)}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">

@@ -12,8 +12,7 @@ import {
   AlertCircle,
   Clock,
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { tr, enUS } from 'date-fns/locale';
+import { formatDate } from '../utils/date';
 import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
@@ -30,8 +29,6 @@ const Backups: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-
-  const dateLocale = i18n.language.startsWith('tr') ? tr : enUS;
 
   useEffect(() => {
     fetchServers();
@@ -233,96 +230,108 @@ const Backups: React.FC = () => {
             </div>
           </div>
         ) : filteredBackups.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-white/10 text-left">
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                    {t('backups.column_date')}
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                    {t('backups.column_filename')}
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                    {t('backups.column_size')}
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                    {t('backups.column_type')}
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-right">
-                    {t('common.actions')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {filteredBackups.map((backup) => (
-                  <tr key={backup.id} className="group hover:bg-white/5 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <Calendar className="w-4 h-4 text-gray-500 group-hover:text-primary transition-colors" />
-                        <span className="text-sm font-medium text-white whitespace-nowrap">
-                          {format(backup.createdAt, 'PPp', { locale: dateLocale })}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col max-w-[300px]">
-                        <span
-                          className="text-sm font-semibold text-gray-200 truncate"
-                          title={backup.filename}
-                        >
-                          {backup.filename}
-                        </span>
-                        {backup.comment && (
-                          <span className="text-xs text-gray-500 truncate">{backup.comment}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <HardDrive className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm text-gray-300 font-medium tabular-nums">
-                          {formatSize(backup.size)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={clsx(
-                          'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider',
-                          backup.type === 'manual'
-                            ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                            : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                        )}
-                      >
-                        {backup.type === 'manual'
-                          ? t('backups.type_manual')
-                          : t('backups.type_auto')}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2 px-1">
-                        <button
-                          onClick={() => handleRestore(backup)}
-                          className="p-2 text-primary hover:bg-primary/20 rounded-lg transition-all active:scale-95"
-                          title={t('backups.restore')}
-                        >
-                          <RotateCcw className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(backup.id)}
-                          className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/20 rounded-lg transition-all active:scale-95"
-                          title={t('common.delete')}
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </td>
+          <>
+            {/* Backup Count Info */}
+            <div className="px-6 py-3 bg-white/5 border-b border-white/10">
+              <p className="text-sm text-gray-400">
+                {t('common.backup', { count: filteredBackups.length })}
+              </p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-white/10 text-left">
+                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                      {t('backups.column_date')}
+                    </th>
+                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                      {t('backups.column_filename')}
+                    </th>
+                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                      {t('backups.column_size')}
+                    </th>
+                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                      {t('backups.column_type')}
+                    </th>
+                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-right">
+                      {t('common.actions')}
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {filteredBackups.map((backup) => (
+                    <tr key={backup.id} className="group hover:bg-white/5 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <Calendar className="w-4 h-4 text-gray-500 group-hover:text-primary transition-colors" />
+                          <span className="text-sm font-medium text-white whitespace-nowrap">
+                            {formatDate(
+                              backup.createdAt,
+                              t('common.date_formats.long'),
+                              i18n.language
+                            )}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col max-w-[300px]">
+                          <span
+                            className="text-sm font-semibold text-gray-200 truncate"
+                            title={backup.filename}
+                          >
+                            {backup.filename}
+                          </span>
+                          {backup.comment && (
+                            <span className="text-xs text-gray-500 truncate">{backup.comment}</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <HardDrive className="w-4 h-4 text-gray-500" />
+                          <span className="text-sm text-gray-300 font-medium tabular-nums">
+                            {formatSize(backup.size)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={clsx(
+                            'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider',
+                            backup.type === 'manual'
+                              ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                              : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                          )}
+                        >
+                          {backup.type === 'manual'
+                            ? t('backups.type_manual')
+                            : t('backups.type_auto')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2 px-1">
+                          <button
+                            onClick={() => handleRestore(backup)}
+                            className="p-2 text-primary hover:bg-primary/20 rounded-lg transition-all active:scale-95"
+                            title={t('backups.restore')}
+                          >
+                            <RotateCcw className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(backup.id)}
+                            className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/20 rounded-lg transition-all active:scale-95"
+                            title={t('common.delete')}
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
           <div className="h-[400px] flex flex-col items-center justify-center text-center p-8">
             <div className="w-20 h-20 bg-white/5 rounded-3xl flex items-center justify-center mb-6 group hover:bg-white/10 transition-colors">

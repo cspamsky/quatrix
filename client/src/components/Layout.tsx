@@ -13,7 +13,6 @@ import {
   X,
   MessageSquare,
   Database,
-  Globe,
   Archive,
   Activity,
 } from 'lucide-react';
@@ -22,6 +21,8 @@ import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom';
 import { useState, useEffect, Suspense } from 'react';
 import { Oval } from 'react-loading-icons';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
+import { apiFetch } from '../utils/api';
 import type { User } from '../types';
 
 const Layout = () => {
@@ -40,6 +41,13 @@ const Layout = () => {
   });
 
   const displayName = user?.username || 'User';
+
+  const { data: settings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => apiFetch('/api/settings').then((res) => res.json()),
+  });
+
+  const panelName = settings?.panel_name || 'Quatrix';
 
   interface NavItem {
     path: string;
@@ -156,7 +164,7 @@ const Layout = () => {
       <header className="lg:hidden flex items-center justify-between p-4 bg-[#001529] border-b border-gray-800 z-50">
         <div className="flex items-center gap-3">
           <img src="/logo.png" alt="Quatrix Logo" className="w-8 h-8" />
-          <span className="text-lg font-bold text-white tracking-tight">Quatrix</span>
+          <span className="text-lg font-bold text-white tracking-tight">{panelName}</span>
         </div>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -188,7 +196,7 @@ const Layout = () => {
             <img src="/logo.png" alt="Quatrix Logo" className="w-10 h-10" />
           </div>
           <span className="text-lg font-bold text-white tracking-tight whitespace-nowrap">
-            Quatrix Manager
+            {panelName}
           </span>
         </div>
 
@@ -196,7 +204,7 @@ const Layout = () => {
         <div className="p-6 lg:hidden flex items-center justify-between border-b border-gray-800/50 mb-4">
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="Quatrix Logo" className="w-8 h-8" />
-            <span className="text-lg font-bold text-white tracking-tight">Quatrix</span>
+            <span className="text-lg font-bold text-white tracking-tight">{panelName}</span>
           </div>
           <button
             onClick={() => setIsMobileMenuOpen(false)}
@@ -229,29 +237,6 @@ const Layout = () => {
             );
           })}
         </nav>
-
-        <div className="px-4 py-2 border-t border-gray-800">
-          <div className="flex items-center justify-between px-2 py-1 bg-white/5 rounded-lg border border-white/5 mb-2">
-            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-              <Globe size={12} />
-              <span>{t('common.language')}</span>
-            </div>
-            <div className="flex gap-1">
-              <button
-                onClick={() => i18n.changeLanguage('tr')}
-                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${i18n.language.startsWith('tr') ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-              >
-                TR
-              </button>
-              <button
-                onClick={() => i18n.changeLanguage('en')}
-                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${i18n.language.startsWith('en') ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-              >
-                EN
-              </button>
-            </div>
-          </div>
-        </div>
 
         <div className="p-4 border-t border-gray-800">
           <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
@@ -301,7 +286,9 @@ const Layout = () => {
             </div>
           }
         >
-          <Outlet />
+          <div key={i18n.language} className="animate-in fade-in duration-500 h-full">
+            <Outlet />
+          </div>
         </Suspense>
       </main>
     </div>

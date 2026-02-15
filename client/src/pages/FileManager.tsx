@@ -21,6 +21,7 @@ import {
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
+import { formatDate } from '../utils/date';
 
 interface FileStat {
   name: string;
@@ -34,7 +35,7 @@ interface FileContentResponse {
 }
 
 const FileManager = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const { showConfirm } = useConfirmDialog();
@@ -539,7 +540,7 @@ const FileManager = () => {
                         {file.isDirectory ? '-' : formatSize(file.size)}
                       </td>
                       <td className="px-8 py-4 text-xs text-gray-600 font-medium">
-                        {new Date(file.mtime).toLocaleString()}
+                        {formatDate(file.mtime, t('common.date_formats.long'), i18n.language)}
                       </td>
                       <td className="px-8 py-4 text-right">
                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
@@ -670,7 +671,10 @@ const FileManager = () => {
       <footer className="mt-4 flex justify-between items-center text-[10px] font-black text-gray-600 tracking-[0.3em] uppercase">
         <div>QUATRIX FILE SYSTEM V2</div>
         <div className="flex gap-4">
-          <span>{files.length} ITEMS</span>
+          <span>
+            {t('common.file', { count: files.filter((f) => !f.isDirectory).length })},{' '}
+            {t('common.folder', { count: files.filter((f) => f.isDirectory).length })}
+          </span>
           <span className="text-primary/50">ENCRYPTED TRANSFER</span>
         </div>
       </footer>

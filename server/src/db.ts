@@ -454,6 +454,13 @@ db.exec(`
 
 db.exec(`CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at)`);
 
+// Add params column for i18n support
+try {
+  db.exec(`ALTER TABLE activity_logs ADD COLUMN params TEXT`);
+} catch {
+  // Column already exists
+}
+
 // Create plugin_metadata_cache table for faster discovery
 db.exec(`
   CREATE TABLE IF NOT EXISTS plugin_metadata_cache (

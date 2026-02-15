@@ -4,6 +4,7 @@ import socket from '../utils/socket';
 import { apiFetch } from '../utils/api';
 import { MessageSquare, User, Clock, Hash, Search, RefreshCw, Server } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../utils/date';
 import { useSteamAvatars } from '../hooks/useSteamAvatars';
 
 interface ChatLog {
@@ -24,7 +25,7 @@ interface ServerInfo {
 }
 
 const Chat = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const [allServers, setAllServers] = useState<ServerInfo[]>([]);
@@ -244,7 +245,11 @@ const Chat = () => {
                             {log.type === 'say_team' ? t('chat.team') : t('chat.all')}
                           </span>
                           <span className="text-[11px] text-gray-500 font-mono mt-0.5 ml-auto">
-                            {new Date(log.created_at).toLocaleTimeString()}
+                            {formatDate(
+                              log.created_at,
+                              t('common.date_formats.time'),
+                              i18n.language
+                            )}
                           </span>
                         </div>
 
@@ -255,7 +260,11 @@ const Chat = () => {
                         <div className="mt-2 flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                           <div className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-primary transition-colors cursor-help">
                             <Clock size={12} />
-                            {new Date(log.created_at).toLocaleDateString()}
+                            {formatDate(
+                              log.created_at,
+                              t('common.date_formats.short'),
+                              i18n.language
+                            )}
                           </div>
                           <div
                             className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-primary transition-colors cursor-copy"

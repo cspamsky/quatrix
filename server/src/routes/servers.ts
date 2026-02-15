@@ -225,12 +225,9 @@ router.delete('/:id', authorize('servers.delete'), async (req: Request, res: Res
 
     db.prepare('DELETE FROM servers WHERE id = ?').run(req.params.id as string);
     emitDashboardStats();
-    logActivity(
-      'SERVER_DELETE',
-      `${server.name} sunucusu ve tüm verileri silindi`,
-      'WARNING',
-      authReq.user.id
-    );
+    logActivity('SERVER_DELETE', 'activity.server_deleted', 'WARNING', authReq.user.id, {
+      serverName: server.name,
+    });
     res.json({ message: 'Server deleted successfully' });
   } catch (error: unknown) {
     const err = error as Error;
@@ -396,12 +393,9 @@ router.post(
 
       const serverId = info.lastInsertRowid as number;
       emitDashboardStats();
-      logActivity(
-        'SERVER_CREATE',
-        `${name} adlı yeni sunucu oluşturuldu`,
-        'SUCCESS',
-        authReq.user.id
-      );
+      logActivity('SERVER_CREATE', 'activity.server_created', 'SUCCESS', authReq.user.id, {
+        serverName: name,
+      });
 
       // Emit socket event for real-time UI update (e.g. server list)
       const io = req.app.get('io');

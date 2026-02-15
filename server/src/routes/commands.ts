@@ -30,7 +30,13 @@ router.post('/:id/start', async (req: Request, res: Response) => {
     if (io) io.emit('status_update', { serverId: parseInt(id as string), status: 'ONLINE' });
     emitDashboardStats();
 
-    logActivity('SERVER_START', `${server.name} server started`, 'SUCCESS', authReq.user.id);
+    logActivity(
+      'activity.server_started', // Changed from 'SERVER_START'
+      'activity.server_started',
+      'SUCCESS',
+      authReq.user.id,
+      { serverName: server.name }
+    );
 
     res.json({ message: 'Server starting...' });
   } catch (error: unknown) {
@@ -54,7 +60,13 @@ router.post('/:id/stop', async (req: Request, res: Response) => {
     if (io) io.emit('status_update', { serverId: parseInt(id as string), status: 'OFFLINE' });
     emitDashboardStats();
 
-    logActivity('SERVER_STOP', `${server?.name || id} server stopped`, 'INFO', authReq.user.id);
+    logActivity(
+      'activity.server_stopped', // Changed from 'SERVER_STOP'
+      'activity.server_stopped',
+      'INFO',
+      authReq.user.id,
+      { serverName: server?.name || id }
+    );
 
     res.json({ message: 'Server stopping...' });
   } catch {
@@ -194,10 +206,11 @@ router.post('/:id/rcon', async (req: Request, res: Response) => {
       | { name: string }
       | undefined;
     logActivity(
-      'RCON_COMMAND',
-      `${server?.name || id}: ${safeCommand} command sent`,
+      'activity.rcon_command', // Changed from 'RCON_COMMAND'
+      'activity.rcon_command',
       'INFO',
-      authReq.user.id
+      authReq.user.id,
+      { serverName: server?.name || id, command: safeCommand }
     );
 
     res.json({ success: true, response });

@@ -1,5 +1,6 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import path from 'path';
+import type { PluginMetadata } from '../../PluginManager.js';
 
 // Define Mocks Scope
 const mockTaskService = {
@@ -16,13 +17,13 @@ const mockConfigManager = {
 };
 
 const mockFs = {
-  readdir: jest.fn<(...args: any[]) => Promise<any>>(),
-  access: jest.fn<(...args: any[]) => Promise<any>>(),
-  mkdir: jest.fn<(...args: any[]) => Promise<any>>(),
-  cp: jest.fn<(...args: any[]) => Promise<any>>(),
-  rm: jest.fn<(...args: any[]) => Promise<any>>(),
-  writeFile: jest.fn<(...args: any[]) => Promise<any>>(),
-  readFile: jest.fn<(...args: any[]) => Promise<any>>(),
+  readdir: jest.fn<(path: string, options?: any) => Promise<any>>(),
+  access: jest.fn<(path: string) => Promise<void>>(),
+  mkdir: jest.fn<(path: string, options?: { recursive?: boolean }) => Promise<void>>(),
+  cp: jest.fn<(src: string, dest: string, options?: any) => Promise<void>>(),
+  rm: jest.fn<(path: string, options?: any) => Promise<void>>(),
+  writeFile: jest.fn<(path: string, content: string, options?: any) => Promise<void>>(),
+  readFile: jest.fn<(path: string, options?: any) => Promise<string>>(),
 };
 
 // ESM Mocking
@@ -39,8 +40,8 @@ jest.unstable_mockModule('fs/promises', () => ({
 const { PluginInstaller } = await import('../PluginInstaller.js');
 
 describe('PluginInstaller', () => {
-  let installer: any; // Type as any to access private fields for test
-  let mockDb: any;
+  let installer: InstanceType<typeof PluginInstaller>;
+  let mockDb: { prepare: jest.Mock<any> };
 
   beforeEach(() => {
     installer = new PluginInstaller();
@@ -54,13 +55,28 @@ describe('PluginInstaller', () => {
         run: jest.fn(),
       }),
     };
-    installer.db = mockDb;
+    (installer as any).db = mockDb;
+
+    // Default readdir mock
+    mockFs.readdir.mockImplementation((_path: string, options: any) => {
+      if (options?.withFileTypes) {
+        return Promise.resolve([
+          {
+            name: 'addons',
+            isDirectory: () => true,
+            isFile: () => false,
+          },
+        ]);
+      }
+      return Promise.resolve(['addons']);
+    });
   });
 
   describe('install', () => {
-    const mockPluginInfo = {
+    const mockPluginInfo: PluginMetadata = {
       name: 'MatchZy',
       version: '1.0.0',
+      description: 'Match Manager for CS2',
       currentVersion: '1.0.0',
       folderName: 'MatchZy',
       category: 'cssharp',
@@ -118,18 +134,6 @@ describe('PluginInstaller', () => {
     });
 
     it('should use Smart Sync for non-standard structures', async () => {
-      // Mock readdir for smart sync loop (returns array of Dirent-like objects)
-      mockFs.readdir.mockImplementation((...args: any[]) => {
-        console.log('fs.readdir called with:', args);
-        return Promise.resolve([
-          {
-            name: 'MyPlugin.dll',
-            isDirectory: () => false,
-            isFile: () => true,
-          },
-        ]);
-      });
-
       mockFs.access.mockRejectedValue(new Error('not found'));
 
       Object.defineProperty(installer, 'findInPool', {
@@ -157,8 +161,12 @@ describe('PluginInstaller', () => {
 
       await installer.uninstall('/install', '1', 'matchzy', {
         name: 'MatchZy',
+        version: '1.0.0',
+        description: 'Match Manager',
         category: 'cssharp',
         folderName: 'MatchZy',
+        inPool: true,
+        isCustom: false,
       });
 
       expect(mockDb.prepare).toHaveBeenCalled();

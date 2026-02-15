@@ -15,6 +15,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Check, ShieldOff, Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../utils/date';
 
 interface Session {
   id: number;
@@ -34,7 +35,7 @@ interface UserProfile {
 }
 
 const Profile = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -276,7 +277,7 @@ const Profile = () => {
                   <span>
                     Joined:{' '}
                     {user?.created_at
-                      ? new Date(user.created_at).toLocaleDateString()
+                      ? formatDate(user.created_at, t('common.date_formats.short'), i18n.language)
                       : 'Loading...'}
                   </span>
                 </div>
@@ -443,7 +444,11 @@ const Profile = () => {
                         <span className="text-xs text-gray-500">•</span>
                         <span className="text-xs text-gray-500">
                           {t('profile.last_active')}{' '}
-                          {new Date(session.last_active).toLocaleString()}
+                          {formatDate(
+                            session.last_active,
+                            t('common.date_formats.long'),
+                            i18n.language
+                          )}
                         </span>
                       </div>
                     </div>

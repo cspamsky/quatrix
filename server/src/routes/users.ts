@@ -70,7 +70,13 @@ router.put('/:id/permissions', authorize('users.manage'), (req: Request, res: Re
       return res.status(404).json({ message: 'User not found' });
     }
 
-    logActivity('USER_UPDATE', `User ID ${id} permissions updated`, 'SUCCESS', authReq.user.id);
+    logActivity(
+      'activity.user_permissions_updated',
+      'activity.user_permissions_updated',
+      'SUCCESS',
+      authReq.user.id,
+      { userId: id }
+    );
     res.json({ message: 'User permissions updated successfully' });
   } catch (error) {
     console.error('[USERS] Permissions update error:', error);
@@ -101,7 +107,9 @@ router.delete('/:id', authorize('users.manage'), (req: Request, res: Response) =
     // Clear user sessions
     db.prepare('DELETE FROM user_sessions WHERE user_id = ?').run(id);
 
-    logActivity('USER_DELETE', `User ID ${id} was deleted`, 'WARNING', authReq.user.id);
+    logActivity('activity.user_deleted', 'activity.user_deleted', 'WARNING', authReq.user.id, {
+      userId: id,
+    });
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
     console.error('[USERS] Delete error:', error);

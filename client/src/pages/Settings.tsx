@@ -63,6 +63,8 @@ const Settings = () => {
       // Sync local state when data arrives
       setSteamCmdPath(data.steamcmd_path || '');
       setInstallDir(data.install_dir || '');
+      setPanelName(data.panel_name || 'Quatrix Panel');
+      setDefaultPort(data.default_port || '27015');
       return data;
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -299,7 +301,10 @@ const Settings = () => {
                 onClick={
                   activeTab === 'general'
                     ? () => {
-                        updateSettingsMutation.mutate({});
+                        updateSettingsMutation.mutate({
+                          panel_name: panelName,
+                          default_port: defaultPort,
+                        });
                         if (timezoneData?.current !== timezone) {
                           updateTimezoneMutation.mutate(timezone);
                         }

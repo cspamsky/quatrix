@@ -16,13 +16,14 @@ import {
   X,
   Search,
   History,
+  Languages,
+  ChevronDown,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { formatDistanceToNow } from 'date-fns';
-import { tr, enUS } from 'date-fns/locale';
+import { formatDate, formatRelative } from '../utils/date';
 import socket from '../utils/socket';
 import MonitoringSection from '../components/MonitoringSection';
 import { apiFetch } from '../utils/api';
@@ -30,9 +31,11 @@ import type { User } from '../types';
 
 interface ActivityLog {
   id: number;
-  message: string;
+  user_id: number | null;
   type: string;
-  severity: string;
+  message: string;
+  severity: 'INFO' | 'WARNING' | 'ERROR' | 'SUCCESS';
+  params?: Record<string, unknown>;
   created_at: string;
 }
 
@@ -62,12 +65,12 @@ const Dashboard = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const dateLocale = i18n.language.startsWith('tr') ? tr : enUS;
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [modalActivities, setModalActivities] = useState<ActivityLog[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isConnected, setIsConnected] = useState(socket.connected);
+  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const [user] = useState<User | null>(() => {
     try {
       const stored = localStorage.getItem('user');
@@ -122,16 +125,10 @@ const Dashboard = () => {
     const updateClock = () => {
       const now = new Date(new Date().getTime() + offset);
       try {
-        const formatted = new Intl.DateTimeFormat(i18n.language, {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: false,
-          timeZone: systemInfo.timezone,
-        }).format(now);
+        const formatted = formatDate(now, t('common.date_formats.time_seconds'), i18n.language);
         setServerClock(formatted);
       } catch {
-        setServerClock(now.toLocaleTimeString());
+        setServerClock(formatDate(now, 'HH:mm:ss', i18n.language));
       }
     };
 
@@ -238,6 +235,12 @@ const Dashboard = () => {
   };
 
   const getActivityMessage = (activity: ActivityLog) => {
+    // Check if message is a translation key
+    if (activity.message.startsWith('activity.')) {
+      return t(activity.message, activity.params || {});
+    }
+
+    // Legacy support for old hardcoded messages
     if (activity.type === 'CRITICAL_CPU') {
       const match = activity.message.match(/%(\d+(\.\d+)?)/);
       const value = match ? match[1] : '';
@@ -246,6 +249,8 @@ const Dashboard = () => {
     if (activity.type === 'CRITICAL_RAM') {
       return t('activityLog.critical_ram', { defaultValue: activity.message });
     }
+
+    // Fallback to raw message
     return activity.message;
   };
 
@@ -312,12 +317,84 @@ const Dashboard = () => {
           <p className="text-gray-400 mt-1 font-medium">{t('dashboard.subtitle')}</p>
         </div>
         <div className="flex items-center gap-3">
+          {/* Language Selection Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
+              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-xl border transition-all duration-300 group active:scale-95 ${
+                isLangMenuOpen
+                  ? 'bg-primary/10 border-primary/30 text-white'
+                  : 'bg-white/5 border-gray-800 text-gray-400 hover:border-white/10 hover:bg-white/10'
+              }`}
+              title={t('common.language')}
+            >
+              <div
+                className={`p-1 rounded-lg transition-colors ${isLangMenuOpen ? 'bg-primary text-white' : 'bg-primary/10 text-primary group-hover:bg-primary/20'}`}
+              >
+                <Languages size={15} />
+              </div>
+              <ChevronDown
+                size={12}
+                className={`transition-transform duration-300 ${isLangMenuOpen ? 'rotate-180 text-primary' : 'text-gray-500'}`}
+              />
+            </button>
+
+            {/* Dropdown Menu */}
+            {isLangMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setIsLangMenuOpen(false)} />
+                <div className="absolute right-0 mt-2 w-40 bg-[#001529]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                  <div className="p-2 space-y-1">
+                    <button
+                      onClick={() => {
+                        i18n.changeLanguage('tr');
+                        setIsLangMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                        i18n.language.startsWith('tr')
+                          ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                          : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-base">🇹🇷</span>
+                        <span className="text-xs font-bold uppercase tracking-wider">Türkçe</span>
+                      </div>
+                      {i18n.language.startsWith('tr') && (
+                        <div className="w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_8px_white]"></div>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        i18n.changeLanguage('en');
+                        setIsLangMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                        i18n.language.startsWith('en')
+                          ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                          : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-base">🇺🇸</span>
+                        <span className="text-xs font-bold uppercase tracking-wider">English</span>
+                      </div>
+                      {i18n.language.startsWith('en') && (
+                        <div className="w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_8px_white]"></div>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
           {/* Server Time Display */}
           {serverClock && (
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-800 bg-[#001529]/50 text-gray-400">
               <Clock size={14} className="text-primary" />
               <div className="flex flex-col">
-                <span className="text-[10px] font-black leading-none uppercase tracking-widest text-white">
+                <span className="text-[10px] font-black leading-none uppercase tracking-widest text-white tabular-nums">
                   {serverClock}
                 </span>
                 <span className="text-[8px] font-medium leading-none text-gray-500 mt-1 uppercase">
@@ -455,10 +532,7 @@ const Dashboard = () => {
                     </div>
                     <div className="text-[10px] text-gray-400 font-medium flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                       <Clock size={10} />
-                      {formatDistanceToNow(new Date(activity.created_at), {
-                        addSuffix: true,
-                        locale: dateLocale,
-                      })}
+                      {formatRelative(activity.created_at, i18n.language)}
                     </div>
                   </div>
                 ))
@@ -574,13 +648,14 @@ const Dashboard = () => {
                       <div className="text-right flex flex-col items-end gap-1.5 text-gray-500">
                         <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 bg-gray-800/30 px-3 py-1 rounded-full">
                           <Clock size={12} className="text-primary/50" />
-                          {formatDistanceToNow(new Date(activity.created_at), {
-                            addSuffix: true,
-                            locale: dateLocale,
-                          })}
+                          {formatRelative(activity.created_at, i18n.language)}
                         </div>
                         <span className="text-[9px] font-mono opacity-40">
-                          {new Date(activity.created_at).toLocaleString(i18n.language)}
+                          {formatDate(
+                            activity.created_at,
+                            t('common.date_formats.long'),
+                            i18n.language
+                          )}
                         </span>
                       </div>
                     </div>
