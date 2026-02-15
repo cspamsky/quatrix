@@ -27,7 +27,12 @@ router.post('/:id/start', async (req: Request, res: Response) => {
     });
 
     db.prepare("UPDATE servers SET status = 'ONLINE' WHERE id = ?").run(id as string);
-    if (io) io.emit('status_update', { serverId: parseInt(id as string), status: 'ONLINE' });
+    if (io)
+      io.emit('status_update', {
+        serverId: parseInt(id as string),
+        status: 'ONLINE',
+        is_installed: 1,
+      });
     emitDashboardStats();
 
     logActivity(
@@ -57,7 +62,12 @@ router.post('/:id/stop', async (req: Request, res: Response) => {
       | undefined;
     db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id as string);
     const io = req.app.get('io');
-    if (io) io.emit('status_update', { serverId: parseInt(id as string), status: 'OFFLINE' });
+    if (io)
+      io.emit('status_update', {
+        serverId: parseInt(id as string),
+        status: 'OFFLINE',
+        is_installed: 1,
+      });
     emitDashboardStats();
 
     logActivity(
@@ -88,7 +98,12 @@ router.post('/:id/restart', async (req: Request, res: Response) => {
     // Stop the server and update UI
     await serverManager.stopServer(id as string);
     db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id as string);
-    if (io) io.emit('status_update', { serverId: parseInt(id as string), status: 'OFFLINE' });
+    if (io)
+      io.emit('status_update', {
+        serverId: parseInt(id as string),
+        status: 'OFFLINE',
+        is_installed: 1,
+      });
 
     // Wait a moment for graceful shutdown
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -99,7 +114,12 @@ router.post('/:id/restart', async (req: Request, res: Response) => {
     });
 
     db.prepare("UPDATE servers SET status = 'ONLINE' WHERE id = ?").run(id as string);
-    if (io) io.emit('status_update', { serverId: parseInt(id as string), status: 'ONLINE' });
+    if (io)
+      io.emit('status_update', {
+        serverId: parseInt(id as string),
+        status: 'ONLINE',
+        is_installed: 1,
+      });
 
     res.json({ message: 'Server restarting...' });
   } catch (error: unknown) {
@@ -116,7 +136,7 @@ router.post('/:id/install', async (req: Request, res: Response) => {
     const io = req.app.get('io');
 
     db.prepare("UPDATE servers SET status = 'INSTALLING' WHERE id = ?").run(id as string);
-    if (io) io.emit('status_update', { serverId: id, status: 'INSTALLING' });
+    if (io) io.emit('status_update', { serverId: id, status: 'INSTALLING', is_installed: 0 });
 
     const taskId = `install-${id}-${Date.now()}`;
     taskService.createTask(taskId, 'server_install', { serverId: id as string });
@@ -133,13 +153,13 @@ router.post('/:id/install', async (req: Request, res: Response) => {
         db.prepare("UPDATE servers SET status = 'OFFLINE', is_installed = 1 WHERE id = ?").run(
           id as string
         );
-        if (io) io.emit('status_update', { serverId: id, status: 'OFFLINE' });
+        if (io) io.emit('status_update', { serverId: id, status: 'OFFLINE', is_installed: 1 });
       })
       .catch((err: unknown) => {
         const error = err as { message?: string };
         console.error('[SYSTEM] Installation failed for:', id, error);
         db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id as string);
-        if (io) io.emit('status_update', { serverId: id, status: 'OFFLINE' });
+        if (io) io.emit('status_update', { serverId: id, status: 'OFFLINE', is_installed: 0 });
         taskService.failTask(taskId, error.message || 'Installation failed');
       });
 
@@ -157,7 +177,7 @@ router.post('/:id/abort-install', async (req: Request, res: Response) => {
 
     db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id as string);
     const io = req.app.get('io');
-    if (io) io.emit('status_update', { serverId: id, status: 'OFFLINE' });
+    if (io) io.emit('status_update', { serverId: id, status: 'OFFLINE', is_installed: 0 });
 
     res.json({ message: 'Installation aborted' });
   } catch {

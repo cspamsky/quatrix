@@ -21,7 +21,7 @@ interface Instance {
   id: number;
   name: string;
   map: string;
-  status: 'ONLINE' | 'OFFLINE' | 'STARTING' | 'INSTALLING';
+  status: 'ONLINE' | 'OFFLINE' | 'STARTING' | 'INSTALLING' | 'CRASHED';
   current_players: number;
   max_players: number;
   port: number;
@@ -117,6 +117,12 @@ const ServerCard = memo(
               <div className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-orange-500/10 text-orange-500 border border-orange-500/20 flex items-center backdrop-blur-md shadow-sm">
                 <div className="w-2 h-2 border-2 border-orange-500 border-t-transparent rounded-full animate-spin mr-1.5"></div>
                 {t('serverCard.status_installing')}
+              </div>
+            )}
+            {instance.status === 'CRASHED' && (
+              <div className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-500/10 text-red-500 border border-red-500/20 flex items-center backdrop-blur-md shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5 animate-pulse"></span>
+                {t('serverCard.status_crashed') || 'CRASHED'}
               </div>
             )}
           </div>

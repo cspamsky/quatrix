@@ -25,7 +25,7 @@ interface Instance {
   id: number;
   name: string;
   map: string;
-  status: 'ONLINE' | 'OFFLINE' | 'STARTING' | 'INSTALLING';
+  status: 'ONLINE' | 'OFFLINE' | 'STARTING' | 'INSTALLING' | 'CRASHED';
   current_players: number;
   max_players: number;
   port: number;
@@ -89,22 +89,49 @@ const Instances = () => {
 
   useEffect(() => {
     // Listen for real-time status updates
-    socket.on('status_update', ({ serverId, status }: { serverId: number; status: string }) => {
-      setLocalInstances((prev) =>
-        prev.map((instance) =>
-          instance.id === serverId
-            ? { ...instance, status: status as Instance['status'] }
-            : instance
-        )
-      );
-      // Also update the cache so the status persists
-      queryClient.setQueryData(['servers'], (old: Instance[] | undefined) =>
-        old?.map((instance) =>
-          instance.id === serverId
-            ? { ...instance, status: status as Instance['status'] }
-            : instance
-        )
-      );
+    socket.on(
+      'status_update',
+      ({
+        serverId,
+        status,
+        is_installed,
+      }: {
+        serverId: number;
+        status: string;
+        is_installed?: number;
+      }) => {
+        const updateFunc = (old: Instance[] | undefined) =>
+          old?.map((instance) => {
+            if (instance.id === serverId) {
+              const updated = { ...instance, status: status as Instance['status'] };
+              if (is_installed !== undefined) {
+                updated.isInstalled = is_installed === 1;
+              }
+              return updated;
+            }
+            return instance;
+          });
+
+        setLocalInstances((prev) => updateFunc(prev) || []);
+        // Also update the cache so the status persists
+        queryClient.setQueryData(['servers'], updateFunc);
+      }
+    );
+
+    // Listen for new server creations
+    socket.on('server_created', (newServer: Instance) => {
+      if (newServer && newServer.id) {
+        setLocalInstances((prev) => {
+          if (prev.find((s) => s.id === newServer.id)) return prev;
+          return [...prev, newServer];
+        });
+
+        queryClient.setQueryData(['servers'], (old: Instance[] | undefined) => {
+          if (!old) return [newServer];
+          if (old.find((s) => s.id === newServer.id)) return old;
+          return [...old, newServer];
+        });
+      }
     });
 
     // Listen for server updates (map changes, settings, etc.)
@@ -114,6 +141,7 @@ const Instances = () => {
 
     return () => {
       socket.off('status_update');
+      socket.off('server_created');
       socket.off('server_update');
     };
   }, [queryClient]);

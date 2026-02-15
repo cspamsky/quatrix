@@ -78,7 +78,14 @@
     "title": "Admin Yönetimi"
   },
   "analytics": {
-    "subtitle": "Geçmiş sistem performansı ve kaynak kullanım verilerini inceleyin"
+    "cpu": "CPU",
+    "disk_read": "DİSK OKUMA",
+    "net_in": "AĞ GİRİŞ",
+    "no_data_desc": "Veri anlık görüntüleri her 5 dakikada bir alınır.",
+    "no_data_title": "Henüz analiz verisi toplanmadı.",
+    "ram": "RAM",
+    "subtitle": "Geçmiş sistem performansı ve kaynak kullanım verilerini inceleyin",
+    "unified_message": "Tüm metrikler tek bir yüksek doğruluklu zaman çizelgesinde birleştirilmiştir."
   },
   "auth": {
     "2fa": {
@@ -786,6 +793,7 @@
     "status_offline": "ÇEVRİMDIŞI",
     "status_online": "ÇEVRİMİÇİ",
     "status_starting": "BAŞLATILIYOR",
+    "status_crashed": "ÇÖKTÜ",
     "stop": "Durdur",
     "stopping": "Durduruluyor...",
     "workshop": "Workshop"
@@ -941,6 +949,7 @@
       "found_in_pool": "Eklenti havuzda bulundu, senkronize ediliyor...",
       "install_failed": "Kurulum başarısız oldu",
       "install_success": "{{plugin}} başarıyla yüklendi",
+      "server_install_success": "Sunucu başarıyla kuruldu",
       "installing": "Eklenti {{plugin}} yükleniyor...",
       "opening_backup": "Yedek dosyası açılıyor...",
       "packaging_files": "Sunucu dosyaları paketleniyor...",
@@ -955,7 +964,9 @@
       "uninstalling": "Eklenti {{plugin}} kaldırılıyor...",
       "validation_failed": "Dosya doğrulaması başarısız oldu",
       "validation_success": "Dosya doğrulaması başarıyla tamamlandı",
-      "verifying": "Doğrulanıyor..."
+      "verifying": "Doğrulanıyor...",
+      "fetching_steam_metadata": "Steam metadata bilgileri alınıyor...",
+      "workshop_success": "Atölye haritası başarıyla kaydedildi"
     },
     "type": {
       "backup_create": "Yedek Oluşturma",

@@ -108,7 +108,7 @@ export class SteamManager {
                 taskService.updateTask(currentTaskId, {
                   progress,
                   status: 'running',
-                  message: `${statusMsg} (${progress}%)`,
+                  message: statusMsg,
                 });
               }
             }
@@ -120,7 +120,7 @@ export class SteamManager {
         const finalTaskId = taskId;
         if (code === 0) {
           if (typeof finalTaskId === 'string') {
-            taskService.completeTask(finalTaskId, 'tasks.messages.install_success');
+            taskService.completeTask(finalTaskId, 'tasks.messages.server_install_success');
           }
           resolve();
         } else {

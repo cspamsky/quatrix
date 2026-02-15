@@ -78,7 +78,14 @@
     "title": "Admin Management"
   },
   "analytics": {
-    "subtitle": "Visual insights into historical system performance and resource utilization"
+    "cpu": "CPU",
+    "disk_read": "DISK READ",
+    "net_in": "NET IN",
+    "no_data_desc": "Data snapshots are taken every 5 minutes.",
+    "no_data_title": "No analytics data collected yet.",
+    "ram": "RAM",
+    "subtitle": "Visual insights into historical system performance and resource utilization",
+    "unified_message": "All metrics are unified in a single high-fidelity timeframe."
   },
   "auth": {
     "2fa": {
@@ -786,6 +793,7 @@
     "status_offline": "OFFLINE",
     "status_online": "ONLINE",
     "status_starting": "STARTING",
+    "status_crashed": "CRASHED",
     "stop": "Stop",
     "stopping": "Stopping...",
     "workshop": "Workshop"
@@ -941,6 +949,7 @@
       "found_in_pool": "Plugin found in pool, syncing...",
       "install_failed": "Installation failed",
       "install_success": "{{plugin}} installed successfully",
+      "server_install_success": "Server installed successfully",
       "installing": "Installing plugin {{plugin}}...",
       "opening_backup": "Opening backup file...",
       "packaging_files": "Packaging server files...",
@@ -955,7 +964,9 @@
       "uninstalling": "Uninstalling plugin {{plugin}}...",
       "validation_failed": "File validation failed",
       "validation_success": "File validation completed successfully",
-      "verifying": "Verifying..."
+      "verifying": "Verifying...",
+      "fetching_steam_metadata": "Fetching Steam metadata...",
+      "workshop_success": "Workshop map registered successfully"
     },
     "type": {
       "backup_create": "Creating Backup",

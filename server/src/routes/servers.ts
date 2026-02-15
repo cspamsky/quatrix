@@ -392,6 +392,35 @@ router.post(
         );
 
       const serverId = info.lastInsertRowid as number;
+
+      // Fetch the full server object with the same JOINs as the list query
+      const fullServer = db
+        .prepare(
+          `
+        SELECT 
+          s.*, 
+          s.is_installed as isInstalled,
+          CASE 
+            WHEN wm.name IS NOT NULL THEN wm.name
+            ELSE s.map
+          END as workshop_map_name,
+          wm.image_url as workshop_map_image
+        FROM servers s
+        LEFT JOIN workshop_maps wm ON (
+          s.map = wm.map_file OR
+          s.map = wm.workshop_id OR
+          s.map LIKE '%' || wm.workshop_id || '%' OR
+          wm.map_file IS NOT NULL AND (
+            s.map = wm.map_file OR 
+            s.map LIKE '%/' || wm.map_file OR 
+            s.map LIKE '%\\' || wm.map_file
+          )
+        )
+        WHERE s.id = ?
+      `
+        )
+        .get(serverId);
+
       emitDashboardStats();
       logActivity('SERVER_CREATE', 'activity.server_created', 'SUCCESS', authReq.user.id, {
         serverName: name,
@@ -399,14 +428,14 @@ router.post(
 
       // Emit socket event for real-time UI update (e.g. server list)
       const io = req.app.get('io');
-      if (io) io.emit('server_update', { serverId });
+      if (io) io.emit('server_created', fullServer);
 
       // If auto_start is enabled, trigger installation immediately
       if (auto_start) {
         console.log(`[SYSTEM] Auto-starting installation for server ${serverId}`);
 
         db.prepare("UPDATE servers SET status = 'INSTALLING' WHERE id = ?").run(serverId);
-        if (io) io.emit('status_update', { serverId, status: 'INSTALLING' });
+        if (io) io.emit('status_update', { serverId, status: 'INSTALLING', is_installed: 0 });
 
         serverManager
           .installOrUpdateServer(serverId.toString(), (data: string) => {
@@ -416,7 +445,7 @@ router.post(
             db.prepare("UPDATE servers SET status = 'OFFLINE', is_installed = 1 WHERE id = ?").run(
               serverId
             );
-            if (io) io.emit('status_update', { serverId, status: 'OFFLINE' });
+            if (io) io.emit('status_update', { serverId, status: 'OFFLINE', is_installed: 1 });
 
             // Optionally start the server after installation
             const serverData = db.prepare('SELECT * FROM servers WHERE id = ?').get(serverId) as
@@ -432,13 +461,13 @@ router.post(
               );
             }
             db.prepare("UPDATE servers SET status = 'ONLINE' WHERE id = ?").run(serverId);
-            if (io) io.emit('status_update', { serverId, status: 'ONLINE' });
+            if (io) io.emit('status_update', { serverId, status: 'ONLINE', is_installed: 1 });
           })
           .catch((err: unknown) => {
             const error = err as Error;
             console.error(`[SYSTEM] Auto-install failed for server ${serverId}:`, error);
             db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(serverId);
-            if (io) io.emit('status_update', { serverId, status: 'OFFLINE' });
+            if (io) io.emit('status_update', { serverId, status: 'OFFLINE', is_installed: 0 });
           });
       }
 

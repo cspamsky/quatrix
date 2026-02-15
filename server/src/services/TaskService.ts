@@ -27,7 +27,7 @@ export class TaskService extends EventEmitter {
       type,
       status: 'pending',
       progress: 0,
-      message: 'Initializing...',
+      message: 'tasks.messages.finalizing',
       metadata,
       startTime: Date.now(),
     };
@@ -46,7 +46,7 @@ export class TaskService extends EventEmitter {
     this.broadcast('task_progress', task);
   }
 
-  completeTask(id: string, message: string = 'Completed successfully') {
+  completeTask(id: string, message: string = 'tasks.messages.finalizing') {
     const task = this.tasks.get(id);
     if (!task) return;
 

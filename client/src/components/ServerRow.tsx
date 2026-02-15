@@ -18,7 +18,7 @@ interface Instance {
   id: number;
   name: string;
   map: string;
-  status: 'ONLINE' | 'OFFLINE' | 'STARTING' | 'INSTALLING';
+  status: 'ONLINE' | 'OFFLINE' | 'STARTING' | 'INSTALLING' | 'CRASHED';
   current_players: number;
   max_players: number;
   port: number;
@@ -94,6 +94,8 @@ const ServerRow = memo(
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
             ) : instance.status === 'OFFLINE' ? (
               <div className="w-2 h-2 rounded-full bg-gray-500" />
+            ) : instance.status === 'CRASHED' ? (
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
             ) : (
               <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             )}

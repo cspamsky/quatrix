@@ -61,7 +61,7 @@ const ServerEngineTab: React.FC<ServerEngineTabProps> = ({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 gap-8">
         <div className="space-y-6">
           <div className="p-6 bg-[#0d1624] rounded-2xl border border-gray-800/50 space-y-6">
             <div>
@@ -119,27 +119,6 @@ const ServerEngineTab: React.FC<ServerEngineTabProps> = ({
             </div>
 
             {/* Save Button Removed - Moved to Settings.tsx */}
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="p-8 bg-gradient-to-br from-primary/10 to-transparent rounded-2xl border border-primary/20">
-            <h4 className="text-primary font-black uppercase tracking-widest text-xs mb-4">
-              {t('settingsEngine.pro_tip_title')}
-            </h4>
-            <p className="text-gray-400 text-sm leading-relaxed mb-6">
-              {t('settingsEngine.pro_tip_desc')}
-            </p>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 text-xs text-gray-300">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
-                {t('settingsEngine.one_instance')}
-              </div>
-              <div className="flex items-center gap-3 text-xs text-gray-300">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
-                {t('settingsEngine.five_instances')}
-              </div>
-            </div>
           </div>
         </div>
       </div>

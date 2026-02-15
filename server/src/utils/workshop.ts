@@ -12,7 +12,7 @@ export async function registerWorkshopMap(
     if (taskId) {
       taskService.updateTask(taskId, {
         status: 'running',
-        message: `Fetching Steam metadata for ${workshopId}...`,
+        message: 'tasks.messages.fetching_steam_metadata',
         progress: 30,
       });
     }
@@ -84,7 +84,7 @@ export async function registerWorkshopMap(
     ).run(workshopId, name, image_url, map_file);
 
     if (taskId) {
-      taskService.completeTask(taskId, `Map ${name} registered successfully`);
+      taskService.completeTask(taskId, 'tasks.messages.workshop_success');
     }
 
     return { name, image_url, map_file };

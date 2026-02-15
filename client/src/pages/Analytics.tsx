@@ -84,7 +84,9 @@ const Analytics = () => {
               </div>
               <span className="text-xs font-black text-white">
                 {typeof entry.value === 'number' ? entry.value.toFixed(2) : entry.value}{' '}
-                {['CPU', 'RAM'].includes(entry.name) ? '%' : 'MB/s'}
+                {['CPU', 'RAM', t('analytics.cpu'), t('analytics.ram')].includes(entry.name)
+                  ? '%'
+                  : 'MB/s'}
               </span>
             </div>
           ))}
@@ -136,7 +138,9 @@ const Analytics = () => {
         <div className="flex items-center gap-2 mb-8 bg-blue-500/5 p-3 rounded-xl border border-blue-500/10 max-w-fit">
           <Info size={16} className="text-blue-500" />
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-            All metrics are unified in a single high-fidelity timeframe.
+            {t('analytics.unified_message', {
+              defaultValue: 'All metrics are unified in a single high-fidelity timeframe.',
+            })}
           </p>
         </div>
 
@@ -172,7 +176,7 @@ const Analytics = () => {
                       }}
                     />
                     <Line
-                      name="CPU"
+                      name={t('analytics.cpu', { defaultValue: 'CPU' })}
                       type="monotone"
                       dataKey="cpu"
                       stroke="#3b82f6"
@@ -182,7 +186,7 @@ const Analytics = () => {
                       animationDuration={1000}
                     />
                     <Line
-                      name="RAM"
+                      name={t('analytics.ram', { defaultValue: 'RAM' })}
                       type="monotone"
                       dataKey="ram"
                       stroke="#a855f7"
@@ -192,7 +196,7 @@ const Analytics = () => {
                       animationDuration={1000}
                     />
                     <Line
-                      name="NET IN"
+                      name={t('analytics.net_in', { defaultValue: 'NET IN' })}
                       type="monotone"
                       dataKey="net_in"
                       stroke="#10b981"
@@ -202,7 +206,7 @@ const Analytics = () => {
                       animationDuration={1000}
                     />
                     <Line
-                      name="DISK READ"
+                      name={t('analytics.disk_read', { defaultValue: 'DISK READ' })}
                       type="monotone"
                       dataKey="disk_read"
                       stroke="#f97316"
@@ -219,9 +223,14 @@ const Analytics = () => {
             <div className="h-full flex flex-col items-center justify-center text-gray-600 space-y-4">
               <Info size={48} />
               <p className="text-sm font-bold uppercase tracking-widest text-center">
-                No analytics data collected yet. <br />
+                {t('analytics.no_data_title', {
+                  defaultValue: 'No analytics data collected yet.',
+                })}
+                <br />
                 <span className="text-[10px] text-gray-700">
-                  Data snapshots are taken every 5 minutes.
+                  {t('analytics.no_data_desc', {
+                    defaultValue: 'Data snapshots are taken every 5 minutes.',
+                  })}
                 </span>
               </p>
             </div>

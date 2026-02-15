@@ -55,20 +55,25 @@ const Settings = () => {
   // --- Queries ---
 
   // 1. Fetch Global Settings
-  useQuery({
+  // 1. Fetch Global Settings
+  const { data: settingsData } = useQuery({
     queryKey: ['settings'],
     queryFn: async () => {
       const res = await apiFetch('/api/settings');
-      const data = await res.json();
-      // Sync local state when data arrives
-      setSteamCmdPath(data.steamcmd_path || '');
-      setInstallDir(data.install_dir || '');
-      setPanelName(data.panel_name || 'Quatrix Panel');
-      setDefaultPort(data.default_port || '27015');
-      return data;
+      return res.json();
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
+
+  // Sync local state when data changes
+  useEffect(() => {
+    if (settingsData) {
+      setSteamCmdPath(settingsData.steamcmd_path || '');
+      setInstallDir(settingsData.install_dir || '');
+      setPanelName(settingsData.panel_name || 'Quatrix Panel');
+      setDefaultPort(settingsData.default_port || '27015');
+    }
+  }, [settingsData]);
 
   // 2. Fetch System Health
   const {
