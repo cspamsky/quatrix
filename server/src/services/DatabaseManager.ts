@@ -253,7 +253,8 @@ export class DatabaseManager {
      *    - Table name is strictly identifier-like.
      *    - WHERE clause is also cautiously matched.
      */
-    const selectFromPattern = /^select\s+[*`a-z0-9_\s,().-]+\s+from\s+[`a-z0-9_]+\s*(where\s+[^;#]+)?$/;
+    const selectFromPattern =
+      /^select\s+[*`a-z0-9_\s,().-]+\s+from\s+[`a-z0-9_]+\s*(where\s+[^;#]+)?$/;
 
     if (!selectFromPattern.test(normalized)) {
       throw new Error(

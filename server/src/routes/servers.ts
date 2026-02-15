@@ -514,7 +514,9 @@ router.post(
         if (safeColumns.length === 0) {
           return res.status(400).json({ message: 'No valid column names provided' });
         }
-        selectedColumns = safeColumns.map((col) => databaseManager.escapeIdentifier(col)).join(', ');
+        selectedColumns = safeColumns
+          .map((col) => databaseManager.escapeIdentifier(col))
+          .join(', ');
       }
 
       let sql = `SELECT ${selectedColumns} FROM ${databaseManager.escapeIdentifier(table)}`;
