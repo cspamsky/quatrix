@@ -15,12 +15,19 @@ router.get('/activity/recent', (_req: Request, res: Response) => {
     const logs = db
       .prepare(
         `
-            SELECT * FROM activity_logs 
+            SELECT 
+              id, user_id, type, message, severity, params,
+              strftime('%Y-%m-%dT%H:%M:%SZ', created_at) as created_at
+            FROM activity_logs 
             ORDER BY created_at DESC 
             LIMIT ?
         `
       )
-      .all(limit);
+      .all(limit)
+      .map((log: any) => ({
+        ...log,
+        params: log.params ? JSON.parse(log.params) : {},
+      }));
     res.json(logs);
   } catch (error: unknown) {
     const err = error as Error;

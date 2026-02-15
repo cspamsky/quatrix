@@ -47,6 +47,7 @@ export const formatRelative = (
     return formatDistanceToNow(d, {
       locale: getDateLocale(lang),
       addSuffix: true,
+      includeSeconds: true,
     });
   } catch (error) {
     console.error('Error formatting relative date:', error);

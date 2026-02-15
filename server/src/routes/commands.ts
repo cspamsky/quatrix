@@ -35,13 +35,9 @@ router.post('/:id/start', async (req: Request, res: Response) => {
       });
     emitDashboardStats();
 
-    logActivity(
-      'activity.server_started', // Changed from 'SERVER_START'
-      'activity.server_started',
-      'SUCCESS',
-      authReq.user.id,
-      { serverName: server.name }
-    );
+    logActivity('SERVER_START', 'activity.server_started', 'SUCCESS', authReq.user.id, {
+      serverName: server.name,
+    });
 
     res.json({ message: 'Server starting...' });
   } catch (error: unknown) {
@@ -70,13 +66,9 @@ router.post('/:id/stop', async (req: Request, res: Response) => {
       });
     emitDashboardStats();
 
-    logActivity(
-      'activity.server_stopped', // Changed from 'SERVER_STOP'
-      'activity.server_stopped',
-      'INFO',
-      authReq.user.id,
-      { serverName: server?.name || id }
-    );
+    logActivity('SERVER_STOP', 'activity.server_stopped', 'INFO', authReq.user.id, {
+      serverName: server?.name || id,
+    });
 
     res.json({ message: 'Server stopping...' });
   } catch {
@@ -225,13 +217,10 @@ router.post('/:id/rcon', async (req: Request, res: Response) => {
     const server = db.prepare('SELECT name FROM servers WHERE id = ?').get(id as string) as
       | { name: string }
       | undefined;
-    logActivity(
-      'activity.rcon_command', // Changed from 'RCON_COMMAND'
-      'activity.rcon_command',
-      'INFO',
-      authReq.user.id,
-      { serverName: server?.name || id, command: safeCommand }
-    );
+    logActivity('RCON_COMMAND', 'activity.rcon_command', 'INFO', authReq.user.id, {
+      serverName: server?.name || id,
+      command: safeCommand,
+    });
 
     res.json({ success: true, response });
   } catch (error: unknown) {
