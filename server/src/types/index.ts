@@ -55,6 +55,7 @@ export interface Server {
   additional_args?: string | null;
   cpu_priority: number;
   ram_limit: number;
+  restart_policy?: string;
   is_installed: number;
   user_id: number;
   ip?: string;
@@ -92,4 +93,5 @@ export interface UpdateServerBody {
   additional_args?: string | null;
   cpu_priority: number;
   ram_limit: number;
+  restart_policy?: string;
 }

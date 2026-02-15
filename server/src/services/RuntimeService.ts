@@ -15,6 +15,7 @@ export interface InstanceState {
   pid?: number | undefined;
   status: ServerStatus;
   startedAt?: Date;
+  isStopping?: boolean;
 }
 
 export interface InstanceOptions {
@@ -109,6 +110,7 @@ class RuntimeService {
         pid: proc.pid,
         status: 'STARTING',
         startedAt: new Date(),
+        isStopping: false,
       });
 
       // Handlers
@@ -131,6 +133,7 @@ class RuntimeService {
     const state = this.instances.get(id);
     if (!state || !state.pid) return false;
 
+    state.isStopping = true;
     console.log(`[Runtime] Stopping instance ${id} (PID: ${state.pid})`);
 
     await instanceProcessManager.killProcess(state.pid, state.process);
@@ -158,6 +161,9 @@ class RuntimeService {
   private handleExit(id: string, code: number | null) {
     console.log(`[Runtime] Instance ${id} exited with code ${code}`);
 
+    const state = this.instances.get(id);
+    const wasStopping = state?.isStopping || false;
+
     runtimeLogWatcher.stopWatching(id);
     lockService.releaseInstanceLock(id);
     this.instances.delete(id);
@@ -168,6 +174,39 @@ class RuntimeService {
     if (isCrash) console.warn(`[Runtime] CRASH DETECTED for instance ${id}`);
 
     db.prepare('UPDATE servers SET status = ?, pid = NULL WHERE id = ?').run(status, id);
+
+    // Auto-Restart Logic
+    if (!wasStopping) {
+      try {
+        const server = db.prepare('SELECT restart_policy FROM servers WHERE id = ?').get(id) as
+          | { restart_policy: string }
+          | undefined;
+        const policy = server?.restart_policy || 'on_failure';
+
+        const shouldRestart = policy === 'always' || (policy === 'on_failure' && isCrash);
+
+        if (shouldRestart) {
+          console.log(`[Runtime] Auto-restarting instance ${id} (Policy: ${policy})...`);
+
+          // Wait 5 seconds to prevent spam
+          setTimeout(async () => {
+            // Re-fetch full server config for start
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const serverConfig = db.prepare('SELECT * FROM servers WHERE id = ?').get(id) as any;
+            if (serverConfig) {
+              try {
+                // We don't have the explicit onLog handler here, but runtime log watcher will re-attach
+                await this.startInstance(id, serverConfig);
+              } catch (e) {
+                console.error(`[Runtime] Auto-restart failed for ${id}:`, e);
+              }
+            }
+          }, 5000);
+        }
+      } catch (e) {
+        console.error(`[Runtime] Error in auto-restart logic for ${id}:`, e);
+      }
+    }
   }
 
   private async ensureInstancePrepared(id: string, instancePath: string) {

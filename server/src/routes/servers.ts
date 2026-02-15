@@ -104,6 +104,7 @@ export const createServerSchema = z.object({
   auto_start: z.boolean().optional().default(false),
   cpu_priority: z.number().int().min(-20).max(19).optional().default(0),
   ram_limit: z.number().int().min(0).optional().default(0),
+  restart_policy: z.string().optional().default('on_failure'),
 });
 
 // Middleware for this router
@@ -259,6 +260,7 @@ router.put('/:id', authorize('servers.update'), (req: Request, res: Response) =>
     additional_args,
     cpu_priority,
     ram_limit,
+    restart_policy,
   } = req.body as UpdateServerBody;
 
   try {
@@ -273,7 +275,7 @@ router.put('/:id', authorize('servers.update'), (req: Request, res: Response) =>
           rcon_password = ?, vac_enabled = ?, gslt_token = ?, steam_api_key = ?,
           game_type = ?, game_mode = ?, tickrate = ?, game_alias = ?,
           hibernate = ?, validate_files = ?, additional_args = ?,
-          cpu_priority = ?, ram_limit = ?
+          cpu_priority = ?, ram_limit = ?, restart_policy = ?
       WHERE id = ?
     `
     ).run(
@@ -295,6 +297,7 @@ router.put('/:id', authorize('servers.update'), (req: Request, res: Response) =>
       additional_args || null,
       cpu_priority || 0,
       ram_limit || 0,
+      restart_policy || 'on_failure',
       id as string
     );
 
@@ -346,6 +349,7 @@ router.post(
         additional_args,
         cpu_priority,
         ram_limit,
+        restart_policy,
       } = result.data;
 
       const result_count = db
@@ -363,9 +367,9 @@ router.post(
         map, max_players, password, gslt_token, steam_api_key, 
         vac_enabled, game_type, game_mode, tickrate, auto_start,
         game_alias, hibernate, validate_files, additional_args,
-        cpu_priority, ram_limit
+        cpu_priority, ram_limit, restart_policy
       )
-      VALUES (?, ?, ?, 'OFFLINE', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, 'OFFLINE', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
         )
         .run(
@@ -388,7 +392,8 @@ router.post(
           validate_files ?? 0,
           additional_args || null,
           cpu_priority || 0,
-          ram_limit || 0
+          ram_limit || 0,
+          restart_policy || 'on_failure'
         );
 
       const serverId = info.lastInsertRowid as number;

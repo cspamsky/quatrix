@@ -292,6 +292,12 @@ try {
   /* ignore */
 }
 
+try {
+  db.exec(`ALTER TABLE servers ADD COLUMN restart_policy TEXT DEFAULT 'on_failure'`);
+} catch {
+  /* ignore */
+}
+
 // Create settings table
 db.exec(`
   CREATE TABLE IF NOT EXISTS settings (

@@ -29,6 +29,7 @@ interface ServerData {
   region: number;
   cpu_priority: number;
   ram_limit: number;
+  restart_policy?: string;
 }
 
 const ServerSettings = () => {
@@ -294,7 +295,7 @@ const ServerSettings = () => {
                 {/* Performance Orchestration */}
                 <div className="space-y-4 pt-4 border-t border-gray-800/50">
                   <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">
-                    {t('serverSettings.performance_orchestration')}
+                    {t('serverSettings.performance_orchestration')} & Otomasyon
                   </h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -327,6 +328,22 @@ const ServerSettings = () => {
                         ]}
                         value={server.ram_limit || 0}
                         onChange={(val) => setServer({ ...server, ram_limit: Number(val) })}
+                        disabled={!canEdit}
+                        className="text-xs"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                        {t('serverSettings.restart_policy')}
+                      </label>
+                      <CustomSelect
+                        options={[
+                          { value: 'on_failure', label: t('serverSettings.restart_on_failure') },
+                          { value: 'always', label: t('serverSettings.restart_always') },
+                          { value: 'never', label: t('serverSettings.restart_never') },
+                        ]}
+                        value={server.restart_policy || 'on_failure'}
+                        onChange={(val) => setServer({ ...server, restart_policy: val as string })}
                         disabled={!canEdit}
                         className="text-xs"
                       />
