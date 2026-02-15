@@ -71,7 +71,7 @@ router.put('/:id/permissions', authorize('users.manage'), (req: Request, res: Re
     }
 
     logActivity(
-      'activity.user_permissions_updated',
+      'USER_UPDATE',
       'activity.user_permissions_updated',
       'SUCCESS',
       authReq.user.id,
@@ -107,7 +107,7 @@ router.delete('/:id', authorize('users.manage'), (req: Request, res: Response) =
     // Clear user sessions
     db.prepare('DELETE FROM user_sessions WHERE user_id = ?').run(id);
 
-    logActivity('activity.user_deleted', 'activity.user_deleted', 'WARNING', authReq.user.id, {
+    logActivity('USER_DELETE', 'activity.user_deleted', 'WARNING', authReq.user.id, {
       userId: id,
     });
     res.json({ message: 'User deleted successfully' });
