@@ -181,12 +181,13 @@ const Admins = () => {
             placeholder={t('admins.select_server')}
             icon={<Server className="w-4 h-4" />}
             className="w-64"
+            size="sm"
           />
 
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
             <input
-              className="w-64 pl-10 pr-4 py-2 bg-[#111827] border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200"
+              className="w-64 pl-10 pr-4 py-1.5 bg-[#0F172A]/50 border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200"
               placeholder={t('admins.search_placeholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

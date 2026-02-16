@@ -440,7 +440,7 @@ const Instances = () => {
             <p className="text-sm text-gray-400 mt-1">{t('instances.subtitle')}</p>
           </div>
           <div className="flex items-center space-x-4">
-            <div className="flex bg-[#111827] border border-gray-800 rounded-xl p-1 shrink-0 shadow-sm shadow-black/20">
+            <div className="flex bg-[#0F172A]/50 border border-gray-800 rounded-xl p-1 shrink-0 shadow-sm shadow-black/20">
               <button
                 onClick={() => toggleViewMode()}
                 className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-gray-300'}`}
@@ -460,7 +460,7 @@ const Instances = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
               <input
                 aria-label={t('instances.filter_placeholder')}
-                className="w-48 lg:w-64 pl-10 pr-4 py-2 bg-[#111827] border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200"
+                className="w-48 lg:w-64 pl-10 pr-4 py-1.5 bg-[#0F172A]/50 border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200"
                 placeholder={t('instances.filter_placeholder')}
                 type="text"
                 value={searchQuery}

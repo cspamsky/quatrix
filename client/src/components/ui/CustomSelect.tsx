@@ -20,6 +20,7 @@ interface CustomSelectProps {
   disabled?: boolean;
   className?: string;
   icon?: React.ReactNode;
+  size?: 'normal' | 'sm';
 }
 
 const CustomSelect: React.FC<CustomSelectProps> = ({
@@ -30,6 +31,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
   disabled = false,
   className,
   icon,
+  size = 'normal',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -57,19 +59,20 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
   };
 
   return (
-    <div className={cn('relative w-full', className)} ref={containerRef}>
+    <div className={cn('relative w-full text-left', className)} ref={containerRef}>
       {/* Trigger */}
       <div
         onClick={handleToggle}
         className={cn(
-          'w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white flex items-center justify-between cursor-pointer transition-all hover:border-gray-700',
+          'w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 flex items-center justify-between cursor-pointer transition-all hover:border-gray-700',
+          size === 'sm' ? 'py-1.5' : 'py-3',
           isOpen && 'ring-2 ring-primary border-transparent',
           disabled && 'opacity-50 cursor-not-allowed'
         )}
       >
-        <div className="flex items-center gap-3 truncate">
+        <div className="flex items-center gap-2 truncate">
           {icon && <div className="text-gray-500 shrink-0">{icon}</div>}
-          <span className={cn('truncate', !selectedOption && 'text-gray-500')}>
+          <span className={cn('truncate text-sm font-medium', !selectedOption && 'text-gray-500')}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
         </div>
@@ -90,8 +93,9 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                 key={opt.value}
                 onClick={() => handleSelect(opt.value)}
                 className={cn(
-                  'px-4 py-2.5 text-sm cursor-pointer flex items-center justify-between hover:bg-white/5 transition-colors',
-                  value === opt.value ? 'text-primary bg-primary/5' : 'text-gray-300'
+                  'px-4 cursor-pointer flex items-center justify-between hover:bg-white/5 transition-colors',
+                  size === 'sm' ? 'py-2 text-xs' : 'py-2.5 text-sm',
+                  value === opt.value ? 'text-primary bg-primary/5 font-bold' : 'text-gray-300'
                 )}
               >
                 <span className="truncate">{opt.label}</span>

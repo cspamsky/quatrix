@@ -22,6 +22,7 @@ import ConfigEditor from '../components/plugins/ConfigEditor.js';
 import UploadModal from '../components/plugins/UploadModal.js';
 import PoolTable from '../components/plugins/PoolTable.js';
 import PluginRow from '../components/plugins/PluginRow.js';
+import CustomSelect from '../components/ui/CustomSelect';
 
 interface Instance {
   id: number;
@@ -365,17 +366,17 @@ const Plugins = () => {
   }, [allPlugins, searchQuery, activeCategory]);
 
   const TabSwitcher = () => (
-    <div className="flex items-center gap-1 bg-[#111827]/40 p-1 rounded-2xl border border-gray-800/50 shrink-0">
+    <div className="flex items-center gap-1 bg-[#0F172A]/50 p-1 rounded-xl border border-gray-800 shrink-0 shadow-sm shadow-black/20">
       <button
         onClick={() => setActiveTab('instances')}
-        className={`flex items-center gap-3 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'instances' ? 'bg-primary text-white shadow-xl shadow-primary/20' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
+        className={`flex items-center gap-3 px-6 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.1em] transition-all ${activeTab === 'instances' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
       >
         <ServerIcon size={14} />
         {t('plugins.server_management')}
       </button>
       <button
         onClick={() => setActiveTab('pool')}
-        className={`flex items-center gap-3 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'pool' ? 'bg-orange-500 text-white shadow-xl shadow-orange-500/20' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
+        className={`flex items-center gap-3 px-6 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.1em] transition-all ${activeTab === 'pool' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
       >
         <Box size={14} />
         {t('plugins.global_repository')}
@@ -435,13 +436,13 @@ const Plugins = () => {
             <input
               type="text"
               placeholder={t('plugins.search_plugins')}
-              className="w-full bg-[#111827]/40 border border-gray-800/50 rounded-2xl py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-primary/50 focus:bg-primary/[0.02] transition-all"
+              className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl py-1.5 pl-11 pr-4 text-sm text-white focus:outline-none focus:border-primary/50 focus:bg-primary/[0.02] transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
-          <div className="flex items-center gap-2 bg-[#111827]/40 border border-gray-800/50 p-1.5 rounded-2xl overflow-x-auto scrollbar-hide w-full lg:w-auto min-w-0">
+          <div className="flex items-center gap-2 bg-[#0F172A]/50 border border-gray-800 p-1 rounded-xl overflow-x-auto scrollbar-hide w-full lg:w-auto min-w-0">
             {categories.map((cat) => (
               <button
                 key={cat}
@@ -668,21 +669,18 @@ const Plugins = () => {
                 {t('plugins.switch_server')}
               </span>
               <div className="relative group">
-                <ServerIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
-                <select
-                  className="bg-[#111827] border border-gray-800 text-white pl-10 pr-4 py-2 rounded-xl focus:ring-2 focus:ring-primary/50 transition-all outline-none text-sm min-w-[200px]"
+                <CustomSelect
+                  options={instances.map((inst: Instance) => ({
+                    value: inst.id.toString(),
+                    label: inst.name,
+                  }))}
                   value={selectedServer || ''}
-                  onChange={(e) => setSelectedServer(e.target.value)}
-                >
-                  <option value="" disabled>
-                    {t('plugins.select_server')}
-                  </option>
-                  {instances.map((inst: Instance) => (
-                    <option key={inst.id} value={inst.id} className="bg-[#0c1424]">
-                      {inst.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setSelectedServer(val as string)}
+                  placeholder={t('plugins.select_server')}
+                  icon={<ServerIcon className="w-4 h-4" />}
+                  size="sm"
+                  className="min-w-[200px]"
+                />
               </div>
             </div>
           )}

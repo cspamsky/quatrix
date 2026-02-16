@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, RefreshCcw, Server as ServerIcon, Loader2, Plus } from 'lucide-react';
+import { Search, RefreshCcw, Loader2, Plus } from 'lucide-react';
 import { apiFetch } from '../utils/api';
 import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -7,6 +7,8 @@ import { useTranslation } from 'react-i18next';
 import MapCard from '../components/maps/MapCard.js';
 import WorkshopModal from '../components/maps/WorkshopModal.js';
 import MapConfigEditor from '../components/maps/MapConfigEditor.js';
+import CustomSelect from '../components/ui/CustomSelect';
+import { Server } from 'lucide-react';
 
 interface CS2Map {
   id: string;
@@ -292,21 +294,18 @@ const Maps = () => {
             {t('maps.switch_server')}
           </span>
           <div className="relative group">
-            <ServerIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
-            <select
-              className="bg-[#111827] border border-gray-800 text-white pl-10 pr-4 py-2 rounded-xl focus:ring-2 focus:ring-primary/50 transition-all outline-none text-sm min-w-[200px]"
+            <CustomSelect
+              options={servers.map((s) => ({
+                value: s.id,
+                label: s.name,
+              }))}
               value={selectedServerId || ''}
-              onChange={(e) => setSelectedServerId(Number(e.target.value))}
-            >
-              <option value="" disabled>
-                {t('maps.select_server')}
-              </option>
-              {servers.map((s) => (
-                <option key={s.id} value={s.id} className="bg-[#0c1424]">
-                  {s.name}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setSelectedServerId(val as number)}
+              placeholder={t('maps.select_server')}
+              icon={<Server className="w-4 h-4" />}
+              size="sm"
+              className="min-w-[200px]"
+            />
           </div>
         </div>
       </header>
@@ -318,13 +317,13 @@ const Maps = () => {
             <input
               type="text"
               placeholder={t('maps.search_placeholder')}
-              className="w-full bg-[#111827] border border-gray-800 rounded-xl py-3 pl-10 pr-4 text-sm text-white focus:border-primary transition-all outline-none"
+              className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl py-1.5 pl-10 pr-4 text-sm text-white focus:border-primary transition-all outline-none"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
-          <div className="bg-[#111827] border border-gray-800 rounded-2xl overflow-hidden p-2">
+          <div className="bg-[#0F172A]/50 border border-gray-800 rounded-xl overflow-hidden p-1.5">
             {[
               { key: 'all', label: t('maps.all_maps') },
               { key: 'Defusal', label: t('maps.defusal_maps') },
@@ -336,7 +335,7 @@ const Maps = () => {
                 onClick={() =>
                   setActiveCategory(cat.key as 'all' | 'Defusal' | 'Hostage' | 'Workshop')
                 }
-                className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${activeCategory === cat.key ? 'bg-primary text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                className={`w-full text-left px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${activeCategory === cat.key ? 'bg-primary text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
               >
                 {cat.label}
               </button>

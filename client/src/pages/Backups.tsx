@@ -7,7 +7,6 @@ import {
   Plus,
   HardDrive,
   Calendar,
-  Layers,
   Search,
   AlertCircle,
   Clock,
@@ -19,6 +18,8 @@ import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { apiFetch } from '../utils/api';
 import type { Backup, Instance } from '../types';
 import BackupScheduleModal from '../components/backups/BackupScheduleModal';
+import CustomSelect from '../components/ui/CustomSelect';
+import { Server } from 'lucide-react';
 
 const Backups: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -191,32 +192,27 @@ const Backups: React.FC = () => {
         {/* Control Bar */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="relative group">
-            <Layers className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-primary transition-colors" />
-            <select
+            <CustomSelect
+              options={servers.map((s) => ({
+                value: s.id,
+                label: s.name,
+              }))}
               value={selectedServerId}
-              onChange={(e) => setSelectedServerId(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white appearance-none focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all cursor-pointer hover:bg-white/10 shadow-sm"
-            >
-              <option value="" disabled className="bg-[#001529]">
-                {t('backups.select_server')}
-              </option>
-              {Array.isArray(servers) &&
-                servers.map((server) => (
-                  <option key={server.id} value={server.id} className="bg-[#001529]">
-                    {server.name}
-                  </option>
-                ))}
-            </select>
+              onChange={(val) => setSelectedServerId(val)}
+              placeholder={t('backups.select_server')}
+              icon={<Server className="w-4 h-4" />}
+              size="sm"
+            />
           </div>
 
           <div className="relative group lg:col-span-2">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-primary transition-colors" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-primary transition-colors" />
             <input
               type="text"
               placeholder={t('backups.search_placeholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all hover:bg-white/10 shadow-sm"
+              className="w-full pl-12 pr-4 py-1.5 bg-[#0F172A]/50 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all hover:bg-white/10 shadow-sm text-sm"
             />
           </div>
         </div>

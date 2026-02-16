@@ -389,7 +389,7 @@ const FileManager = () => {
           <input
             type="text"
             placeholder={t('file_manager.search_placeholder', 'Search files...')}
-            className="w-full bg-black/20 border border-gray-700/50 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-gray-600 focus:border-primary outline-none transition-all"
+            className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl pl-10 pr-4 py-1.5 text-sm text-white placeholder-gray-600 focus:border-primary outline-none transition-all"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />

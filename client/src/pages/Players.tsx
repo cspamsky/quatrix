@@ -8,6 +8,7 @@ import LivePlayersTab from '../components/players/LivePlayersTab';
 import JoinLogsTab from '../components/players/JoinLogsTab';
 import BanHistoryTab from '../components/players/BanHistoryTab';
 import { useTranslation } from 'react-i18next';
+import CustomSelect from '../components/ui/CustomSelect';
 
 interface ServerInfo {
   id: number;
@@ -51,28 +52,18 @@ const Players = () => {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="relative group">
-            <Server className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
-            <select
-              className="bg-[#111827] border border-gray-800 text-white pl-10 pr-8 py-2 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none text-sm appearance-none cursor-pointer"
-              value={selectedServerId || ''}
-              onChange={(e) => setSelectedServerId(Number(e.target.value))}
-            >
-              <option value="" disabled>
-                {t('players.select_server')}
-              </option>
-              {servers.map((s: ServerInfo) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
-              <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-              </svg>
-            </div>
-          </div>
+          <CustomSelect
+            options={servers.map((s: ServerInfo) => ({
+              value: s.id,
+              label: s.name,
+            }))}
+            value={selectedServerId || ''}
+            onChange={(val) => setSelectedServerId(Number(val))}
+            placeholder={t('players.select_server')}
+            icon={<Server className="w-4 h-4" />}
+            size="sm"
+            className="min-w-[200px]"
+          />
         </div>
       </header>
 

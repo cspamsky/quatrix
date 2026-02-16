@@ -146,7 +146,7 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
             <input
-              className="w-64 pl-10 pr-4 py-2 bg-[#1d1d1d]/30 border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200"
+              className="w-64 pl-10 pr-4 py-1.5 bg-[#0F172A]/50 border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200"
               placeholder={t('players.search_placeholder')}
               type="text"
               value={searchQuery}

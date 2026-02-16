@@ -14,6 +14,7 @@ import socket from '../utils/socket';
 import { generateUUID } from '../utils/uuid';
 import { COMMON_COMMANDS } from '../config/consoleCommands';
 import { useTranslation } from 'react-i18next';
+import CustomSelect from '../components/ui/CustomSelect';
 
 interface LogEntry {
   id: string;
@@ -371,21 +372,18 @@ const Console = () => {
               {t('console.switch_server')}
             </span>
             <div className="relative group">
-              <Server className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
-              <select
-                className="bg-[#111827] border border-gray-800 text-white pl-10 pr-4 py-2 rounded-xl focus:ring-2 focus:ring-primary/50 transition-all outline-none text-sm min-w-[200px]"
-                value={id || ''}
-                onChange={(e) => navigate(`/console/${e.target.value}`)}
-              >
-                <option value="" disabled>
-                  {t('console.select_server')}
-                </option>
-                {allServers.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+              <CustomSelect
+                options={allServers.map((s) => ({
+                  value: s.id,
+                  label: s.name,
+                }))}
+                value={id ? parseInt(id) : ''}
+                onChange={(val) => navigate(`/console/${val}`)}
+                placeholder={t('console.select_server')}
+                icon={<Server className="w-4 h-4" />}
+                size="sm"
+                className="min-w-[200px]"
+              />
             </div>
           </div>
         </div>
