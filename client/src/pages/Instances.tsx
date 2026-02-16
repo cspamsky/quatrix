@@ -1,25 +1,34 @@
 import {
-  Search,
-  Plus,
-  ChevronLeft,
-  ChevronRight,
   LayoutGrid,
   List,
+  Plus,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
   Play,
   Square,
-  RefreshCw,
   Trash2,
 } from 'lucide-react';
 import { apiFetch } from '../utils/api';
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
+import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
+import Button from '../components/ui/Button';
+import IconButton from '../components/ui/IconButton';
+import SearchInput from '../components/ui/SearchInput';
+import Checkbox from '../components/ui/Checkbox';
 import socket from '../utils/socket';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import ServerCard from '../components/ServerCard';
 import ServerRow from '../components/ServerRow';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 interface Instance {
   id: number;
@@ -439,42 +448,62 @@ const Instances = () => {
             <h2 className="text-2xl font-bold text-white tracking-tight">{t('instances.title')}</h2>
             <p className="text-sm text-gray-400 mt-1">{t('instances.subtitle')}</p>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex bg-[#0F172A]/50 border border-gray-800 rounded-xl p-1 shrink-0 shadow-sm shadow-black/20">
-              <button
+          <div className="flex items-center gap-3">
+            <div className="flex bg-[#0F172A]/50 border border-gray-800 rounded-xl p-[3px] shrink-0 shadow-sm shadow-black/20 h-[34px]">
+              <IconButton
                 onClick={() => toggleViewMode()}
-                className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-gray-300'}`}
+                variant={viewMode === 'grid' ? 'primary' : 'ghost'}
+                size="sm"
+                className={cn(
+                  'px-2 rounded-lg h-full w-auto min-w-[32px]',
+                  viewMode === 'grid' &&
+                    'bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary'
+                )}
                 title="Grid View"
               >
-                <LayoutGrid size={18} />
-              </button>
-              <button
+                <LayoutGrid size={16} />
+              </IconButton>
+              <IconButton
                 onClick={() => toggleViewMode()}
-                className={`p-1.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-gray-300'}`}
+                variant={viewMode === 'list' ? 'primary' : 'ghost'}
+                size="sm"
+                className={cn(
+                  'px-2 rounded-lg h-full w-auto min-w-[32px]',
+                  viewMode === 'list' &&
+                    'bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary'
+                )}
                 title="List View"
               >
-                <List size={18} />
-              </button>
+                <List size={16} />
+              </IconButton>
             </div>
-            <div className="relative group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
-              <input
-                aria-label={t('instances.filter_placeholder')}
-                className="w-48 lg:w-64 pl-10 pr-4 py-1.5 bg-[#0F172A]/50 border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200"
-                placeholder={t('instances.filter_placeholder')}
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+            <SearchInput
+              placeholder={t('instances.filter_placeholder')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              containerClassName="w-48 lg:w-64"
+            />
+
+            <IconButton
+              onClick={() => fetchServers()}
+              isLoading={loading && instances.length > 0}
+              title={t('instances.refresh')}
+            >
+              <RefreshCw
+                className={cn(
+                  'w-4 h-4 transition-transform duration-500 group-active:rotate-180',
+                  loading && 'animate-spin text-primary'
+                )}
               />
-            </div>
+            </IconButton>
             {hasPerm('servers.create') && (
-              <button
+              <Button
                 onClick={() => navigate('/instances/create')}
-                className="bg-primary hover:bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-sm flex items-center transition-all shadow-lg shadow-blue-500/20 active:scale-95 whitespace-nowrap"
+                variant="primary"
+                icon={<Plus size={16} />}
               >
-                <Plus className="mr-2 w-4 h-4" />
                 {t('instances.create_new')}
-              </button>
+              </Button>
             )}
           </div>
         </header>
@@ -484,14 +513,11 @@ const Instances = () => {
           <div className="mb-6 animate-in slide-in-from-top duration-300">
             <div className="bg-primary/10 border border-primary/20 p-4 rounded-xl flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <button
-                  onClick={handleSelectAll}
-                  className="bg-primary text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:bg-blue-600 active:scale-95"
-                >
-                  {selectedIds.size === filteredInstances.length
-                    ? t('common.deselect_all')
-                    : t('common.select_all')}
-                </button>
+                <Checkbox
+                  checked={selectedIds.size === filteredInstances.length}
+                  onChange={handleSelectAll}
+                  className="w-5 h-5"
+                />
                 <span className="text-sm font-semibold text-primary">
                   {t('instances.selected_count', { count: selectedIds.size })}
                 </span>
@@ -499,38 +525,41 @@ const Instances = () => {
               <div className="flex items-center gap-2">
                 {hasPerm('servers.update') && (
                   <>
-                    <button
+                    <IconButton
                       onClick={() => handleBulkAction('start')}
-                      className="p-2 bg-green-500/10 text-green-500 rounded-lg hover:bg-green-500/20 transition-all border border-green-500/10"
+                      variant="ghost"
                       title={t('common.start')}
+                      className="text-green-500 hover:bg-green-500/10 border-green-500/10"
                     >
                       <Play size={18} className="fill-current" />
-                    </button>
-                    <button
+                    </IconButton>
+                    <IconButton
                       onClick={() => handleBulkAction('stop')}
-                      className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-all border border-red-500/10"
+                      variant="ghost"
                       title={t('common.stop')}
+                      className="text-red-500 hover:bg-red-500/10 border-red-500/10"
                     >
                       <Square size={18} className="fill-current" />
-                    </button>
-                    <button
+                    </IconButton>
+                    <IconButton
                       onClick={() => handleBulkAction('restart')}
-                      className="p-2 bg-amber-500/10 text-amber-500 rounded-lg hover:bg-amber-500/20 transition-all border border-amber-500/10"
+                      variant="ghost"
                       title={t('common.restart')}
+                      className="text-amber-500 hover:bg-amber-500/10 border-amber-500/10"
                     >
                       <RefreshCw size={18} />
-                    </button>
+                    </IconButton>
                     <div className="w-px h-6 bg-primary/20 mx-1" />
                   </>
                 )}
                 {hasPerm('servers.delete') && (
-                  <button
+                  <IconButton
                     onClick={() => handleBulkAction('delete')}
-                    className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
+                    variant="danger"
                     title={t('common.delete')}
                   >
                     <Trash2 size={18} />
-                  </button>
+                  </IconButton>
                 )}
               </div>
             </div>
@@ -544,12 +573,9 @@ const Instances = () => {
         ) : filteredInstances.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <p className="text-gray-400 mb-4">{t('instances.no_servers')}</p>
-            <button
-              onClick={() => navigate('/instances/create')}
-              className="px-6 py-2 bg-primary hover:bg-blue-600 text-white rounded-xl font-semibold transition-all"
-            >
+            <Button onClick={() => navigate('/instances/create')} variant="primary">
               {t('instances.create_btn')}
-            </button>
+            </Button>
           </div>
         ) : (
           <div
@@ -644,25 +670,18 @@ const Instances = () => {
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <button
-              aria-label="Previous page"
-              className="p-2 border border-gray-800 rounded-md hover:bg-gray-800 text-gray-500 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-              disabled
-            >
+            <IconButton aria-label="Previous page" disabled variant="ghost" size="sm">
               <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center bg-primary text-white rounded-md text-xs font-bold shadow-sm">
+            </IconButton>
+            <IconButton variant="primary" size="sm" className="w-8 h-8 p-0">
               1
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-800 rounded-md text-xs font-medium transition-colors border border-transparent">
+            </IconButton>
+            <IconButton variant="ghost" size="sm" className="w-8 h-8 p-0 text-gray-400">
               2
-            </button>
-            <button
-              aria-label="Next page"
-              className="p-2 border border-gray-800 rounded-md hover:bg-gray-800 text-gray-500 transition-colors"
-            >
+            </IconButton>
+            <IconButton aria-label="Next page" variant="ghost" size="sm">
               <ChevronRight className="w-4 h-4" />
-            </button>
+            </IconButton>
           </div>
         </div>
       )}

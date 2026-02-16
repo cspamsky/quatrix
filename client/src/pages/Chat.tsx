@@ -2,11 +2,19 @@ import { useRef, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import socket from '../utils/socket';
 import { apiFetch } from '../utils/api';
-import { MessageSquare, User, Clock, Hash, Search, RefreshCw, Server } from 'lucide-react';
+import { MessageSquare, User, Clock, Hash, RefreshCw, Server } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../utils/date';
 import { useSteamAvatars } from '../hooks/useSteamAvatars';
 import CustomSelect from '../components/ui/CustomSelect';
+import SearchInput from '../components/ui/SearchInput';
+import IconButton from '../components/ui/IconButton';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 interface ChatLog {
   id: number;
@@ -150,16 +158,12 @@ const Chat = () => {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
-            <input
-              type="text"
-              placeholder={t('chat.search_placeholder')}
-              className="bg-[#0F172A]/50 border border-gray-800 text-white pl-10 pr-4 py-1.5 rounded-xl focus:ring-2 focus:ring-primary/50 transition-all outline-none text-sm w-64"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+          <SearchInput
+            placeholder={t('chat.search_placeholder')}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            containerClassName="w-64"
+          />
 
           <div className="flex flex-col items-end">
             <div className="relative">
@@ -178,12 +182,14 @@ const Chat = () => {
             </div>
           </div>
 
-          <button
-            onClick={fetchChatHistory}
-            className="p-2.5 bg-gray-800/50 hover:bg-gray-800 text-gray-400 hover:text-white rounded-xl transition-all border border-gray-700/50"
-          >
-            <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
-          </button>
+          <IconButton onClick={fetchChatHistory} isLoading={isLoading}>
+            <RefreshCw
+              className={cn(
+                'w-4 h-4 transition-transform duration-500 group-active:rotate-180',
+                isLoading && 'animate-spin text-primary'
+              )}
+            />
+          </IconButton>
         </div>
       </header>
 

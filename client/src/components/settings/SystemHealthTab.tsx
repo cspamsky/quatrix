@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Button from '../ui/Button';
 import {
   Monitor,
   RefreshCw,
@@ -67,23 +68,26 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({
         </div>
         <div className="flex items-center gap-3">
           {hasIssues && canEdit && (
-            <button
+            <Button
               onClick={handleRepair}
-              disabled={repairLoading || healthLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-primary/20"
+              isLoading={repairLoading || healthLoading}
+              variant="primary"
+              size="sm"
+              icon={<Wrench size={14} className={repairLoading ? 'animate-spin' : ''} />}
+              className="bg-primary/10 hover:bg-primary/20 text-primary border-primary/20 shadow-none hover:shadow-primary/10"
             >
-              <Wrench size={14} className={repairLoading ? 'animate-spin' : ''} />
               {repairLoading ? t('settingsHealth.repairing') : t('settingsHealth.repair_system')}
-            </button>
+            </Button>
           )}
-          <button
+          <Button
             onClick={onRefresh}
-            disabled={healthLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+            isLoading={healthLoading}
+            variant="secondary"
+            size="sm"
+            icon={<RefreshCw size={14} className={healthLoading ? 'animate-spin' : ''} />}
           >
-            <RefreshCw size={14} className={healthLoading ? 'animate-spin' : ''} />
             {healthLoading ? t('settingsHealth.refreshing') : t('settingsHealth.refresh')}
-          </button>
+          </Button>
         </div>
       </div>
 

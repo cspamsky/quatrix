@@ -15,6 +15,7 @@ import { generateUUID } from '../utils/uuid';
 import { COMMON_COMMANDS } from '../config/consoleCommands';
 import { useTranslation } from 'react-i18next';
 import CustomSelect from '../components/ui/CustomSelect';
+import Button from '../components/ui/Button';
 
 interface LogEntry {
   id: string;
@@ -491,7 +492,7 @@ const Console = () => {
 
         {/* Action Buttons */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 shrink-0">
-          <button
+          <Button
             disabled={
               actionLoading ||
               server?.status === 'ONLINE' ||
@@ -499,42 +500,50 @@ const Console = () => {
               server?.status === 'INSTALLING'
             }
             onClick={() => handleAction('start')}
-            className="flex items-center justify-center gap-2 py-3.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-all font-semibold text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+            variant="success"
+            className="py-3.5"
+            icon={<Play size={18} />}
           >
-            <Play size={18} /> {t('console.start_server')}
-          </button>
-          <button
+            {t('console.start_server')}
+          </Button>
+          <Button
             disabled={
               actionLoading || server?.status === 'OFFLINE' || server?.status === 'INSTALLING'
             }
             onClick={() => handleAction('restart')}
-            className="flex items-center justify-center gap-2 py-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-lg hover:bg-amber-500/20 transition-all font-semibold text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+            variant="secondary"
+            className="py-3.5"
+            icon={<RotateCcw size={18} className={actionLoading ? 'animate-spin' : ''} />}
           >
-            <RotateCcw size={18} className={actionLoading ? 'animate-spin' : ''} />{' '}
             {t('console.restart')}
-          </button>
-          <button
+          </Button>
+          <Button
             disabled={
               actionLoading || server?.status === 'OFFLINE' || server?.status === 'INSTALLING'
             }
             onClick={() => handleAction('stop')}
-            className="flex items-center justify-center gap-2 py-3.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-lg hover:bg-rose-500/20 transition-all font-semibold text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+            variant="danger"
+            className="py-3.5"
+            icon={<Square size={18} />}
           >
-            <Square size={18} /> {t('console.stop_server')}
-          </button>
-          <button
+            {t('console.stop_server')}
+          </Button>
+          <Button
             disabled={
               actionLoading || server?.status === 'ONLINE' || server?.status === 'INSTALLING'
             }
             onClick={handleForceUpdate}
-            className="flex items-center justify-center gap-2 py-3.5 bg-primary/10 border border-primary/20 text-primary rounded-lg hover:bg-primary/20 transition-all font-semibold text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+            variant="primary"
+            className="py-3.5"
+            icon={
+              <RefreshCw
+                size={18}
+                className={server?.status === 'INSTALLING' ? 'animate-spin' : ''}
+              />
+            }
           >
-            <RefreshCw
-              size={18}
-              className={server?.status === 'INSTALLING' ? 'animate-spin' : ''}
-            />{' '}
             {t('console.force_update')}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

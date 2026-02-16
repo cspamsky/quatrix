@@ -1,6 +1,8 @@
 import React from 'react';
-import { Cpu, Zap, Layers, Download, Trash2, Settings, Loader2 } from 'lucide-react';
+import { Cpu, Zap, Layers, Download, Trash2, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import Button from '../ui/Button';
+import IconButton from '../ui/IconButton';
 
 interface PluginInfo {
   id: string;
@@ -128,62 +130,61 @@ const PluginRow: React.FC<PluginRowProps> = ({
         <div className="flex justify-end gap-2 text-right">
           {isInstalled ? (
             <>
-              {hasUpdate && (
-                <button
-                  disabled={actionLoading !== null}
-                  onClick={() => onAction(id, 'update')}
-                  className="p-1.5 bg-green-500/10 text-green-500 rounded-lg hover:bg-green-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Update Plugin"
-                >
-                  {isLoading ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
+              <>
+                {hasUpdate && (
+                  <IconButton
+                    onClick={() => onAction(id, 'update')}
+                    isLoading={isLoading}
+                    variant="primary"
+                    className="text-green-500 hover:bg-green-500/10 border-green-500/20"
+                    title="Update Plugin"
+                  >
                     <Download size={14} />
-                  )}
-                </button>
-              )}
-              {hasConfigs && (
-                <button
-                  disabled={actionLoading !== null}
-                  onClick={() => onOpenConfig(id, info.name)}
-                  className="p-1.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Plugin Settings"
+                  </IconButton>
+                )}
+                {hasConfigs && (
+                  <IconButton
+                    onClick={() => onOpenConfig(id, info.name)}
+                    variant="ghost"
+                    className="bg-primary/5 text-primary hover:bg-primary/10"
+                    title="Plugin Settings"
+                  >
+                    <Settings size={14} />
+                  </IconButton>
+                )}
+                <IconButton
+                  onClick={() => onAction(id, 'uninstall')}
+                  isLoading={isLoading}
+                  variant="ghost"
+                  className="bg-red-500/5 text-red-500 hover:bg-red-500/10 border-red-500/10"
+                  title="Uninstall Plugin"
                 >
-                  <Settings size={14} />
-                </button>
-              )}
-              <button
-                disabled={actionLoading !== null}
-                onClick={() => onAction(id, 'uninstall')}
-                className="p-1.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Uninstall Plugin"
-              >
-                {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-              </button>
+                  <Trash2 size={14} />
+                </IconButton>
+              </>
             </>
           ) : (
             <div className="flex items-center gap-2">
               {!info.inPool && (
-                <button
+                <IconButton
                   onClick={() => onOpenUpload(id, info.name)}
-                  className="p-1.5 bg-orange-500/10 text-orange-500 rounded-lg hover:bg-orange-500/20 transition-all"
+                  variant="ghost"
+                  className="bg-orange-500/5 text-orange-500 hover:bg-orange-500/10 border-orange-500/10"
                   title="Upload to Pool"
                 >
                   <Layers size={14} />
-                </button>
+                </IconButton>
               )}
-              <button
-                disabled={!canInstall || actionLoading !== null}
+              <Button
+                disabled={!canInstall}
                 onClick={() => onAction(id, 'install')}
-                className="flex items-center gap-2 px-3 py-1.5 bg-primary text-white text-[10px] font-black uppercase tracking-wider rounded-lg hover:bg-blue-600 transition-all active:scale-95 shadow-lg shadow-primary/10 disabled:bg-gray-800/50 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed"
+                isLoading={isLoading}
+                variant="primary"
+                icon={<Download size={14} />}
+                className="text-[10px] uppercase font-bold tracking-widest"
               >
-                {isLoading ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <Download size={14} />
-                )}
                 {info.inPool ? t('plugins.install') : t('plugins.not_in_pool')}
-              </button>
+              </Button>
             </div>
           )}
         </div>

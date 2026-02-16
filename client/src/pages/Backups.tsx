@@ -7,19 +7,26 @@ import {
   Plus,
   HardDrive,
   Calendar,
-  Search,
   AlertCircle,
   Clock,
+  Server,
 } from 'lucide-react';
 import { formatDate } from '../utils/date';
 import toast from 'react-hot-toast';
-import { clsx } from 'clsx';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { apiFetch } from '../utils/api';
 import type { Backup, Instance } from '../types';
 import BackupScheduleModal from '../components/backups/BackupScheduleModal';
 import CustomSelect from '../components/ui/CustomSelect';
-import { Server } from 'lucide-react';
+import SearchInput from '../components/ui/SearchInput';
+import Button from '../components/ui/Button';
+import IconButton from '../components/ui/IconButton';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 const Backups: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -171,21 +178,21 @@ const Backups: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
+            <Button
               onClick={() => setIsScheduleModalOpen(true)}
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl border border-white/10 font-bold transition-all active:scale-95 shadow-lg"
+              variant="secondary"
+              icon={<Clock size={16} />}
             >
-              <Clock className="w-5 h-5 text-primary" />
               {t('backups.schedule_settings_title')}
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleCreateBackup}
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
+              variant="primary"
+              icon={<Plus size={16} />}
               disabled={!selectedServerId}
             >
-              <Plus className="w-5 h-5" />
               {t('backups.create_new')}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -205,14 +212,11 @@ const Backups: React.FC = () => {
             />
           </div>
 
-          <div className="relative group lg:col-span-2">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-primary transition-colors" />
-            <input
-              type="text"
+          <div className="lg:col-span-2">
+            <SearchInput
               placeholder={t('backups.search_placeholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-1.5 bg-[#0F172A]/50 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all hover:bg-white/10 shadow-sm text-sm"
             />
           </div>
         </div>
@@ -222,7 +226,14 @@ const Backups: React.FC = () => {
           {loading ? (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="flex flex-col items-center gap-4">
-                <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                <IconButton
+                  isLoading
+                  variant="ghost"
+                  size="lg"
+                  className="text-primary pointer-events-none"
+                >
+                  <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                </IconButton>
                 <p className="text-gray-400 font-medium">{t('common.loading')}</p>
               </div>
             </div>
@@ -295,7 +306,7 @@ const Backups: React.FC = () => {
                         </td>
                         <td className="px-6 py-4">
                           <span
-                            className={clsx(
+                            className={cn(
                               'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider',
                               backup.type === 'manual'
                                 ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
@@ -309,20 +320,22 @@ const Backups: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-2 px-1">
-                            <button
+                            <IconButton
                               onClick={() => handleRestore(backup)}
-                              className="p-2 text-primary hover:bg-primary/20 rounded-lg transition-all active:scale-95"
+                              variant="ghost"
+                              className="text-primary hover:bg-primary/10"
                               title={t('backups.restore')}
                             >
                               <RotateCcw className="w-5 h-5" />
-                            </button>
-                            <button
+                            </IconButton>
+                            <IconButton
                               onClick={() => handleDelete(backup.id)}
-                              className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/20 rounded-lg transition-all active:scale-95"
+                              variant="ghost"
+                              className="text-gray-500 hover:text-red-400 hover:bg-red-400/10"
                               title={t('common.delete')}
                             >
                               <Trash2 className="w-5 h-5" />
-                            </button>
+                            </IconButton>
                           </div>
                         </td>
                       </tr>
@@ -343,13 +356,14 @@ const Backups: React.FC = () => {
                   : t('backups.no_server_selected_desc')}
               </p>
               {selectedServerId && (
-                <button
+                <Button
                   onClick={handleCreateBackup}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl border border-white/10 font-bold transition-all active:scale-95 shadow-lg"
+                  variant="secondary"
+                  size="sm"
+                  icon={<Plus className="w-5 h-5" />}
                 >
-                  <Plus className="w-5 h-5 text-primary" />
                   {t('backups.create_new')}
-                </button>
+                </Button>
               )}
             </div>
           )}

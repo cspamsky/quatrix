@@ -1,6 +1,7 @@
 import React from 'react';
-import { Layers, X, AlertCircle, CheckCircle2, Download, Loader2 } from 'lucide-react';
+import { Layers, X, AlertCircle, CheckCircle2, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import Button from '../ui/Button';
 
 interface UploadModalProps {
   plugin: { id: string; name: string } | null;
@@ -99,31 +100,25 @@ const UploadModal: React.FC<UploadModalProps> = ({
           </div>
 
           <div className="flex items-center gap-3 pt-2">
-            <button
+            <Button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-3 bg-gray-800/40 text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl hover:bg-gray-800 transition-all border border-gray-800"
+              variant="secondary"
+              className="flex-1"
               disabled={isUploading}
             >
               {t('plugins.cancel')}
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              disabled={!selectedFile || isUploading}
-              className="flex-[2] px-4 py-3 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl hover:bg-blue-600 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              disabled={!selectedFile}
+              isLoading={isUploading}
+              variant="primary"
+              className="flex-[2]"
+              icon={<Layers size={16} />}
             >
-              {isUploading ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  {t('plugins.uploading')}
-                </>
-              ) : (
-                <>
-                  <Layers size={16} />
-                  {t('plugins.upload')}
-                </>
-              )}
-            </button>
+              {t('plugins.upload')}
+            </Button>
           </div>
         </form>
       </div>
