@@ -77,18 +77,36 @@ export class PluginDatabaseInjector {
         'db_name',
       ];
       const portKeys = ['port', 'Port', 'DatabasePort', 'db_port'];
+      const typeKeys = ['DatabaseType', 'DbType', 'Type', 'type', 'db_type'];
 
       // Common patterns for plugin configs
       const searchAndReplace = (obj: Record<string, unknown>) => {
         if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
 
         // Count how many database-like keys exist in this object
+        // Also count empty strings as potential injection targets
         let matchCount = 0;
-        if (hostKeys.some((k) => obj[k] !== undefined && typeof obj[k] === 'string')) matchCount++;
-        if (userKeys.some((k) => obj[k] !== undefined && typeof obj[k] === 'string')) matchCount++;
+        if (
+          hostKeys.some(
+            (k) => obj[k] !== undefined && (typeof obj[k] === 'string' || obj[k] === '')
+          )
+        )
+          matchCount++;
+        if (
+          userKeys.some(
+            (k) => obj[k] !== undefined && (typeof obj[k] === 'string' || obj[k] === '')
+          )
+        )
+          matchCount++;
         if (
           passKeys.some(
             (k) => obj[k] !== undefined && (typeof obj[k] === 'string' || obj[k] === null)
+          )
+        )
+          matchCount++;
+        if (
+          nameKeys.some(
+            (k) => obj[k] !== undefined && (typeof obj[k] === 'string' || obj[k] === '')
           )
         )
           matchCount++;
@@ -97,7 +115,14 @@ export class PluginDatabaseInjector {
         if (matchCount >= 2) {
           for (const hk of hostKeys)
             if (obj[hk] !== undefined) {
-              obj[hk] = creds.host;
+              // Handle combined host:port format (e.g., "127.0.0.1:3306")
+              const currentValue = obj[hk] as string;
+              if (currentValue && currentValue.includes(':')) {
+                // Keep the port from the original value if it exists
+                obj[hk] = `${creds.host}:${creds.port}`;
+              } else {
+                obj[hk] = creds.host;
+              }
               modified = true;
             }
           for (const uk of userKeys)
@@ -111,7 +136,7 @@ export class PluginDatabaseInjector {
               modified = true;
             }
           for (const nk of nameKeys)
-            if (obj[nk] !== undefined && typeof obj[nk] === 'string') {
+            if (obj[nk] !== undefined) {
               obj[nk] = creds.database;
               modified = true;
             }
@@ -120,6 +145,15 @@ export class PluginDatabaseInjector {
               const p = parseInt(creds.port.toString());
               obj[prtk] = typeof obj[prtk] === 'string' ? p.toString() : p;
               modified = true;
+            }
+          // Auto-switch DatabaseType from SQLite to MySQL when injecting credentials
+          for (const tk of typeKeys)
+            if (obj[tk] !== undefined) {
+              const currentType = (obj[tk] as string)?.toLowerCase();
+              if (currentType === 'sqlite' || currentType === 'mysql') {
+                obj[tk] = 'MySQL';
+                modified = true;
+              }
             }
         }
 
