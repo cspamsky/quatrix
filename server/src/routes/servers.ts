@@ -309,15 +309,6 @@ router.put('/:id', authorize('servers.update'), (req: Request, res: Response) =>
     const io = req.app.get('io');
     if (io) io.emit('server_update', { serverId: parseInt(id as string) });
 
-    // Handle Auto DB Injection trigger if it was enabled
-    if (auto_db_injection === 1) {
-      // Trigger background injection for existing plugins
-      const installDir = fileSystemService.getInstanceRoot();
-      pluginManager
-        .injectDatabaseCredentialsToServerPlugins(installDir, id as string)
-        .catch((err) => console.error('[API] Failed to trigger background injection:', err));
-    }
-
     res.json({ message: 'Server settings updated successfully' });
   } catch (error) {
     console.error('Update server error:', error);

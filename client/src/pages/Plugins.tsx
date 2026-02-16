@@ -167,12 +167,8 @@ const Plugins = () => {
         // Redundant toast removed: taskService handles visual feedback in bottom-right overlay
         // toast.success(`${pluginName} ${t('plugins.action_success')}`);
 
-        // Add a small delay to allow backend to complete file operations
-        // before invalidating queries and refetching status
-        setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ['plugin-status', selectedServer] });
-          queryClient.invalidateQueries({ queryKey: ['plugin-updates', selectedServer] });
-        }, 500);
+        queryClient.invalidateQueries({ queryKey: ['plugin-status', selectedServer] });
+        queryClient.invalidateQueries({ queryKey: ['plugin-updates', selectedServer] });
       } else {
         if (data.message === 'ERR_SERVER_RUNNING') {
           toast.error(t('plugins.server_running_error'));

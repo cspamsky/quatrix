@@ -9,7 +9,6 @@ import { fileURLToPath } from 'url';
 import { pluginDiscovery } from './plugin/PluginDiscovery.js';
 import { pluginConfigManager } from './plugin/PluginConfigManager.js';
 import { pluginInstaller } from './plugin/PluginInstaller.js';
-import { pluginDatabaseInjector } from './plugin/PluginDatabaseInjector.js';
 import { taskService } from './TaskService.js';
 import { databaseManager } from './DatabaseManager.js';
 
@@ -48,7 +47,6 @@ export interface PluginRegistryItem {
  * - PluginDiscovery: Pool scanning and metadata extraction
  * - PluginInstaller: Installation, uninstallation, and Smart Sync
  * - PluginConfigManager: Configuration file management
- * - PluginDatabaseInjector: MySQL credential injection
  */
 export class PluginManager {
   public pluginRegistry = pluginRegistry;
@@ -405,30 +403,6 @@ export class PluginManager {
   ): Promise<void> {
     await this.uninstallPlugin(installDir, instanceId, pluginId, taskId);
     await this.installPlugin(installDir, instanceId, pluginId, taskId);
-  }
-
-  /**
-   * Scans and injects database credentials into all installed plugins for a server
-   */
-  async injectDatabaseCredentialsToServerPlugins(
-    installDir: string,
-    instanceId: string | number
-  ): Promise<void> {
-    const creds = await databaseManager.getDatabaseCredentials(instanceId);
-    if (!creds) return;
-
-    const id = instanceId.toString();
-    const csgoDir = path.join(installDir, id, 'game', 'csgo');
-    const cssBase = path.join(csgoDir, 'addons', 'counterstrikesharp');
-
-    // Root scan for general configs
-    await pluginDatabaseInjector.injectIntoDirectory(csgoDir, creds);
-
-    // Specific scan for CS# configs
-    const cssConfigsDir = path.join(cssBase, 'configs', 'plugins');
-    if (fs.existsSync(cssConfigsDir)) {
-      await pluginDatabaseInjector.injectIntoDirectory(cssConfigsDir, creds);
-    }
   }
 
   /**
