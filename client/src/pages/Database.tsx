@@ -14,7 +14,7 @@ import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import Button from '../components/ui/Button';
 import IconButton from '../components/ui/IconButton';
-import Checkbox from '../components/ui/Checkbox';
+import Switch from '../components/ui/Switch';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -522,12 +522,11 @@ const DatabasePage = () => {
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Checkbox
+                  <Switch
                     checked={Boolean(server.auto_db_injection)}
-                    onChange={(e) => handleToggleAutoInjection(server.id, e.target.checked)}
+                    onChange={(enabled) => handleToggleAutoInjection(server.id, enabled)}
                     label={t('database.auto_injection_label')}
                     description={t('database.auto_injection_desc')}
-                    className="mt-0"
                   />
                 </div>
               </div>

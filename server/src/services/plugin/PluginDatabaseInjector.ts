@@ -47,63 +47,79 @@ export class PluginDatabaseInjector {
 
       let modified = false;
 
+      const hostKeys = ['host', 'Host', 'Hostname', 'Server', 'DatabaseHost', 'db_host'];
+      const userKeys = ['user', 'User', 'Username', 'username', 'DatabaseUser', 'db_user'];
+      const passKeys = [
+        'pass',
+        'Pass',
+        'password',
+        'Password',
+        'passwd',
+        'DatabasePassword',
+        'db_pass',
+      ];
+      const nameKeys = [
+        'name',
+        'Name',
+        'database',
+        'Database',
+        'dbname',
+        'DBName',
+        'DatabaseName',
+        'db_name',
+      ];
+      const portKeys = ['port', 'Port', 'DatabasePort', 'db_port'];
+
       // Common patterns for plugin configs
-      const searchAndReplace = (obj: any) => {
-        if (!obj || typeof obj !== 'object') return;
+      const searchAndReplace = (obj: Record<string, unknown>) => {
+        if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
 
-        // Pattern 1: SimpleAdmin format or similar
-        // { "Database": { "Host": "...", "User": "...", "Password": "...", "Name": "..." } }
-        const dbKeys = [
-          'database',
-          'Database',
-          'db',
-          'DB',
-          'mysql',
-          'MySQL',
-          'Connection',
-          'connection',
-        ];
+        // Count how many database-like keys exist in this object
+        let matchCount = 0;
+        if (hostKeys.some((k) => obj[k] !== undefined && typeof obj[k] === 'string')) matchCount++;
+        if (userKeys.some((k) => obj[k] !== undefined && typeof obj[k] === 'string')) matchCount++;
+        if (
+          passKeys.some(
+            (k) => obj[k] !== undefined && (typeof obj[k] === 'string' || obj[k] === null)
+          )
+        )
+          matchCount++;
 
-        for (const key of dbKeys) {
-          if (obj[key] && typeof obj[key] === 'object') {
-            const db = obj[key];
-            const hostKeys = ['host', 'Host', 'Hostname', 'Server'];
-            const userKeys = ['user', 'User', 'Username', 'username'];
-            const passKeys = ['pass', 'Pass', 'password', 'Password', 'Password', 'passwd'];
-            const nameKeys = ['name', 'Name', 'database', 'Database', 'dbname', 'DBName'];
-            const portKeys = ['port', 'Port'];
-
-            for (const hk of hostKeys)
-              if (db[hk] !== undefined) {
-                db[hk] = creds.host;
-                modified = true;
-              }
-            for (const uk of userKeys)
-              if (db[uk] !== undefined) {
-                db[uk] = creds.user;
-                modified = true;
-              }
-            for (const pk of passKeys)
-              if (db[pk] !== undefined) {
-                db[pk] = creds.password;
-                modified = true;
-              }
-            for (const nk of nameKeys)
-              if (db[nk] !== undefined) {
-                db[nk] = creds.database;
-                modified = true;
-              }
-            for (const prtk of portKeys)
-              if (db[prtk] !== undefined) {
-                db[prtk] = creds.port;
-                modified = true;
-              }
-          }
+        // If it looks like a database config (at least 2 matching keys), inject!
+        if (matchCount >= 2) {
+          for (const hk of hostKeys)
+            if (obj[hk] !== undefined) {
+              obj[hk] = creds.host;
+              modified = true;
+            }
+          for (const uk of userKeys)
+            if (obj[uk] !== undefined) {
+              obj[uk] = creds.user;
+              modified = true;
+            }
+          for (const pk of passKeys)
+            if (obj[pk] !== undefined) {
+              obj[pk] = creds.password;
+              modified = true;
+            }
+          for (const nk of nameKeys)
+            if (obj[nk] !== undefined && typeof obj[nk] === 'string') {
+              obj[nk] = creds.database;
+              modified = true;
+            }
+          for (const prtk of portKeys)
+            if (obj[prtk] !== undefined) {
+              const p = parseInt(creds.port.toString());
+              obj[prtk] = typeof obj[prtk] === 'string' ? p.toString() : p;
+              modified = true;
+            }
         }
 
         // Recursive search
         for (const k in obj) {
-          if (typeof obj[k] === 'object') searchAndReplace(obj[k]);
+          if (obj[k] && typeof obj[k] === 'object') {
+            searchAndReplace(obj[k] as Record<string, unknown>);
+          }
         }
       };
 
@@ -113,7 +129,7 @@ export class PluginDatabaseInjector {
         await fs.writeFile(filePath, JSON.stringify(json, null, 2));
         console.log(`[INJECTOR] Injected credentials into JSON: ${path.basename(filePath)}`);
       }
-    } catch (err) {
+    } catch {
       // Not a valid JSON or other error, skip
     }
   }
@@ -121,35 +137,57 @@ export class PluginDatabaseInjector {
   private async injectToml(filePath: string, creds: DatabaseCredentials): Promise<void> {
     try {
       const content = await fs.readFile(filePath, 'utf-8');
-      const data = toml.parse(content) as any;
+      const data = toml.parse(content) as Record<string, unknown>;
 
       let modified = false;
 
-      const searchAndReplace = (obj: any) => {
-        if (!obj || typeof obj !== 'object') return;
+      const hostKeys = ['host', 'Host', 'DatabaseHost'];
+      const userKeys = ['user', 'User', 'DatabaseUser'];
+      const passKeys = ['password', 'Password', 'DatabasePassword'];
+      const nameKeys = ['database', 'Database', 'DatabaseName'];
+      const portKeys = ['port', 'Port', 'DatabasePort'];
 
-        const dbKeys = ['database', 'Database', 'db', 'DB', 'mysql', 'MySQL'];
-        for (const key of dbKeys) {
-          if (obj[key] && typeof obj[key] === 'object') {
-            const db = obj[key];
-            if (db.host !== undefined || db.Host !== undefined) {
-              if (db.host !== undefined) db.host = creds.host;
-              if (db.Host !== undefined) db.Host = creds.host;
-              if (db.user !== undefined) db.user = creds.user;
-              if (db.User !== undefined) db.User = creds.user;
-              if (db.password !== undefined) db.password = creds.password;
-              if (db.Password !== undefined) db.Password = creds.password;
-              if (db.database !== undefined) db.database = creds.database;
-              if (db.Database !== undefined) db.Database = creds.database;
-              if (db.port !== undefined) db.port = creds.port;
-              if (db.Port !== undefined) db.Port = creds.port;
+      const searchAndReplace = (obj: Record<string, unknown>) => {
+        if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
+
+        let matchCount = 0;
+        if (hostKeys.some((k) => obj[k] !== undefined)) matchCount++;
+        if (userKeys.some((k) => obj[k] !== undefined)) matchCount++;
+        if (passKeys.some((k) => obj[k] !== undefined)) matchCount++;
+
+        if (matchCount >= 2) {
+          for (const k of hostKeys)
+            if (obj[k] !== undefined) {
+              obj[k] = creds.host;
               modified = true;
             }
-          }
+          for (const k of userKeys)
+            if (obj[k] !== undefined) {
+              obj[k] = creds.user;
+              modified = true;
+            }
+          for (const k of passKeys)
+            if (obj[k] !== undefined) {
+              obj[k] = creds.password;
+              modified = true;
+            }
+          for (const k of nameKeys)
+            if (obj[k] !== undefined) {
+              obj[k] = creds.database;
+              modified = true;
+            }
+          for (const k of portKeys)
+            if (obj[k] !== undefined) {
+              const p = parseInt(creds.port.toString());
+              obj[k] = typeof obj[k] === 'string' ? p.toString() : p;
+              modified = true;
+            }
         }
 
         for (const k in obj) {
-          if (typeof obj[k] === 'object') searchAndReplace(obj[k]);
+          if (obj[k] && typeof obj[k] === 'object') {
+            searchAndReplace(obj[k] as Record<string, unknown>);
+          }
         }
       };
 
@@ -169,19 +207,36 @@ export class PluginDatabaseInjector {
       let content = await fs.readFile(filePath, 'utf-8');
       let modified = false;
 
-      // SourceMod databases.cfg style
-      // We look for blocks and replace values
+      // SourceMod databases.cfg style and flat prefixes
       const replacers = [
-        { regex: /"host"\s+"[^"]*"/gi, replacement: `"host" "${creds.host}"` },
-        { regex: /"database"\s+"[^"]*"/gi, replacement: `"database" "${creds.database}"` },
-        { regex: /"user"\s+"[^"]*"/gi, replacement: `"user" "${creds.user}"` },
-        { regex: /"pass"\s+"[^"]*"/gi, replacement: `"pass" "${creds.password}"` },
-        { regex: /"port"\s+"[^"]*"/gi, replacement: `"port" "${creds.port}"` },
+        {
+          regex: /"(host|Host|DatabaseHost)"\s+"[^"]*"/gi,
+          replacement: (m: string, p1: string) => `"${p1}" "${creds.host}"`,
+        },
+        {
+          regex: /"(database|Database|DatabaseName|DatabaseName)"\s+"[^"]*"/gi,
+          replacement: (m: string, p1: string) => `"${p1}" "${creds.database}"`,
+        },
+        {
+          regex: /"(user|User|DatabaseUser)"\s+"[^"]*"/gi,
+          replacement: (m: string, p1: string) => `"${p1}" "${creds.user}"`,
+        },
+        {
+          regex: /"(pass|Pass|password|Password|DatabasePassword)"\s+"[^"]*"/gi,
+          replacement: (m: string, p1: string) => `"${p1}" "${creds.password}"`,
+        },
+        {
+          regex: /"(port|Port|DatabasePort)"\s+"[^"]*"/gi,
+          replacement: (m: string, p1: string) => `"${p1}" "${creds.port}"`,
+        },
       ];
 
       for (const { regex, replacement } of replacers) {
         if (regex.test(content)) {
-          content = content.replace(regex, replacement);
+          content = content.replace(
+            regex,
+            replacement as (substring: string, ...args: any[]) => string
+          );
           modified = true;
         }
       }
