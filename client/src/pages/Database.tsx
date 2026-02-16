@@ -462,6 +462,9 @@ const DatabasePage = () => {
                       </div>
                     </div>
                     <div className="bg-white/[0.02] p-3 rounded-2xl border border-white/[0.02]">
+                      <div className="text-[9px] text-gray-500 font-black uppercase tracking-[0.2em] mb-1">
+                        {t('database.total_tables')}
+                      </div>
                       <div className="text-lg font-bold text-white font-mono">
                         {server.stats?.tables || 0}
                       </div>
