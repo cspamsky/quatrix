@@ -13,6 +13,14 @@ export class PluginDatabaseInjector {
    */
   async injectIntoDirectory(dir: string, creds: DatabaseCredentials): Promise<void> {
     try {
+      // Check if directory exists first
+      try {
+        await fs.access(dir);
+      } catch {
+        // Directory doesn't exist, which is fine - just skip it
+        return;
+      }
+
       const items = await fs.readdir(dir, { withFileTypes: true });
 
       for (const item of items) {
