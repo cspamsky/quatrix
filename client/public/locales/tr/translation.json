@@ -66,8 +66,10 @@
     "loading": "Adminler yükleniyor...",
     "no_admins": "Bu sunucu için admin bulunamadı.",
     "reload_warning": "Kaydettikten sonra, sunucuya admin listesini otomatik olarak yeniden yüklemesi talimatı verilecektir (css_reloadadmins).",
+    "remove_action": "Kaldır",
     "remove_confirm": "{{name}} adlı admini kaldırmak istediğinizden emin misiniz?",
     "remove_failed": "Admin kaldırılamadı",
+    "remove_title": "Admini Kaldır",
     "save_admin": "Admini Kaydet",
     "search_placeholder": "İsim veya SteamID ile ara...",
     "select_server": "Sunucu seç...",
@@ -156,7 +158,15 @@
     "tip_title": "Proaktif İpucu",
     "title": "Yedekleme Yönetimi",
     "type_auto": "Otomatik",
-    "type_manual": "Manuel"
+    "type_manual": "Manuel",
+    "config_automation": "Konfigürasyon & Otomasyon",
+    "auto_backup_tip_enabled": "Yedeklemeler otomatik olarak {{period}} saat {{time}}'da alınacaktır.",
+    "auto_backup_tip_disabled": "Otomatik yedekleme şu anda devre dışı. Ayarları yapılandırmak için yukarıdaki düğmeyi açın.",
+    "periods": {
+      "daily": "her gün",
+      "weekly": "Pazar günleri",
+      "monthly": "ayın ilk günü"
+    }
   },
   "chat": {
     "all": "TÜMÜ",
@@ -886,6 +896,12 @@
     "title": "Sunucu Motoru"
   },
   "settingsGeneral": {
+    "save_success": "Ayarlar başarıyla kaydedildi",
+    "save_error": "Ayarlar kaydedilirken bir hata oluştu",
+    "load_error": "Ayarlar yüklenirken bir hata oluştu",
+    "auto_backup": "Otomatik Yedekleme",
+    "auto_backup_desc": "Sistemi belirli aralıklarla otomatik olarak yedekle",
+    "backup_retention_limit": "Saklama Limiti",
     "default_port": "Varsayılan Sunucu Portu",
     "local_save_success": "Yerel ayarlar kaydedildi",
     "nodejs_version": "Node.js Sürümü",
@@ -976,6 +992,8 @@
       "backup_create": "Yedek Oluşturma",
       "backup_restore": "Yedek Geri Yükleme",
       "plugin_install": "Eklenti Kurulumu",
+      "plugin_uninstall": "Eklenti Kaldırma",
+      "plugin_update": "Eklenti Güncelleme",
       "server_install": "Sunucu Kurulumu"
     }
   },

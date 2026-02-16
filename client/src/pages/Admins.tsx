@@ -15,6 +15,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { AdminData } from '../types';
 import CustomSelect from '../components/ui/CustomSelect';
+import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 
 interface Admin extends AdminData {
   Name: string;
@@ -28,6 +29,7 @@ interface ServerInfo {
 
 const Admins = () => {
   const { t } = useTranslation();
+  const { showConfirm } = useConfirmDialog();
   const queryClient = useQueryClient();
   const [selectedServerId, setSelectedServerId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -131,7 +133,16 @@ const Admins = () => {
   };
 
   const handleDeleteAdmin = async (name: string) => {
-    if (!selectedServerId || !confirm(t('admins.remove_confirm', { name }))) return;
+    if (!selectedServerId) return;
+
+    const confirmed = await showConfirm({
+      title: t('admins.remove_title', { name }),
+      message: t('admins.remove_confirm', { name }),
+      confirmText: t('admins.remove_action'),
+      type: 'danger',
+    });
+
+    if (!confirmed) return;
 
     const updatedAdmins = { ...adminsObj };
     delete updatedAdmins[name];

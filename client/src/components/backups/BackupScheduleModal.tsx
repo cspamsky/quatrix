@@ -41,7 +41,7 @@ const BackupScheduleModal: React.FC<BackupScheduleModalProps> = ({ isOpen, onClo
       setSpecificDate(data.backup_specific_date || '');
       setRetentionLimit(data.backup_retention_limit || '7');
     } catch {
-      toast.error('Failed to load login settings');
+      toast.error(t('settingsGeneral.load_error', 'Failed to load backup settings'));
     } finally {
       setLoading(false);
     }
@@ -62,11 +62,11 @@ const BackupScheduleModal: React.FC<BackupScheduleModalProps> = ({ isOpen, onClo
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to save settings');
-      toast.success(t('settings.save_success'));
+      if (!response.ok) throw new Error();
+      toast.success(t('settingsGeneral.save_success', 'Settings saved successfully'));
       onClose();
     } catch {
-      toast.error(t('settings.save_error'));
+      toast.error(t('settingsGeneral.save_error', 'Failed to save settings'));
     } finally {
       setSaving(false);
     }
@@ -75,17 +75,14 @@ const BackupScheduleModal: React.FC<BackupScheduleModalProps> = ({ isOpen, onClo
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-[#020617]/80 backdrop-blur-sm animate-in fade-in duration-300"
-        onClick={onClose}
-      />
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      {/* Backdrop click-to-close handler */}
+      <div className="absolute inset-0" onClick={onClose} />
 
       {/* Modal Content */}
-      <div className="relative w-full max-w-lg bg-[#0F172A] border border-white/10 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+      <div className="relative w-full max-w-lg bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
         {/* Header */}
-        <div className="p-6 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-primary/5 to-transparent">
+        <div className="p-6 border-b border-gray-800 flex items-center justify-between bg-gradient-to-r from-primary/5 to-transparent">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-primary/10 rounded-xl text-primary">
               <Clock className="w-6 h-6" />
@@ -95,7 +92,7 @@ const BackupScheduleModal: React.FC<BackupScheduleModalProps> = ({ isOpen, onClo
                 {t('backups.schedule_settings_title', 'Scheduled Backup')}
               </h3>
               <p className="text-xs text-gray-500 font-medium tracking-wide uppercase mt-0.5">
-                Configuration & Automation
+                {t('backups.config_automation', 'Configuration & Automation')}
               </p>
             </div>
           </div>
@@ -121,7 +118,7 @@ const BackupScheduleModal: React.FC<BackupScheduleModalProps> = ({ isOpen, onClo
                 className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer ${
                   autoEnabled
                     ? 'bg-primary/5 border-primary/20 shadow-lg shadow-primary/5'
-                    : 'bg-white/5 border-white/5 hover:border-white/10'
+                    : 'bg-[#0c1424] border-gray-800 hover:border-gray-700'
                 }`}
                 onClick={() => setAutoEnabled(!autoEnabled)}
               >
@@ -184,7 +181,7 @@ const BackupScheduleModal: React.FC<BackupScheduleModalProps> = ({ isOpen, onClo
                     value={scheduleTime}
                     onChange={(e) => setScheduleTime(e.target.value)}
                     disabled={!autoEnabled}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:bg-white/10"
+                    className="w-full bg-[#0c1424] border border-gray-800 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:bg-white/10"
                   />
                 </div>
               </div>
@@ -202,13 +199,13 @@ const BackupScheduleModal: React.FC<BackupScheduleModalProps> = ({ isOpen, onClo
                     onChange={(e) => setSpecificDate(e.target.value)}
                     disabled={!autoEnabled}
                     placeholder="YYYY-MM-DD"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:bg-white/10"
+                    className="w-full bg-[#0c1424] border border-gray-800 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:bg-white/10"
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
                     <Hash className="w-3 h-3 text-primary" />
-                    {t('settingsGeneral.backup_retention_limit', 'Saklama Limiti')}
+                    {t('settingsGeneral.backup_retention_limit', 'Retention Limit')}
                   </label>
                   <input
                     type="number"
@@ -217,7 +214,7 @@ const BackupScheduleModal: React.FC<BackupScheduleModalProps> = ({ isOpen, onClo
                     value={retentionLimit}
                     onChange={(e) => setRetentionLimit(e.target.value)}
                     disabled={!autoEnabled}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-[#0c1424] border border-gray-800 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -229,8 +226,11 @@ const BackupScheduleModal: React.FC<BackupScheduleModalProps> = ({ isOpen, onClo
                 </div>
                 <p className="text-[10px] text-gray-400 leading-relaxed uppercase tracking-wider font-bold mt-1">
                   {autoEnabled
-                    ? `Backups will be taken automatically ${frequency === 'daily' ? 'every day' : frequency === 'weekly' ? 'on Sundays' : 'on the first day of the month'} at ${scheduleTime}.`
-                    : 'Automatic backup is currently disabled. Toggle the switch above to configure settings.'}
+                    ? t('backups.auto_backup_tip_enabled', {
+                        period: t(`backups.periods.${frequency}`),
+                        time: scheduleTime,
+                      })
+                    : t('backups.auto_backup_tip_disabled')}
                 </p>
               </div>
             </>
@@ -238,7 +238,7 @@ const BackupScheduleModal: React.FC<BackupScheduleModalProps> = ({ isOpen, onClo
         </div>
 
         {/* Footer */}
-        <div className="p-6 bg-white/5 flex items-center justify-end gap-3">
+        <div className="p-6 bg-black/20 border-t border-gray-800 flex items-center justify-end gap-3">
           <button
             onClick={onClose}
             className="px-6 py-2.5 rounded-xl text-sm font-bold text-gray-400 hover:text-white transition-all"

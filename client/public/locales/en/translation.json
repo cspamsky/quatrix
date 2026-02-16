@@ -66,8 +66,10 @@
     "loading": "Loading admins...",
     "no_admins": "No admins found for this server.",
     "reload_warning": "After saving, the server will be instructed to reload the admin list automatically (css_reloadadmins).",
+    "remove_action": "Remove",
     "remove_confirm": "Are you sure you want to remove {{name}}?",
     "remove_failed": "Failed to remove admin",
+    "remove_title": "Remove Admin",
     "save_admin": "Save Admin",
     "search_placeholder": "Search by name or SteamID...",
     "select_server": "Select server...",
@@ -156,7 +158,15 @@
     "tip_title": "Proactive Tip",
     "title": "Backup Management",
     "type_auto": "Auto",
-    "type_manual": "Manual"
+    "type_manual": "Manual",
+    "config_automation": "Configuration & Automation",
+    "auto_backup_tip_enabled": "Backups will be taken automatically {{period}} at {{time}}.",
+    "auto_backup_tip_disabled": "Automatic backup is currently disabled. Toggle the switch above to configure settings.",
+    "periods": {
+      "daily": "every day",
+      "weekly": "on Sundays",
+      "monthly": "on the first day of the month"
+    }
   },
   "chat": {
     "all": "ALL",
@@ -882,6 +892,12 @@
     "title": "Server Engine"
   },
   "settingsGeneral": {
+    "save_success": "Settings saved successfully",
+    "save_error": "An error occurred while saving settings",
+    "load_error": "An error occurred while loading settings",
+    "auto_backup": "Automatic Backup",
+    "auto_backup_desc": "Automatically backup the system at specific intervals",
+    "backup_retention_limit": "Retention Limit",
     "default_port": "Default Server Port",
     "local_save_success": "Local settings saved successfully.",
     "nodejs_version": "Node.js Version",
@@ -972,6 +988,8 @@
       "backup_create": "Creating Backup",
       "backup_restore": "Restoring Backup",
       "plugin_install": "Plugin Installation",
+      "plugin_uninstall": "Plugin Uninstallation",
+      "plugin_update": "Plugin Update",
       "server_install": "Server Installation"
     }
   },

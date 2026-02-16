@@ -418,6 +418,9 @@ export class PluginManager {
         fs.promises.rm(path.join(addonsDir, p), { recursive: true, force: true }).catch(() => {})
       )
     );
+    // We do NOT remove CS# automatically when removing Metamod.
+    // Metamod is a dependency, but removing it shouldn't delete user's CS# configs/plugins.
+    /* 
     const cssDir = path.join(addonsDir, 'counterstrikesharp');
     try {
       await fs.promises.rm(cssDir, { recursive: true, force: true });
@@ -428,6 +431,7 @@ export class PluginManager {
       const error = err as { code?: string };
       if (error.code !== 'ENOENT') throw new Error('Cannot remove CS#: Files in use.');
     }
+    */
     const gameinfo = path.join(csgoDir, 'gameinfo.gi');
     try {
       let content = await fs.promises.readFile(gameinfo, 'utf8');

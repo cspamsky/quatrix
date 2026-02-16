@@ -126,24 +126,6 @@ const Register = () => {
                 </button>
               </div>
             </div>
-
-            <div className="flex items-start pt-2">
-              <div className="flex items-center h-5">
-                <input
-                  className="w-4 h-4 text-primary focus:ring-primary border-gray-700 rounded bg-[#0F172A]"
-                  id="terms"
-                  type="checkbox"
-                  required
-                />
-              </div>
-              <label className="ml-2 text-sm text-gray-400" htmlFor="terms">
-                {t('auth.register.agree', 'I agree to the')}{' '}
-                <a className="text-primary hover:text-primary/80 transition-colors" href="#">
-                  {t('auth.register.terms', 'Terms and Conditions')}
-                </a>
-              </label>
-            </div>
-
             <button
               disabled={loading}
               className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white font-semibold py-2.5 rounded-xl transition-all shadow-lg shadow-primary/10 mt-2 disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98]"
