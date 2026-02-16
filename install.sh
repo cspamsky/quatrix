@@ -174,15 +174,23 @@ if [ ! -f .env ]; then
     mysql -u root -e "GRANT ALL PRIVILEGES ON *.* TO '$DB_ADMIN_USER'@'localhost' WITH GRANT OPTION;"
     mysql -u root -e "FLUSH PRIVILEGES;"
     
-    # Append DB credentials to .env
-    {
-        echo ""
-        echo "# MariaDB Configuration"
-        echo "MYSQL_ROOT_USER=$DB_ADMIN_USER"
-        echo "MYSQL_ROOT_PASSWORD=$DB_ADMIN_PASS"
-        echo "MYSQL_HOST=localhost"
-        echo "MYSQL_PORT=3306"
-    } >> .env
+    # Append DB credentials to .env only if not already present
+    if ! grep -q "MYSQL_ROOT_USER" .env; then
+        {
+            echo ""
+            echo "# MariaDB Configuration"
+            echo "MYSQL_ROOT_USER=$DB_ADMIN_USER"
+            echo "MYSQL_ROOT_PASSWORD=$DB_ADMIN_PASS"
+            echo "MYSQL_HOST=localhost"
+            echo "MYSQL_PORT=3306"
+        } >> .env
+        info "Appended new MariaDB credentials to .env"
+    else
+        # If it exists (from .env.example), update the values using sed
+        sed -i "s/^MYSQL_ROOT_USER=.*/MYSQL_ROOT_USER=$DB_ADMIN_USER/" .env
+        sed -i "s/^MYSQL_ROOT_PASSWORD=.*/MYSQL_ROOT_PASSWORD=$DB_ADMIN_PASS/" .env
+        info "Updated existing MariaDB credentials in .env"
+    fi
     
     chown quatrix:quatrix .env
     success "Secure .env and MariaDB user generated."

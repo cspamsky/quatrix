@@ -70,13 +70,9 @@ router.put('/:id/permissions', authorize('users.manage'), (req: Request, res: Re
       return res.status(404).json({ message: 'User not found' });
     }
 
-    logActivity(
-      'USER_UPDATE',
-      'activity.user_permissions_updated',
-      'SUCCESS',
-      authReq.user.id,
-      { userId: id }
-    );
+    logActivity('USER_UPDATE', 'activity.user_permissions_updated', 'SUCCESS', authReq.user.id, {
+      userId: id,
+    });
     res.json({ message: 'User permissions updated successfully' });
   } catch (error) {
     console.error('[USERS] Permissions update error:', error);

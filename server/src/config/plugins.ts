@@ -1,7 +1,7 @@
 export const pluginRegistry = {
   metamod: {
     name: 'Metamod:Source',
-    currentVersion: '2.0-git1384',
+    currentVersion: '2.0.0-git1387',
     folderName: 'metamod',
     category: 'core' as const,
     tags: ['core', 'framework'],
@@ -82,10 +82,10 @@ export const pluginRegistry = {
     folderName: 'WeaponPaints',
   },
   retakes: {
-    name: 'CS2-Retakes',
+    name: 'CS2-Retake',
     currentVersion: '3.0.2',
     category: 'cssharp' as const,
-    tags: ['gamemode', 'retakes'],
+    tags: ['gamemode', 'retakes', 'competitive'],
     description: 'Retake gamemode implementation',
     folderName: 'RetakesPlugin',
   },
@@ -305,21 +305,13 @@ export const pluginRegistry = {
     description: 'Conditional messages and timer broadcasts',
     folderName: 'CS2AnnouncementBroadcaster',
   },
-  gamemodifiers: {
-    name: 'CS2-GameModifiers',
+  jRandomSkills: {
+    name: 'jRandomSkills',
     currentVersion: '1.0.4',
     category: 'cssharp' as const,
     tags: ['fun', 'gamemode'],
     description: 'Random gameplay modifiers every round',
-    folderName: 'GameModifiers',
-  },
-  funmatch: {
-    name: 'CS2FunMatchPlugin',
-    currentVersion: '1.1.1',
-    category: 'cssharp' as const,
-    tags: ['fun', 'gamemode'],
-    description: 'Fun round modes (gravity, speed, etc)',
-    folderName: 'FunMatchPlugin',
+    folderName: 'jRandomSkills',
   },
   rtd: {
     name: 'RollTheDice',
@@ -472,6 +464,14 @@ export const pluginRegistry = {
     tags: ['utility', 'map-config', 'automation'],
     description: 'Advanced map-specific configuration loader for Quatrix',
     folderName: 'QuatrixMapConfig',
+  },
+  infotop: {
+    name: 'InfoTop',
+    currentVersion: '1.0.0',
+    category: 'cssharp' as const,
+    tags: ['utility', 'info', 'hud'],
+    description: 'Displays key server information on HUD',
+    folderName: 'InfoTop',
   },
 } as const;
 
