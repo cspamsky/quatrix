@@ -38,6 +38,7 @@
     "qrcode": "^1.5.4",
     "quatrix-root": "file:..",
     "rcon-client": "^4.2.5",
+    "smol-toml": "^1.6.0",
     "socket.io": "^4.8.3",
     "srcds-rcon": "^2.2.1",
     "systeminformation": "^5.30.8",

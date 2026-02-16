@@ -14,6 +14,7 @@ import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import Button from '../components/ui/Button';
 import IconButton from '../components/ui/IconButton';
+import Checkbox from '../components/ui/Checkbox';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -34,6 +35,7 @@ interface ServerWithDB {
   name: string;
   db: DatabaseInfo | null;
   stats?: { size: number; tables: number };
+  auto_db_injection: number;
 }
 
 const DatabasePage = () => {
@@ -79,6 +81,7 @@ const DatabasePage = () => {
               name: srv.name,
               db: dbData?.credentials || null,
               stats: dbData?.stats || { size: 0, tables: 0 },
+              auto_db_injection: (srv as any).auto_db_injection || 0,
             };
           })
         );
@@ -111,6 +114,37 @@ const DatabasePage = () => {
       toast.error(t('database.connection_error'));
     } finally {
       setProvisioning(null);
+    }
+  };
+
+  const handleToggleAutoInjection = async (serverId: number, enabled: boolean) => {
+    try {
+      // First get full server data from API to ensure we don't break other settings
+      const srvRes = await apiFetch(`/api/servers/${serverId}`);
+      if (!srvRes.ok) throw new Error('Failed to fetch server data');
+      const serverData = await srvRes.json();
+
+      const updatedData = {
+        ...serverData,
+        auto_db_injection: enabled ? 1 : 0,
+      };
+
+      const res = await apiFetch(`/api/servers/${serverId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedData),
+      });
+
+      if (res.ok) {
+        setServers((prev) =>
+          prev.map((s) => (s.id === serverId ? { ...s, auto_db_injection: enabled ? 1 : 0 } : s))
+        );
+        toast.success(t('database.auto_injection_updated'));
+      } else {
+        toast.error(t('database.auto_injection_failed'));
+      }
+    } catch {
+      toast.error(t('database.connection_error'));
     }
   };
 
@@ -486,6 +520,15 @@ const DatabasePage = () => {
                   <span className="text-[11px] font-black text-primary uppercase tracking-[0.2em]">
                     {t('database.active')}
                   </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    checked={Boolean(server.auto_db_injection)}
+                    onChange={(e) => handleToggleAutoInjection(server.id, e.target.checked)}
+                    label={t('database.auto_injection_label')}
+                    description={t('database.auto_injection_desc')}
+                    className="mt-0"
+                  />
                 </div>
               </div>
             )}

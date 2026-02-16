@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import path from 'path';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import db from '../db.js';
@@ -9,6 +10,7 @@ import { createServerLimiter } from '../middleware/rateLimiter.js';
 import { runtimeService } from '../services/RuntimeService.js';
 import { fileSystemService } from '../services/FileSystemService.js';
 import { databaseManager } from '../services/DatabaseManager.js';
+import { pluginManager } from '../services/PluginManager.js';
 import { logActivity, emitDashboardStats } from '../index.js';
 import type {
   AuthenticatedRequest,
@@ -105,6 +107,7 @@ export const createServerSchema = z.object({
   cpu_priority: z.number().int().min(-20).max(19).optional().default(0),
   ram_limit: z.number().int().min(0).optional().default(0),
   restart_policy: z.string().optional().default('on_failure'),
+  auto_db_injection: z.number().int().min(0).max(1).optional().default(0),
 });
 
 // Middleware for this router
@@ -261,6 +264,7 @@ router.put('/:id', authorize('servers.update'), (req: Request, res: Response) =>
     cpu_priority,
     ram_limit,
     restart_policy,
+    auto_db_injection,
   } = req.body as UpdateServerBody;
 
   try {
@@ -275,7 +279,7 @@ router.put('/:id', authorize('servers.update'), (req: Request, res: Response) =>
           rcon_password = ?, vac_enabled = ?, gslt_token = ?, steam_api_key = ?,
           game_type = ?, game_mode = ?, tickrate = ?, game_alias = ?,
           hibernate = ?, validate_files = ?, additional_args = ?,
-          cpu_priority = ?, ram_limit = ?, restart_policy = ?
+          cpu_priority = ?, ram_limit = ?, restart_policy = ?, auto_db_injection = ?
       WHERE id = ?
     `
     ).run(
@@ -298,12 +302,22 @@ router.put('/:id', authorize('servers.update'), (req: Request, res: Response) =>
       cpu_priority || 0,
       ram_limit || 0,
       restart_policy || 'on_failure',
+      auto_db_injection || 0,
       id as string
     );
 
     // Emit socket event for real-time UI update
     const io = req.app.get('io');
     if (io) io.emit('server_update', { serverId: parseInt(id as string) });
+
+    // Handle Auto DB Injection trigger if it was enabled
+    if (auto_db_injection === 1) {
+      // Trigger background injection for existing plugins
+      const installDir = path.resolve(process.cwd(), 'instances');
+      pluginManager
+        .injectDatabaseCredentialsToServerPlugins(installDir, id as string)
+        .catch((err) => console.error('[API] Failed to trigger background injection:', err));
+    }
 
     res.json({ message: 'Server settings updated successfully' });
   } catch (error) {
@@ -350,6 +364,7 @@ router.post(
         cpu_priority,
         ram_limit,
         restart_policy,
+        auto_db_injection,
       } = result.data;
 
       const result_count = db
@@ -367,9 +382,9 @@ router.post(
         map, max_players, password, gslt_token, steam_api_key, 
         vac_enabled, game_type, game_mode, tickrate, auto_start,
         game_alias, hibernate, validate_files, additional_args,
-        cpu_priority, ram_limit, restart_policy
+        cpu_priority, ram_limit, restart_policy, auto_db_injection
       )
-      VALUES (?, ?, ?, 'OFFLINE', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, 'OFFLINE', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
         )
         .run(
@@ -393,7 +408,8 @@ router.post(
           additional_args || null,
           cpu_priority || 0,
           ram_limit || 0,
-          restart_policy || 'on_failure'
+          restart_policy || 'on_failure',
+          auto_db_injection || 0
         );
 
       const serverId = info.lastInsertRowid as number;

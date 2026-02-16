@@ -298,6 +298,12 @@ try {
   /* ignore */
 }
 
+try {
+  db.exec(`ALTER TABLE servers ADD COLUMN auto_db_injection INTEGER DEFAULT 0`);
+} catch {
+  /* ignore */
+}
+
 // Create settings table
 db.exec(`
   CREATE TABLE IF NOT EXISTS settings (

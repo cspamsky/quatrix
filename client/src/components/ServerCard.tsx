@@ -266,15 +266,14 @@ const ServerCard = memo(
                   </>
                 )}
                 {hasPerm('servers.console') && (
-                  <Button
+                  <IconButton
                     onClick={() => onConsole(instance.id)}
                     variant="ghost"
-                    size="sm"
-                    icon={<Terminal className="w-3.5 h-3.5" />}
-                    className="flex-1"
+                    title={t('serverCard.console')}
+                    className="text-blue-500 hover:bg-blue-500/10 border-blue-500/20"
                   >
-                    {t('serverCard.console')}
-                  </Button>
+                    <Terminal className="w-3.5 h-3.5" />
+                  </IconButton>
                 )}
               </>
             )}

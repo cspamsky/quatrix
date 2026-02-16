@@ -8,6 +8,8 @@ import { pluginDiscovery } from './PluginDiscovery.js';
 import { pluginConfigManager } from './PluginConfigManager.js';
 import db from '../../db.js';
 import { taskService } from '../TaskService.js';
+import { databaseManager } from '../DatabaseManager.js';
+import { pluginDatabaseInjector } from './PluginDatabaseInjector.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -206,6 +208,31 @@ export class PluginInstaller {
       // 5. Process example configs
       for (const dir of searchDirs) {
         await pluginConfigManager.processExampleConfigs(dir).catch(() => {});
+      }
+
+      // 6. Automatic Database Injection
+      try {
+        const serverRows = this.db
+          .prepare('SELECT auto_db_injection FROM servers WHERE id = ?')
+          .get(instanceId) as { auto_db_injection: number } | undefined;
+
+        if (serverRows?.auto_db_injection === 1 && !isCore) {
+          console.log(
+            `[PLUGIN] Auto DB Injection is enabled for server ${instanceId}. Injecting credentials...`
+          );
+          const creds = await databaseManager.getDatabaseCredentials(instanceId);
+          if (creds) {
+            for (const dir of searchDirs) {
+              await pluginDatabaseInjector.injectIntoDirectory(dir, creds);
+            }
+          } else {
+            console.warn(
+              `[PLUGIN] Auto DB Injection enabled but no database found for server ${instanceId}`
+            );
+          }
+        }
+      } catch (err) {
+        console.error(`[PLUGIN] Failed during Auto DB Injection:`, err);
       }
 
       if (taskId) {
