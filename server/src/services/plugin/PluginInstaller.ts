@@ -212,24 +212,43 @@ export class PluginInstaller {
 
       // 6. Automatic Database Injection
       try {
+        console.log(`[PLUGIN] Checking Auto DB Injection for server ${instanceId}...`);
         const serverRows = this.db
           .prepare('SELECT auto_db_injection FROM servers WHERE id = ?')
           .get(instanceId) as { auto_db_injection: number } | undefined;
+
+        console.log(
+          `[PLUGIN] Server ${instanceId} auto_db_injection setting:`,
+          serverRows?.auto_db_injection
+        );
+        console.log(`[PLUGIN] Is core plugin:`, isCore);
+        console.log(`[PLUGIN] Search directories:`, searchDirs);
 
         if (serverRows?.auto_db_injection === 1 && !isCore) {
           console.log(
             `[PLUGIN] Auto DB Injection is enabled for server ${instanceId}. Injecting credentials...`
           );
           const creds = await databaseManager.getDatabaseCredentials(instanceId);
+          console.log(
+            `[PLUGIN] Database credentials retrieved:`,
+            creds ? `${creds.host}:${creds.port}/${creds.database}` : 'null'
+          );
+
           if (creds) {
             for (const dir of searchDirs) {
+              console.log(`[PLUGIN] Injecting into directory: ${dir}`);
               await pluginDatabaseInjector.injectIntoDirectory(dir, creds);
             }
+            console.log(`[PLUGIN] Auto DB Injection completed successfully`);
           } else {
             console.warn(
               `[PLUGIN] Auto DB Injection enabled but no database found for server ${instanceId}`
             );
           }
+        } else {
+          console.log(
+            `[PLUGIN] Auto DB Injection skipped (enabled: ${serverRows?.auto_db_injection === 1}, isCore: ${isCore})`
+          );
         }
       } catch (err) {
         console.error(`[PLUGIN] Failed during Auto DB Injection:`, err);

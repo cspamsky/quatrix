@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import path from 'path';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import db from '../db.js';
