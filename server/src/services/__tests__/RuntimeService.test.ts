@@ -31,7 +31,7 @@ describe('RuntimeService (Orchestrator)', () => {
 
     jest.spyOn(runtimeLogWatcher, 'startWatching').mockImplementation(() => {});
     jest.spyOn(runtimeLogWatcher, 'stopWatching').mockImplementation(() => {});
-    jest.spyOn(runtimeLogWatcher, 'rotateLogs').mockImplementation(() => {});
+    jest.spyOn(runtimeLogWatcher, 'rotateLogs').mockResolvedValue(undefined);
 
     jest.spyOn(instanceOutputHandler, 'getBuffer').mockReturnValue([]);
     jest.spyOn(instanceOutputHandler, 'clearBuffer').mockImplementation(() => {});
