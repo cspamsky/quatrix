@@ -56,6 +56,10 @@ class FileSystemService {
     return path.join(this.instancesDir, id.toString(), subPath);
   }
 
+  public getInstanceRoot(): string {
+    return this.instancesDir;
+  }
+
   public isPathSafe(targetPath: string): boolean {
     const resolvedPath = path.resolve(targetPath);
     return (

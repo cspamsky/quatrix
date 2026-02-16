@@ -313,7 +313,7 @@ router.put('/:id', authorize('servers.update'), (req: Request, res: Response) =>
     // Handle Auto DB Injection trigger if it was enabled
     if (auto_db_injection === 1) {
       // Trigger background injection for existing plugins
-      const installDir = path.resolve(process.cwd(), 'instances');
+      const installDir = fileSystemService.getInstanceRoot();
       pluginManager
         .injectDatabaseCredentialsToServerPlugins(installDir, id as string)
         .catch((err) => console.error('[API] Failed to trigger background injection:', err));
