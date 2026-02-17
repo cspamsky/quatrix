@@ -73,16 +73,18 @@ fi
 
 # 5. Database Cleanup
 info "Removing MariaDB 'quatrix_admin' user..."
-# Trying to get user from .env if it exists in current dir
-DB_USER="quatrix_admin"
-if [ -f .env ]; then
-    ENV_USER=$(grep MYSQL_ROOT_USER .env | cut -d '=' -f2)
-    if [ ! -z "$ENV_USER" ]; then DB_USER="$ENV_USER"; fi
+if command -v mysql &> /dev/null; then
+    DB_USER="quatrix_admin"
+    if [ -f .env ]; then
+        ENV_USER=$(grep MYSQL_ROOT_USER .env | cut -d '=' -f2)
+        if [ ! -z "$ENV_USER" ]; then DB_USER="$ENV_USER"; fi
+    fi
+    mysql -u root -e "DROP USER IF EXISTS '$DB_USER'@'localhost';" || warn "Could not remove database user '$DB_USER'."
+    mysql -u root -e "FLUSH PRIVILEGES;"
+    success "Database permissions cleaned."
+else
+    warn "MySQL/MariaDB client not found, skipping database user removal."
 fi
-
-mysql -u root -e "DROP USER IF EXISTS '$DB_USER'@'localhost';" || warn "Could not remove database user '$DB_USER'."
-mysql -u root -e "FLUSH PRIVILEGES;"
-success "Database permissions cleaned."
 
 # 6. Nginx & phpMyAdmin Cleanup
 info "Cleaning up web server configuration..."
@@ -92,14 +94,37 @@ fi
 if [ -f /etc/nginx/sites-available/phpmyadmin ]; then
     rm /etc/nginx/sites-available/phpmyadmin
 fi
-systemctl restart nginx || true
+if command -v systemctl &> /dev/null; then
+    systemctl restart nginx || true
+fi
 success "Web server configuration removed."
 
 # 7. User and Directory Removal
 info "Deleting 'quatrix' user and all related data..."
 if id "quatrix" &>/dev/null; then
-    userdel -r quatrix || warn "userdel encountered issues, but proceeding."
-    success "Kullanıcı 'quatrix' ve /home/quatrix başarıyla silindi."
+    # Aggressive process termination loop
+    for i in {1..3}; do
+        PIDS=$(pgrep -u quatrix || true)
+        if [ ! -z "$PIDS" ]; then
+            info "Terminating active processes for 'quatrix' (Attempt $i): $PIDS"
+            pkill -9 -u quatrix || true
+            sleep 1
+        else
+            break
+        fi
+    done
+    
+    # Try deletion with force flag
+    if userdel -r -f quatrix 2>/dev/null; then
+        success "User 'quatrix' and /home/quatrix deleted successfully."
+    else
+        warn "userdel failed. Manually cleaning files and removing entries..."
+        rm -rf /home/quatrix || true
+        sed -i '/^quatrix:/d' /etc/passwd || true
+        sed -i '/^quatrix:/d' /etc/shadow || true
+        sed -i '/^quatrix:/d' /etc/group || true
+        success "Manual cleanup completed for 'quatrix' user."
+    fi
 else
     warn "User 'quatrix' not found. Manually checking /home/quatrix..."
     rm -rf /home/quatrix
