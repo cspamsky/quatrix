@@ -34,9 +34,11 @@ interface ServerRow {
 
 class BackupService {
   private backupDir: string;
+  private tempDir: string;
 
   constructor() {
     this.backupDir = path.join(process.cwd(), 'data', 'backups');
+    this.tempDir = path.join(process.cwd(), 'data', 'temp');
     this.init();
   }
 
@@ -196,7 +198,13 @@ class BackupService {
     taskId?: string
   ) {
     const safeServerId = serverId.toString().replace(/[^a-zA-Z0-9]/g, '');
+    const resolvedTempPath = path.resolve(tempPath);
     const id = Date.now().toString();
+    // Ensure the temporary path is within the expected temp directory
+    if (!resolvedTempPath.startsWith(this.tempDir + path.sep)) {
+      throw new Error('Invalid temporary upload path');
+    }
+
     const filename = `backup_${safeServerId}_${id}.zip`;
     const targetPath = path.resolve(this.backupDir, filename);
 
@@ -205,8 +213,8 @@ class BackupService {
         taskService.updateTask(taskId, { progress: 50, message: 'tasks.messages.moving_files' });
 
       // Move temp file to backup directory
-      fs.copyFileSync(tempPath, targetPath);
-      fs.unlinkSync(tempPath);
+      fs.copyFileSync(resolvedTempPath, targetPath);
+      fs.unlinkSync(resolvedTempPath);
 
       const stats = fs.statSync(targetPath);
       db.prepare(
@@ -215,7 +223,7 @@ class BackupService {
 
       return id;
     } catch (error) {
-      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      if (fs.existsSync(resolvedTempPath)) fs.unlinkSync(resolvedTempPath);
       if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath);
       throw error;
     }
