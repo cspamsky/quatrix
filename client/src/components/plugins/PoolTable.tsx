@@ -1,15 +1,13 @@
 import React from 'react';
-import {
-  Cpu,
-  Zap,
-  Layers,
-  CheckCircle2,
-  AlertCircle,
-  Trash2,
-  Download,
-  Search,
-} from 'lucide-react';
+import { Cpu, Zap, Layers, CheckCircle2, AlertCircle, Trash2, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import SearchInput from '../ui/SearchInput';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 interface PluginInfo {
   id: string;
@@ -43,32 +41,27 @@ const PoolTable: React.FC<PoolTableProps> = ({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col lg:flex-row gap-4 shrink-0">
+      <div className="flex flex-col lg:flex-row gap-3 shrink-0">
         {tabSwitcher}
-        <div className="relative flex-1 group">
-          <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors"
-            size={18}
-          />
-          <input
-            type="text"
+        <div className="flex-1">
+          <SearchInput
             placeholder={t('plugins.search_repository')}
-            className="w-full bg-[#111827]/40 border border-gray-800/50 rounded-2xl py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-primary/50 focus:bg-primary/[0.02] transition-all"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
           />
         </div>
 
-        <div className="flex items-center gap-2 bg-[#111827]/40 border border-gray-800/50 p-1.5 rounded-2xl overflow-x-auto scrollbar-hide">
+        <div className="flex items-center gap-1 bg-[#111827]/40 border border-gray-800/50 p-1 rounded-xl overflow-x-auto scrollbar-hide h-[34px]">
           {['all', 'core', 'metamod', 'cssharp'].map((cat) => (
             <button
               key={cat}
               onClick={() => onCategoryChange(cat)}
-              className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+              className={cn(
+                'px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap h-full',
                 activeCategory === cat
-                  ? 'bg-primary text-white'
-                  : 'text-gray-500 hover:text-gray-300'
-              }`}
+                  ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                  : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+              )}
             >
               {t(`plugins.${cat === 'all' ? 'all_categories' : cat}`)}
             </button>

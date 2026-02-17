@@ -5,6 +5,13 @@ import { apiFetch } from '../utils/api';
 import socket from '../utils/socket';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Settings as GlobalSettings } from '../types';
+import Button from '../components/ui/Button';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 // Sub-components
 import GeneralTab from '../components/settings/GeneralTab';
@@ -54,7 +61,6 @@ const Settings = () => {
 
   // --- Queries ---
 
-  // 1. Fetch Global Settings
   // 1. Fetch Global Settings
   const { data: settingsData } = useQuery({
     queryKey: ['settings'],
@@ -232,15 +238,16 @@ const Settings = () => {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 py-4 text-xs sm:text-sm font-semibold transition-all relative whitespace-nowrap text-center ${
+              className={cn(
+                'flex-1 py-4 text-xs sm:text-sm font-bold uppercase tracking-widest transition-all relative whitespace-nowrap text-center',
                 activeTab === tab.key
                   ? 'text-primary bg-primary/5'
                   : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
-              }`}
+              )}
             >
               {tab.label}
               {activeTab === tab.key && (
-                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary shadow-lg shadow-primary/50"></div>
+                <div className="absolute bottom-0 left-0 w-full h-[2px] bg-primary shadow-[0_0_10px_rgba(59,130,246,0.5)] animate-in fade-in duration-300"></div>
               )}
             </button>
           ))}
@@ -302,7 +309,7 @@ const Settings = () => {
           {/* Persistent Action Footer */}
           {canManage && ['general', 'server_engine'].includes(activeTab) && (
             <div className="mt-8 flex justify-end border-t border-gray-800/50 pt-6">
-              <button
+              <Button
                 onClick={
                   activeTab === 'general'
                     ? () => {
@@ -316,17 +323,13 @@ const Settings = () => {
                       }
                     : handleSaveEngineSettings
                 }
-                disabled={updateSettingsMutation.isPending || updateTimezoneMutation.isPending}
-                className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white px-10 py-3.5 rounded-xl font-bold text-sm transition-all shadow-xl shadow-primary/20 active:scale-95 disabled:opacity-50"
-                type="button"
+                isLoading={updateSettingsMutation.isPending || updateTimezoneMutation.isPending}
+                loadingText={t('settingsGeneral.saving', 'Saving...')}
+                icon={<Save size={18} />}
+                className="px-10 py-3.5"
               >
-                {updateSettingsMutation.isPending || updateTimezoneMutation.isPending ? (
-                  <RefreshCw size={18} className="animate-spin" />
-                ) : (
-                  <Save size={18} />
-                )}
                 {t('settingsGeneral.save_changes')}
-              </button>
+              </Button>
             </div>
           )}
         </div>

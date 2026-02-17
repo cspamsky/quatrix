@@ -1,10 +1,18 @@
 import { useState } from 'react';
-import { Search, RefreshCw, LogIn, LogOut, Clock, User } from 'lucide-react';
+import { RefreshCw, LogIn, LogOut, Clock, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '../../utils/api';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../../utils/date';
+import SearchInput from '../ui/SearchInput';
+import IconButton from '../ui/IconButton';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 interface JoinLog {
   id: number;
@@ -70,24 +78,15 @@ const JoinLogsTab = ({ selectedServerId }: JoinLogsTabProps) => {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
-            <input
-              className="w-64 pl-10 pr-4 py-1.5 bg-[#0F172A]/50 border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200"
-              placeholder={t('players.search_history')}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <button
-            onClick={handleRefresh}
-            disabled={!selectedServerId || refreshing}
-            className="bg-[#111827] hover:bg-gray-800 disabled:opacity-50 text-white px-5 py-2 rounded-xl font-bold text-sm border border-gray-800 flex items-center transition-all active:scale-95"
-          >
-            <RefreshCw className={`mr-2 w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-            {t('players.refresh')}
-          </button>
+          <SearchInput
+            placeholder={t('players.search_history')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            containerClassName="w-64"
+          />
+          <IconButton onClick={handleRefresh} isLoading={refreshing} disabled={!selectedServerId}>
+            <RefreshCw className={cn('w-4 h-4', refreshing && 'animate-spin text-primary')} />
+          </IconButton>
         </div>
       </div>
 

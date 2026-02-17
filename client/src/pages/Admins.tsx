@@ -1,20 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { apiFetch } from '../utils/api';
-import {
-  Plus,
-  Trash2,
-  Search,
-  RefreshCw,
-  Server,
-  ShieldCheck,
-  UserPlus,
-  AlertCircle,
-} from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Server, ShieldCheck, UserPlus, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { AdminData } from '../types';
 import CustomSelect from '../components/ui/CustomSelect';
+import SearchInput from '../components/ui/SearchInput';
+import Button from '../components/ui/Button';
+import IconButton from '../components/ui/IconButton';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 
 interface Admin extends AdminData {
@@ -170,7 +164,7 @@ const Admins = () => {
           <h2 className="text-2xl font-bold text-white tracking-tight">{t('admins.title')}</h2>
           <p className="text-sm text-gray-400 mt-1">{t('admins.subtitle')}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <CustomSelect
             options={servers.map((s: ServerInfo) => ({
               value: s.id,
@@ -184,32 +178,28 @@ const Admins = () => {
             size="sm"
           />
 
-          <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
-            <input
-              className="w-64 pl-10 pr-4 py-1.5 bg-[#0F172A]/50 border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200"
+          <div className="w-64">
+            <SearchInput
               placeholder={t('admins.search_placeholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
-          <button
+          <IconButton
             onClick={() => refetch()}
             disabled={!selectedServerId || loading || isRefetching}
-            className="bg-[#111827] border border-gray-800 text-gray-400 hover:text-white px-4 py-2 rounded-xl transition-all active:scale-95"
+            variant="ghost"
+            isLoading={isRefetching}
+            className="bg-[#111827] border border-gray-800 text-gray-400 hover:text-white"
           >
-            <RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin' : ''}`} />
-          </button>
+            <RefreshCw className="w-4 h-4" />
+          </IconButton>
 
           {canManage && (
-            <button
-              onClick={() => setIsAdding(true)}
-              className="bg-primary hover:bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-sm flex items-center transition-all shadow-lg shadow-blue-500/20 active:scale-95"
-            >
-              <Plus className="mr-2 w-4 h-4" />
+            <Button onClick={() => setIsAdding(true)} variant="primary" icon={<Plus size={16} />}>
               {t('admins.add_admin')}
-            </button>
+            </Button>
           )}
         </div>
       </header>
@@ -281,12 +271,13 @@ const Admins = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       {canManage && (
-                        <button
+                        <IconButton
                           onClick={() => handleDeleteAdmin(admin.Name)}
-                          className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-all"
+                          variant="ghost"
+                          className="text-red-400 hover:bg-red-500/10"
                         >
                           <Trash2 size={14} />
-                        </button>
+                        </IconButton>
                       )}
                     </td>
                   </tr>
@@ -377,19 +368,17 @@ const Admins = () => {
               </div>
 
               <div className="flex gap-3 mt-6">
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  className="flex-1"
                   onClick={() => setIsAdding(false)}
-                  className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-750 text-white rounded-xl font-bold transition-all text-sm"
                 >
                   {t('common.cancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-3 bg-primary hover:bg-blue-600 text-white rounded-xl font-bold transition-all text-sm shadow-lg shadow-blue-500/20"
-                >
+                </Button>
+                <Button type="submit" variant="primary" className="flex-1">
                   {t('admins.save_admin')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

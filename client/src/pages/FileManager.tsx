@@ -14,7 +14,7 @@ import {
   Upload,
   Search,
   Download,
-  Edit2,
+  Edit2, // Keep Edit2 as it's used in the file, the instruction's 'Edit' might be a typo or for a different context.
   Copy,
   ExternalLink,
 } from 'lucide-react';
@@ -22,6 +22,16 @@ import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { formatDate } from '../utils/date';
+import SearchInput from '../components/ui/SearchInput';
+import IconButton from '../components/ui/IconButton';
+import Button from '../components/ui/Button';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge'; // Added from instruction
+
+// Added from instruction
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 interface FileStat {
   name: string;
@@ -342,18 +352,22 @@ const FileManager = () => {
         </div>
 
         <div className="flex gap-3">
-          <button
+          <Button
             onClick={() => setIsNewFolderModalOpen(true)}
-            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all border border-gray-700/50"
+            variant="secondary"
+            size="sm"
+            icon={<FolderPlus size={16} />}
           >
-            <FolderPlus size={16} /> {t('file_manager.new_folder', 'NEW FOLDER')}
-          </button>
-          <button
+            {t('file_manager.new_folder', 'NEW FOLDER')}
+          </Button>
+          <Button
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-primary/20"
+            variant="primary"
+            size="sm"
+            icon={<Upload size={16} />}
           >
-            <Upload size={16} /> {t('file_manager.upload', 'UPLOAD')}
-          </button>
+            {t('file_manager.upload', 'UPLOAD')}
+          </Button>
           <input type="file" ref={fileInputRef} className="hidden" onChange={handleUpload} />
         </div>
       </header>
@@ -384,24 +398,25 @@ const FileManager = () => {
             ))}
         </div>
 
-        <div className="relative w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-          <input
-            type="text"
-            placeholder={t('file_manager.search_placeholder', 'Search files...')}
-            className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl pl-10 pr-4 py-1.5 text-sm text-white placeholder-gray-600 focus:border-primary outline-none transition-all"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+        <SearchInput
+          placeholder={t('file_manager.search_placeholder', 'Search files...')}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          containerClassName="w-64"
+        />
 
-        <button
+        <IconButton
           onClick={() => fetchFiles(currentPath)}
-          className="p-2.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-xl transition-all"
+          isLoading={loading && !editingFile}
           title={t('file_manager.refresh', 'Refresh')}
         >
-          <RefreshCw size={18} className={loading && !editingFile ? 'animate-spin' : ''} />
-        </button>
+          <RefreshCw
+            className={cn(
+              'w-4 h-4 transition-transform duration-500 group-active:rotate-180',
+              loading && !editingFile && 'animate-spin text-primary'
+            )}
+          />
+        </IconButton>
       </div>
 
       <main className="flex-1 bg-[#111827] border border-gray-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl relative">
@@ -420,7 +435,7 @@ const FileManager = () => {
                 </div>
               </div>
               <div className="flex gap-3">
-                <button
+                <Button
                   onClick={() => {
                     if (editingFile.content !== editingFile.originalContent) {
                       if (
@@ -435,20 +450,22 @@ const FileManager = () => {
                     }
                     setEditingFile(null);
                   }}
-                  className="text-xs font-bold text-gray-400 hover:text-white px-4 py-2 rounded-xl transition-all"
+                  variant="ghost"
+                  size="sm"
                 >
                   {t('file_manager.edit.discard', 'DISCARD')}
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleSave}
-                  disabled={saving}
-                  className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-black tracking-widest transition-all disabled:opacity-50 shadow-lg shadow-primary/20"
+                  isLoading={saving}
+                  variant="primary"
+                  size="sm"
+                  icon={<Save size={16} />}
                 >
-                  <Save size={16} />{' '}
                   {saving
                     ? t('file_manager.edit.saving', 'SAVING...')
                     : t('file_manager.edit.save', 'SAVE CHANGES')}
-                </button>
+                </Button>
               </div>
             </div>
             <textarea
@@ -606,18 +623,12 @@ const FileManager = () => {
                   onChange={(e) => setNewFolderName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
                 />
-                <button
-                  onClick={handleCreateFolder}
-                  className="w-full py-4 bg-primary hover:bg-blue-600 text-white rounded-2xl font-black tracking-widest text-xs transition-all shadow-lg shadow-primary/20"
-                >
+                <Button onClick={handleCreateFolder} variant="primary" fullWidth>
                   {t('file_manager.modals.create', 'CREATE FOLDER')}
-                </button>
-                <button
-                  onClick={() => setIsNewFolderModalOpen(false)}
-                  className="w-full py-4 bg-transparent text-gray-500 hover:text-white font-bold text-xs"
-                >
+                </Button>
+                <Button onClick={() => setIsNewFolderModalOpen(false)} variant="ghost" fullWidth>
                   {t('file_manager.modals.cancel', 'CANCEL')}
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -650,18 +661,12 @@ const FileManager = () => {
                   onChange={(e) => setNewFileName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleRenameSubmit()}
                 />
-                <button
-                  onClick={handleRenameSubmit}
-                  className="w-full py-4 bg-primary hover:bg-blue-600 text-white rounded-2xl font-black tracking-widest text-xs transition-all shadow-lg shadow-primary/20"
-                >
+                <Button onClick={handleRenameSubmit} variant="primary" fullWidth>
                   {t('file_manager.modals.rename_btn', 'RENAME ITEM')}
-                </button>
-                <button
-                  onClick={() => setIsRenameModalOpen(false)}
-                  className="w-full py-4 bg-transparent text-gray-500 hover:text-white font-bold text-xs"
-                >
+                </Button>
+                <Button onClick={() => setIsRenameModalOpen(false)} variant="ghost" fullWidth>
                   {t('file_manager.modals.cancel', 'CANCEL')}
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -712,7 +717,7 @@ const FileManager = () => {
             }}
             className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-gray-800 transition-all text-left"
           >
-            <RefreshCw size={14} /> {t('file_manager.ctx.rename', 'RENAME')}
+            <Edit2 size={14} /> {t('file_manager.ctx.rename', 'RENAME')}
           </button>
 
           {!contextMenu.file.isDirectory && (

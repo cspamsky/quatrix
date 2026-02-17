@@ -1,10 +1,19 @@
 import { useState, useMemo } from 'react';
 import { apiFetch } from '../utils/api';
-import { Search, RefreshCw, Trash2, Key, Calendar, Lock, X } from 'lucide-react';
+import { RefreshCw, Trash2, Key, Calendar, Lock, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../utils/date';
+import SearchInput from '../components/ui/SearchInput';
+import IconButton from '../components/ui/IconButton';
+import Button from '../components/ui/Button';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 interface User {
   id: number;
@@ -121,25 +130,21 @@ const Users = () => {
             {t('users.subtitle', 'List and manage system users and their permissions.')}
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
-            <input
-              className="w-64 pl-10 pr-4 py-1.5 bg-[#0F172A]/50 border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200"
-              placeholder={t('users.search_placeholder', 'Search users...')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+        <div className="flex items-center gap-3">
+          <SearchInput
+            placeholder={t('users.search_placeholder', 'Search users...')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            containerClassName="w-64"
+          />
 
-          <button
+          <IconButton
             onClick={() => refetch()}
-            disabled={isLoading || isRefetching}
-            className="bg-[#111827] border border-gray-800 text-gray-400 hover:text-white px-4 py-2 rounded-xl transition-all active:scale-95"
+            isLoading={isLoading || isRefetching}
             title={t('common.refresh', 'Refresh')}
           >
-            <RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin' : ''}`} />
-          </button>
+            <RefreshCw className={cn('w-4 h-4', isRefetching && 'animate-spin text-primary')} />
+          </IconButton>
         </div>
       </header>
 
@@ -224,25 +229,27 @@ const Users = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       {canManage && (
-                        <div className="flex justify-end gap-2">
-                          <button
+                        <div className="flex justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                          <IconButton
                             onClick={() => {
                               setSelectedUser(user);
                               setTempPermissions(user.permissions || []);
                               setIsPermissionModalOpen(true);
                             }}
-                            className="p-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white rounded-lg transition-all"
+                            variant="ghost"
+                            className="text-blue-400 hover:bg-blue-500/10"
                             title={t('users.edit_permissions', 'Edit Permissions')}
                           >
                             <Lock size={14} />
-                          </button>
-                          <button
+                          </IconButton>
+                          <IconButton
                             onClick={() => handleDeleteUser(user.id, user.username)}
-                            className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-all"
+                            variant="ghost"
+                            className="text-red-400 hover:bg-red-500/10"
                             title={t('users.delete_user', 'Delete User')}
                           >
                             <Trash2 size={14} />
-                          </button>
+                          </IconButton>
                         </div>
                       )}
                     </td>
@@ -260,28 +267,25 @@ const Users = () => {
           <div className="w-full max-w-md bg-[#0B1120] rounded-2xl border border-gray-800 shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-gray-800 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500">
+                <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20">
                   <Lock size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">
+                  <h3 className="text-lg font-bold text-white leading-tight">
                     {t('users.permissions.title', 'Permissions')}
                   </h3>
-                  <p className="text-sm text-gray-500 font-medium">
-                    {t('users.permissions.subtitle', 'Managed User Profile')}
-                  </p>
-                  <p className="text-xs text-gray-500 font-medium mt-0.5">
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">
                     {t('users.permissions.managing', { username: selectedUser.username })}
                   </p>
                 </div>
               </div>
-              <button
+              <IconButton
                 onClick={() => setIsPermissionModalOpen(false)}
-                className="p-2 text-gray-500 hover:text-white transition-colors"
-                aria-label="Close"
+                variant="ghost"
+                title="Close"
               >
                 <X size={20} />
-              </button>
+              </IconButton>
             </div>
 
             <div className="p-6 space-y-3 overflow-y-auto max-h-[60vh] custom-scrollbar">
@@ -305,19 +309,18 @@ const Users = () => {
               </div>
             </div>
 
-            <div className="p-6 border-t border-gray-800 bg-gray-900/20 flex gap-3">
-              <button
+            <div className="p-6 border-t border-gray-800 bg-gray-900/40 flex gap-3">
+              <Button
                 onClick={() => setIsPermissionModalOpen(false)}
-                className="flex-1 py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+                variant="secondary"
+                size="sm"
+                fullWidth
               >
-                {t('users.permissions.cancel', 'Cancel')}
-              </button>
-              <button
-                onClick={handleUpdatePermissions}
-                className="flex-1 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-primary/20"
-              >
+                {t('common.cancel', 'Cancel')}
+              </Button>
+              <Button onClick={handleUpdatePermissions} variant="primary" size="sm" fullWidth>
                 {t('users.permissions.save', 'Save')}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

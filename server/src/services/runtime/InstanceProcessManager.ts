@@ -45,27 +45,86 @@ export class InstanceProcessManager {
   }
 
   /**
-   * Terminates an instance process
+   * Terminates an instance process and all its children
    */
   async killProcess(pid: number, processHandle?: ChildProcess): Promise<void> {
     try {
+      console.log(`[ProcessManager] Attempting to kill process ${pid} and its children`);
+
+      // First, try graceful shutdown with SIGTERM
       if (processHandle) {
         processHandle.kill('SIGTERM');
       } else {
-        process.kill(pid, 'SIGTERM');
+        // Kill entire process group (negative PID kills process tree on Linux)
+        try {
+          process.kill(-pid, 'SIGTERM');
+        } catch {
+          // Fallback to single process if process group fails
+          process.kill(pid, 'SIGTERM');
+        }
       }
 
-      // Force kill fallback after 5 seconds
-      setTimeout(() => {
+      // Wait up to 5 seconds for graceful shutdown
+      const gracefulShutdownSuccess = await this.waitForProcessDeath(pid, 5000);
+
+      if (gracefulShutdownSuccess) {
+        console.log(`[ProcessManager] Process ${pid} terminated gracefully`);
+        return;
+      }
+
+      // If still alive, force kill with SIGKILL
+      console.warn(`[ProcessManager] Process ${pid} did not terminate gracefully, forcing SIGKILL`);
+      if (processHandle) {
+        processHandle.kill('SIGKILL');
+      } else {
         try {
-          if (processHandle) processHandle.kill('SIGKILL');
-          else process.kill(pid, 'SIGKILL');
+          process.kill(-pid, 'SIGKILL');
         } catch {
-          /* ignore */
+          process.kill(pid, 'SIGKILL');
         }
-      }, 5000).unref();
+      }
+
+      // Wait up to 2 seconds for force kill
+      const forceKillSuccess = await this.waitForProcessDeath(pid, 2000);
+
+      if (!forceKillSuccess) {
+        console.error(`[ProcessManager] Process ${pid} still alive after SIGKILL!`);
+      } else {
+        console.log(`[ProcessManager] Process ${pid} force killed successfully`);
+      }
     } catch (e) {
       console.warn(`[ProcessManager] Error killing process ${pid}:`, e);
+    }
+  }
+
+  /**
+   * Waits for a process to die, checking periodically
+   */
+  private async waitForProcessDeath(pid: number, timeoutMs: number): Promise<boolean> {
+    const startTime = Date.now();
+    const checkInterval = 100; // Check every 100ms
+
+    while (Date.now() - startTime < timeoutMs) {
+      if (!this.isProcessAlive(pid)) {
+        return true;
+      }
+      await new Promise((resolve) => setTimeout(resolve, checkInterval));
+    }
+
+    return !this.isProcessAlive(pid);
+  }
+
+  /**
+   * Checks if a process is still running
+   */
+  private isProcessAlive(pid: number): boolean {
+    try {
+      // Sending signal 0 doesn't kill the process, just checks if it exists
+      process.kill(pid, 0);
+      return true;
+    } catch (e: any) {
+      // ESRCH means process doesn't exist
+      return e.code !== 'ESRCH';
     }
   }
 

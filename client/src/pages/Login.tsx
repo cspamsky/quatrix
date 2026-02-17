@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react';
 import { User, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../utils/api';
+import { useTranslation } from 'react-i18next';
+import Checkbox from '../components/ui/Checkbox';
 
 const Login = () => {
+  const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const [identity, setIdentity] = useState('');
   const [password, setPassword] = useState('');
@@ -41,7 +44,8 @@ const Login = () => {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Login failed');
+      if (!response.ok)
+        throw new Error(data.message || t('auth.login.login_failed', 'Login failed'));
 
       if (data.require_2fa) {
         setRequire2FA(true);
@@ -80,7 +84,8 @@ const Login = () => {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Verification failed');
+      if (!response.ok)
+        throw new Error(data.message || t('auth.login.verification_failed', 'Verification failed'));
 
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
@@ -106,14 +111,14 @@ const Login = () => {
           <div className="flex justify-center mb-6">
             <img src="/logo.png" alt="Quatrix Logo" className="w-24 h-24" />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Quatrix Manager</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">{t('auth.login.title')}</h1>
 
-          <p className="text-gray-400 mt-2">Manage your competitive battlefield with ease</p>
+          <p className="text-gray-400 mt-2">{t('auth.login.subtitle')}</p>
         </div>
 
         <div className="bg-[#111827] border border-gray-800/50 rounded-2xl shadow-xl p-8">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-white">Welcome back</h2>
+            <h2 className="text-xl font-semibold text-white">{t('auth.login.welcome')}</h2>
           </div>
 
           {error && (
@@ -129,7 +134,7 @@ const Login = () => {
                   className="block text-sm font-medium text-gray-300 mb-1.5"
                   htmlFor="identity"
                 >
-                  Username
+                  {t('auth.login.username')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -138,7 +143,7 @@ const Login = () => {
                   <input
                     className="block w-full pl-11 pr-4 py-2.5 bg-[#0F172A]/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none text-sm"
                     id="identity"
-                    placeholder="Username"
+                    placeholder={t('auth.login.username')}
                     required
                     type="text"
                     value={identity}
@@ -152,7 +157,7 @@ const Login = () => {
                   className="block text-sm font-medium text-gray-300 mb-1.5"
                   htmlFor="password"
                 >
-                  Password
+                  {t('auth.login.password')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -171,7 +176,11 @@ const Login = () => {
                     className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-500 hover:text-gray-300"
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={
+                      showPassword
+                        ? t('auth.login.hide_password', 'Hide password')
+                        : t('auth.login.show_password', 'Show password')
+                    }
                   >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
@@ -179,27 +188,18 @@ const Login = () => {
               </div>
 
               <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <input
-                    className="h-4 w-4 text-primary focus:ring-primary border-gray-700 rounded bg-[#0F172A]"
-                    id="remember-me"
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                  />
-                  <label
-                    className="ml-2 block text-sm text-gray-300 cursor-pointer"
-                    htmlFor="remember-me"
-                  >
-                    Remember Me
-                  </label>
-                </div>
+                <Checkbox
+                  id="remember-me"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  label={t('auth.login.remember_me')}
+                />
                 <div className="text-sm">
                   <a
                     className="font-medium text-primary hover:text-primary/80 transition-colors"
                     href="#"
                   >
-                    Forgot Password?
+                    {t('auth.login.forgot_password')}
                   </a>
                 </div>
               </div>
@@ -215,7 +215,7 @@ const Login = () => {
                   ) : (
                     <>
                       <LogIn size={18} />
-                      Sign In
+                      {t('auth.login.sign_in')}
                     </>
                   )}
                 </button>
@@ -227,10 +227,8 @@ const Login = () => {
                 <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-4">
                   <LogIn size={24} />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-2">Two-Factor Authentication</h3>
-                <p className="text-sm text-gray-400">
-                  Enter the 6-digit code from your authenticator app.
-                </p>
+                <h3 className="text-lg font-bold text-white mb-2">{t('auth.2fa.title')}</h3>
+                <p className="text-sm text-gray-400">{t('auth.2fa.desc')}</p>
               </div>
 
               <div>
@@ -255,7 +253,7 @@ const Login = () => {
                   {loading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                   ) : (
-                    'Verify & Sign In'
+                    t('auth.login.verify_2fa')
                   )}
                 </button>
                 <button
@@ -263,19 +261,19 @@ const Login = () => {
                   onClick={() => setRequire2FA(false)}
                   className="text-sm text-gray-400 hover:text-white transition-colors py-2"
                 >
-                  Back to Login
+                  {t('auth.login.back_to_login')}
                 </button>
               </div>
             </form>
           )}
           <div className="mt-8 pt-6 border-t border-gray-800 text-center">
             <p className="text-sm text-gray-400">
-              Don't have an account?{' '}
+              {t('auth.login.no_account')}{' '}
               <button
                 onClick={() => navigate('/register')}
                 className="font-semibold text-primary hover:text-primary/80 transition-colors"
               >
-                Create an account
+                {t('auth.login.create_account')}
               </button>
             </p>
           </div>

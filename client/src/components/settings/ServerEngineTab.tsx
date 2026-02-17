@@ -1,4 +1,5 @@
 import React from 'react';
+import Button from '../ui/Button';
 import {
   Monitor,
   Shield,
@@ -69,14 +70,17 @@ const ServerEngineTab: React.FC<ServerEngineTabProps> = ({
                 <label className="block text-sm font-medium text-gray-400">
                   {t('settingsEngine.steamcmd_path')}
                 </label>
-                <button
+                <Button
                   onClick={onDownloadSteamCmd}
-                  disabled={engineLoading || !canEdit}
-                  className="text-[10px] font-black text-primary hover:text-primary/80 uppercase tracking-widest flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  variant="ghost"
+                  size="sm"
+                  isLoading={engineLoading}
+                  disabled={!canEdit}
+                  icon={<Download className="w-3.5 h-3.5" />}
+                  className="text-[10px] uppercase font-black tracking-widest h-auto py-1 px-2 border-primary/20 hover:bg-primary/10"
                 >
-                  <Download size={12} />
                   {t('settingsEngine.download_online')}
-                </button>
+                </Button>
               </div>
               <div className="relative group">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-primary transition-colors">

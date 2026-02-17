@@ -1,19 +1,19 @@
 import { useState } from 'react';
-import {
-  Search,
-  RefreshCw,
-  ShieldAlert,
-  ShieldCheck,
-  User,
-  Calendar,
-  Clock,
-  Unlock,
-} from 'lucide-react';
+import { RefreshCw, ShieldAlert, ShieldCheck, User, Calendar, Clock, Unlock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../../utils/api';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../../utils/date';
+import SearchInput from '../ui/SearchInput';
+import IconButton from '../ui/IconButton';
+import Button from '../ui/Button';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 interface BanRecord {
   id: number;
@@ -112,23 +112,15 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
-            <input
-              className="w-64 pl-10 pr-4 py-1.5 bg-[#0F172A]/50 border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200"
-              placeholder={t('players.search_bans')}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <button
-            onClick={handleRefresh}
-            disabled={!selectedServerId || loading}
-            className="p-2.5 bg-[#111827] hover:bg-gray-800 text-gray-400 hover:text-white rounded-xl border border-gray-800 transition-all active:scale-95"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+          <SearchInput
+            placeholder={t('players.search_bans')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            containerClassName="w-64"
+          />
+          <IconButton onClick={handleRefresh} isLoading={loading} disabled={!selectedServerId}>
+            <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin text-primary')} />
+          </IconButton>
         </div>
       </div>
 
@@ -221,14 +213,16 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       {ban.is_active ? (
-                        <button
+                        <Button
                           onClick={() => unbanMutation.mutate(ban.id)}
-                          disabled={unbanMutation.isPending}
-                          className="px-4 py-2 bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 ml-auto border border-green-500/20"
+                          isLoading={unbanMutation.isPending}
+                          variant="success"
+                          size="sm"
+                          icon={<Unlock size={14} />}
+                          className="ml-auto"
                         >
-                          <Unlock size={14} />
                           {t('players.unban')}
-                        </button>
+                        </Button>
                       ) : (
                         <span className="text-[10px] text-gray-600 font-bold uppercase">
                           {t('players.resolved')}{' '}

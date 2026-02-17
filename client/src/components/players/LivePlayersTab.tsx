@@ -1,11 +1,20 @@
 import { useMemo, useState } from 'react';
-import { Users, Search, RefreshCw, UserMinus, ShieldAlert, MoreHorizontal } from 'lucide-react';
+import { Users, RefreshCw, UserMinus, ShieldAlert, MoreHorizontal } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../../utils/api';
 import { useTranslation } from 'react-i18next';
 import { useSteamAvatars } from '../../hooks/useSteamAvatars';
 import type { LivePlayer } from '../../types';
+import SearchInput from '../ui/SearchInput';
+import IconButton from '../ui/IconButton';
+import Button from '../ui/Button';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 interface LivePlayersTabProps {
   selectedServerId: number | null;
@@ -143,24 +152,15 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
-            <input
-              className="w-64 pl-10 pr-4 py-1.5 bg-[#0F172A]/50 border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200"
-              placeholder={t('players.search_placeholder')}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <button
-            onClick={handleRefresh}
-            disabled={!selectedServerId || refreshing}
-            className="bg-primary hover:bg-blue-600 disabled:opacity-50 text-white px-5 py-2 rounded-xl font-bold text-sm flex items-center transition-all shadow-lg shadow-blue-500/20 active:scale-95"
-          >
-            <RefreshCw className={`mr-2 w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-            {t('players.refresh')}
-          </button>
+          <SearchInput
+            placeholder={t('players.search_placeholder')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            containerClassName="w-64"
+          />
+          <IconButton onClick={handleRefresh} isLoading={refreshing} disabled={!selectedServerId}>
+            <RefreshCw className={cn('w-4 h-4', refreshing && 'animate-spin text-primary')} />
+          </IconButton>
         </div>
       </div>
 
@@ -241,23 +241,25 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                        <button
+                        <IconButton
                           onClick={() => handleAction('kick', player.userId)}
-                          className="p-2 bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500 hover:text-white rounded-lg transition-all"
                           title={t('players.kick_player')}
+                          variant="ghost"
+                          className="text-yellow-500 hover:bg-yellow-500/10"
                         >
                           <UserMinus size={14} />
-                        </button>
-                        <button
+                        </IconButton>
+                        <IconButton
                           onClick={() => handleAction('ban', player.userId, player)}
-                          className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all"
                           title={t('players.ban_player')}
+                          variant="ghost"
+                          className="text-red-500 hover:bg-red-500/10"
                         >
                           <ShieldAlert size={14} />
-                        </button>
-                        <button className="p-2 bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-all">
+                        </IconButton>
+                        <IconButton variant="ghost">
                           <MoreHorizontal size={14} />
-                        </button>
+                        </IconButton>
                       </div>
                     </td>
                   </tr>
@@ -345,18 +347,16 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
             </div>
 
             <div className="flex gap-3">
-              <button
+              <Button
                 onClick={() => setBanDialog({ show: false, player: null })}
-                className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold transition-all"
+                variant="secondary"
+                fullWidth
               >
                 {t('players.cancel')}
-              </button>
-              <button
-                onClick={confirmBan}
-                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-all shadow-lg shadow-red-500/20"
-              >
+              </Button>
+              <Button onClick={confirmBan} variant="danger" fullWidth>
                 {t('players.confirm_ban')}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

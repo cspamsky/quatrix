@@ -23,6 +23,13 @@ import UploadModal from '../components/plugins/UploadModal.js';
 import PoolTable from '../components/plugins/PoolTable.js';
 import PluginRow from '../components/plugins/PluginRow.js';
 import CustomSelect from '../components/ui/CustomSelect';
+import SearchInput from '../components/ui/SearchInput';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 interface Instance {
   id: number;
@@ -160,7 +167,6 @@ const Plugins = () => {
         // Redundant toast removed: taskService handles visual feedback in bottom-right overlay
         // toast.success(`${pluginName} ${t('plugins.action_success')}`);
 
-        // Invalidate queries to refresh UI
         queryClient.invalidateQueries({ queryKey: ['plugin-status', selectedServer] });
         queryClient.invalidateQueries({ queryKey: ['plugin-updates', selectedServer] });
       } else {
@@ -366,17 +372,27 @@ const Plugins = () => {
   }, [allPlugins, searchQuery, activeCategory]);
 
   const TabSwitcher = () => (
-    <div className="flex items-center gap-1 bg-[#0F172A]/50 p-1 rounded-xl border border-gray-800 shrink-0 shadow-sm shadow-black/20">
+    <div className="flex items-center gap-1 bg-[#0F172A]/50 p-1 rounded-xl border border-gray-800 shrink-0 shadow-sm shadow-black/20 h-[34px]">
       <button
         onClick={() => setActiveTab('instances')}
-        className={`flex items-center gap-3 px-6 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.1em] transition-all ${activeTab === 'instances' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
+        className={cn(
+          'flex items-center gap-2 px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all h-full',
+          activeTab === 'instances'
+            ? 'bg-primary text-white shadow-lg shadow-primary/20'
+            : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+        )}
       >
         <ServerIcon size={14} />
         {t('plugins.server_management')}
       </button>
       <button
         onClick={() => setActiveTab('pool')}
-        className={`flex items-center gap-3 px-6 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.1em] transition-all ${activeTab === 'pool' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
+        className={cn(
+          'flex items-center gap-2 px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all h-full',
+          activeTab === 'pool'
+            ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+            : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+        )}
       >
         <Box size={14} />
         {t('plugins.global_repository')}
@@ -426,40 +442,44 @@ const Plugins = () => {
     return (
       <div className="flex flex-col gap-6 max-h-[calc(100vh-250px)]">
         {/* Filter Bar */}
-        <div className="flex flex-col lg:flex-row gap-4 shrink-0">
+        <div className="flex flex-col lg:flex-row gap-3 shrink-0">
           <TabSwitcher />
-          <div className="relative flex-1 group">
-            <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors"
-              size={18}
-            />
-            <input
-              type="text"
+          <div className="flex-1">
+            <SearchInput
               placeholder={t('plugins.search_plugins')}
-              className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl py-1.5 pl-11 pr-4 text-sm text-white focus:outline-none focus:border-primary/50 focus:bg-primary/[0.02] transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
-          <div className="flex items-center gap-2 bg-[#0F172A]/50 border border-gray-800 p-1 rounded-xl overflow-x-auto scrollbar-hide w-full lg:w-auto min-w-0">
+          <div className="flex items-center gap-1 bg-[#0F172A]/50 border border-gray-800 p-1 rounded-xl overflow-x-auto scrollbar-hide w-full lg:w-auto min-w-0 h-[34px]">
             {categories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap shrink-0 ${activeCategory === cat ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-gray-300'}`}
+                className={cn(
+                  'px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap shrink-0 h-full',
+                  activeCategory === cat
+                    ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                    : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+                )}
               >
                 {t(`plugins.${cat === 'all' ? 'all_categories' : cat}`)}
               </button>
             ))}
           </div>
 
-          <div className="flex items-center gap-2 bg-[#111827]/40 border border-gray-800/50 p-1.5 rounded-2xl overflow-x-auto scrollbar-hide w-full lg:w-auto min-w-0">
+          <div className="flex items-center gap-1 bg-[#111827]/40 border border-gray-800/50 p-1 rounded-xl overflow-x-auto scrollbar-hide w-full lg:w-auto min-w-0 h-[34px]">
             {statuses.map((s) => (
               <button
                 key={s.id}
                 onClick={() => setStatusFilter(s.id)}
-                className={`flex items-center gap-2 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap shrink-0 ${statusFilter === s.id ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap shrink-0 h-full',
+                  statusFilter === s.id
+                    ? 'bg-gray-800 text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+                )}
               >
                 {s.icon}
                 {s.label}

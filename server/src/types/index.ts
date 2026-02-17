@@ -57,6 +57,7 @@ export interface Server {
   ram_limit: number;
   restart_policy?: string;
   is_installed: number;
+  auto_db_injection: number;
   user_id: number;
   ip?: string;
   settings?: string;
@@ -94,4 +95,5 @@ export interface UpdateServerBody {
   cpu_priority: number;
   ram_limit: number;
   restart_policy?: string;
+  auto_db_injection: number;
 }
