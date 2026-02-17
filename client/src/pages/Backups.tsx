@@ -29,7 +29,7 @@ interface Backup {
   size: number;
   type: 'manual' | 'auto';
   comment: string;
-  created_at: string;
+  createdAt: number;
 }
 
 interface Instance {
@@ -397,7 +397,7 @@ const Backups: React.FC = () => {
                       {formatSize(backup.size)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-300">
-                      {new Date(backup.created_at).toLocaleString()}
+                      {new Date(backup.createdAt).toLocaleString()}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
