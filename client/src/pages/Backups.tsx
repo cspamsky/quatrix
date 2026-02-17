@@ -241,7 +241,8 @@ const Backups: React.FC = () => {
               icon={<Plus size={16} />}
               disabled={!selectedServerId}
             >
-              {t('backups.create_new')}            </Button>
+              {t('backups.create_new')}{' '}
+            </Button>
             <Button
               onClick={handleUploadClick}
               variant="secondary"
