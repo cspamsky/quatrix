@@ -87,13 +87,18 @@ class BackupService {
         });
 
       // Exclusion patterns
-      const excludePatterns = ['.log', '.tmp', '.tar.gz', '.zip', 'backups', 'core.'];
+      const excludePatterns = ['.log', '.tmp', '.tar.gz', '.zip', 'backups'];
 
       const addFolderRecursive = (localPath: string, zipPath: string) => {
         if (!fs.existsSync(localPath)) return;
         const files = fs.readdirSync(localPath);
         for (const file of files) {
+          // Exclude patterns (extensions/folders)
           if (excludePatterns.some((p) => file.includes(p))) continue;
+
+          // Specifically exclude only core dump files (named exactly 'core' or starting with 'core.' followed by numbers)
+          if (file === 'core' || /^core\.\d+$/.test(file)) continue;
+
           const fullPath = path.join(localPath, file);
           const stat = fs.statSync(fullPath);
           if (stat.isDirectory()) {
@@ -184,6 +189,14 @@ class BackupService {
 
       await zip.writeZipPromise(targetPath);
 
+      // --- IMPROVEMENT: Immediately update message after zip is written ---
+      if (taskId) {
+        taskService.updateTask(taskId, {
+          progress: 95,
+          message: 'tasks.messages.finalizing',
+        });
+      }
+
       // Cleanup temp files
       const sqliteTemp = path.resolve(dataDir, `database_temp_${id}.sqlite`);
       if (fs.existsSync(sqliteTemp) && sqliteTemp.startsWith(dataDir)) fs.unlinkSync(sqliteTemp);
@@ -202,6 +215,11 @@ class BackupService {
 
       // 4. Retention Policy (Cleanup for automated backups)
       if (type === 'auto') {
+        if (taskId) {
+          taskService.updateTask(taskId, {
+            message: 'tasks.messages.cleaning_backups',
+          });
+        }
         await this.cleanupOldBackups(serverId);
       }
 
@@ -361,14 +379,96 @@ class BackupService {
       taskService.updateTask(taskId, { progress: 10, message: 'tasks.messages.opening_backup' });
     }
 
+    const tempExtractPath = path.resolve(process.cwd(), 'data', `restore_temp_${Date.now()}`);
+
     try {
       const zip = new AdmZip(filePath);
 
       if (taskId)
-        taskService.updateTask(taskId, { progress: 40, message: 'tasks.messages.restoring_files' });
+        taskService.updateTask(taskId, {
+          progress: 30,
+          message: 'tasks.messages.extracting_files',
+        });
 
-      // Overwrites existing files during restoration.
-      zip.extractAllTo(instancePath, true);
+      // 1. Extract to a temporary directory first to separate files
+      if (!fs.existsSync(tempExtractPath)) fs.mkdirSync(tempExtractPath, { recursive: true });
+      zip.extractAllTo(tempExtractPath, true);
+
+      // 2. Handle Server Files (Game configs and addons)
+      if (taskId)
+        taskService.updateTask(taskId, { progress: 50, message: 'tasks.messages.moving_files' });
+
+      const copyFolderRecursive = (src: string, dest: string) => {
+        if (!fs.existsSync(src)) return;
+        if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+
+        const entries = fs.readdirSync(src, { withFileTypes: true });
+        for (const entry of entries) {
+          const srcPath = path.join(src, entry.name);
+          const destPath = path.join(dest, entry.name);
+
+          if (entry.isDirectory()) {
+            copyFolderRecursive(srcPath, destPath);
+          } else {
+            fs.copyFileSync(srcPath, destPath);
+          }
+        }
+      };
+
+      // Move game files if they exist in the backup
+      const gamePath = path.join(tempExtractPath, 'game');
+      if (fs.existsSync(gamePath)) {
+        copyFolderRecursive(gamePath, path.join(instancePath, 'game'));
+      }
+
+      // 3. Handle MySQL Database Restore
+      const serverDatabaseFile = path.join(tempExtractPath, 'server_database.sql');
+      if (fs.existsSync(serverDatabaseFile)) {
+        if (taskId)
+          taskService.updateTask(taskId, {
+            progress: 70,
+            message: 'tasks.messages.restoring_mysql',
+          });
+
+        const creds = await databaseManager.getDatabaseCredentials(serverId);
+        if (creds && (await databaseManager.isAvailable())) {
+          try {
+            const restoreProcess = spawn('mysql', [
+              '-h',
+              creds.host,
+              '-P',
+              creds.port.toString(),
+              '-u',
+              creds.user,
+              `-p${creds.password}`,
+              creds.database,
+            ]);
+
+            const readStream = fs.createReadStream(serverDatabaseFile);
+            readStream.pipe(restoreProcess.stdin);
+
+            await new Promise<void>((resolve, reject) => {
+              restoreProcess.on('close', (code) => {
+                if (code === 0) resolve();
+                else reject(new Error(`mysql import exited with code ${code}`));
+              });
+              restoreProcess.on('error', reject);
+              readStream.on('error', reject);
+            });
+            console.log(`[BackupService] MySQL database restored for server ${serverId}`);
+          } catch (mysqlErr) {
+            console.error('[BackupService] MySQL restore failed:', mysqlErr);
+          }
+        }
+      }
+
+      // 4. Panel Database (SQLite) - Skip automatic restore for safety
+      const panelDatabaseFile = path.join(tempExtractPath, 'panel_database.sqlite');
+      if (fs.existsSync(panelDatabaseFile)) {
+        console.log(
+          `[BackupService] Found panel_database.sqlite in backup. Skipping automatic restore for safety.`
+        );
+      }
 
       if (taskId) {
         taskService.completeTask(taskId, 'tasks.messages.restore_success');
@@ -380,6 +480,15 @@ class BackupService {
         taskService.failTask(taskId, `tasks.messages.restore_failed`);
       }
       throw err;
+    } finally {
+      // Cleanup temp directory
+      if (fs.existsSync(tempExtractPath)) {
+        try {
+          fs.rmSync(tempExtractPath, { recursive: true, force: true });
+        } catch (cleanupErr) {
+          console.error('[BackupService] Temp cleanup failed:', cleanupErr);
+        }
+      }
     }
   }
 

@@ -21,10 +21,18 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     socket.on('task_failed', (task: Task) => {
       setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...task, status: 'failed' } : t)));
-      // Keep failed tasks longer (15s) for user to read error
       setTimeout(() => {
         setTasks((prev) => prev.filter((t) => t.id !== task.id));
-      }, 15000);
+      }, 10000);
+    });
+
+    socket.on('task_completed', (task: Task) => {
+      setTasks((prev) =>
+        prev.map((t) => (t.id === task.id ? { ...task, status: 'completed' } : t))
+      );
+      setTimeout(() => {
+        setTasks((prev) => prev.filter((t) => t.id !== task.id));
+      }, 3000);
     });
 
     socket.on('task_deleted', ({ id }: { id: string }) => {
