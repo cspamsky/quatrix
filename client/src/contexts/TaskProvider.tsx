@@ -49,5 +49,21 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  return <TaskContext.Provider value={{ tasks }}>{children}</TaskContext.Provider>;
+  const addTask = (task: Task) => {
+    setTasks((prev) => [...prev.filter((t) => t.id !== task.id), task]);
+  };
+
+  const updateTask = (id: string, updates: Partial<Task>) => {
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
+  };
+
+  const removeTask = (id: string) => {
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  return (
+    <TaskContext.Provider value={{ tasks, addTask, updateTask, removeTask }}>
+      {children}
+    </TaskContext.Provider>
+  );
 };

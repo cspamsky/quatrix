@@ -15,6 +15,9 @@ export interface Task {
 
 export interface TaskContextType {
   tasks: Task[];
+  addTask: (task: Task) => void;
+  updateTask: (id: string, updates: Partial<Task>) => void;
+  removeTask: (id: string) => void;
 }
 
 export const TaskContext = createContext<TaskContextType | undefined>(undefined);

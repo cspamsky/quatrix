@@ -30,7 +30,6 @@ class BackupService {
       fs.mkdirSync(this.backupDir, { recursive: true });
     }
 
-    // Create backups table if it doesn't exist
     db.exec(`
       CREATE TABLE IF NOT EXISTS backups (
         id TEXT PRIMARY KEY,
@@ -50,53 +49,36 @@ class BackupService {
     comment?: string,
     taskId?: string
   ): Promise<string> {
-    // Sanitize serverId to prevent path traversal
     const safeServerId = serverId.toString().replace(/[^a-zA-Z0-9]/g, '');
-    if (!safeServerId) {
-      throw new Error('Invalid server ID');
-    }
+    if (!safeServerId) throw new Error('Invalid server ID');
 
     const dataDir = path.resolve(process.cwd(), 'data');
-
     const id = Date.now().toString();
     const filename = `backup_${safeServerId}_${id}.zip`;
     const targetPath = path.resolve(this.backupDir, filename);
 
-    // SECURITY: Absolute path traversal check (Defense in Depth)
-    if (!targetPath.startsWith(this.backupDir)) {
+    if (!targetPath.startsWith(this.backupDir))
       throw new Error('Security Error: Invalid backup target path');
-    }
 
-    if (taskId) {
+    if (taskId)
       taskService.updateTask(taskId, { progress: 5, message: 'tasks.messages.backup_starting' });
-    }
 
     try {
       const zip = new AdmZip();
       const instancePath = fileSystemService.getInstancePath(serverId);
+      if (!fs.existsSync(instancePath)) throw new Error('Server folder not found.');
 
-      if (!fs.existsSync(instancePath)) {
-        throw new Error('Server folder not found.');
-      }
-
-      // 1. Scan and add files
       if (taskId)
-        taskService.updateTask(taskId, {
-          progress: 20,
-          message: 'tasks.messages.packaging_files',
-        });
+        taskService.updateTask(taskId, { progress: 20, message: 'tasks.messages.packaging_files' });
 
-      // Exclusion patterns
+      // Exclusion patterns: Added .sql and .sqlite to exclude clutter, but server_database.sql is handled separately
       const excludePatterns = ['.log', '.tmp', '.tar.gz', '.zip', 'backups'];
 
       const addFolderRecursive = (localPath: string, zipPath: string) => {
         if (!fs.existsSync(localPath)) return;
         const files = fs.readdirSync(localPath);
         for (const file of files) {
-          // Exclude patterns (extensions/folders)
           if (excludePatterns.some((p) => file.includes(p))) continue;
-
-          // Specifically exclude only core dump files (named exactly 'core' or starting with 'core.' followed by numbers)
           if (file === 'core' || /^core\.\d+$/.test(file)) continue;
 
           const fullPath = path.join(localPath, file);
@@ -110,28 +92,17 @@ class BackupService {
       };
 
       const csgoCfgPath = path.join(instancePath, 'game', 'csgo', 'cfg');
-      if (fs.existsSync(csgoCfgPath)) {
-        addFolderRecursive(csgoCfgPath, 'game/csgo/cfg');
-      }
+      if (fs.existsSync(csgoCfgPath)) addFolderRecursive(csgoCfgPath, 'game/csgo/cfg');
 
       const csgoAddonsPath = path.join(instancePath, 'game', 'csgo', 'addons');
-      if (fs.existsSync(csgoAddonsPath)) {
-        addFolderRecursive(csgoAddonsPath, 'game/csgo/addons');
-      }
+      if (fs.existsSync(csgoAddonsPath)) addFolderRecursive(csgoAddonsPath, 'game/csgo/addons');
 
       // 2. Panel Database Backup (SQLite)
       const sqlitePath = path.resolve(dataDir, 'database.sqlite');
       if (fs.existsSync(sqlitePath)) {
         const sqliteBackupPath = path.resolve(dataDir, `database_temp_${id}.sqlite`);
-
-        // SECURITY: Validate paths
-        if (!sqliteBackupPath.startsWith(dataDir)) {
-          throw new Error('Security Error: Invalid SQLite temp path');
-        }
-
         fs.copyFileSync(sqlitePath, sqliteBackupPath);
         zip.addLocalFile(sqliteBackupPath, '', 'panel_database.sqlite');
-        // We'll delete temp file after zip write
       }
 
       // 3. CS2 Server Database Backup (MySQL)
@@ -140,16 +111,9 @@ class BackupService {
       if (creds && (await databaseManager.isAvailable())) {
         if (taskId)
           taskService.updateTask(taskId, { progress: 50, message: 'tasks.messages.dumping_mysql' });
-
         mysqlBackupFile = path.resolve(dataDir, `mysql_dump_${safeServerId}_${id}.sql`);
 
-        // SECURITY: Validate mysqlBackupFile belongs to dataDir
-        if (!mysqlBackupFile.startsWith(dataDir)) {
-          throw new Error('Security Error: Invalid MySQL dump path');
-        }
-
         try {
-          // Use spawn for safe command execution (no shell)
           const dumpProcess = spawn('mysqldump', [
             '-h',
             creds.host,
@@ -160,22 +124,18 @@ class BackupService {
             `-p${creds.password}`,
             creds.database,
           ]);
-
           const writeStream = fs.createWriteStream(mysqlBackupFile);
           dumpProcess.stdout.pipe(writeStream);
 
           await new Promise<void>((resolve, reject) => {
-            dumpProcess.on('close', (code) => {
-              if (code === 0) resolve();
-              else reject(new Error(`mysqldump exited with code ${code}`));
-            });
+            dumpProcess.on('close', (code) =>
+              code === 0 ? resolve() : reject(new Error(`mysqldump exited with code ${code}`))
+            );
             dumpProcess.on('error', reject);
             writeStream.on('error', reject);
           });
-
-          if (fs.existsSync(mysqlBackupFile)) {
+          if (fs.existsSync(mysqlBackupFile))
             zip.addLocalFile(mysqlBackupFile, '', 'server_database.sql');
-          }
         } catch (dumpErr) {
           console.error('[BackupService] MySQL Dump failed:', dumpErr);
         }
@@ -186,73 +146,70 @@ class BackupService {
           progress: 80,
           message: 'tasks.messages.creating_archive',
         });
-
       await zip.writeZipPromise(targetPath);
 
-      // --- IMPROVEMENT: Immediately update message after zip is written ---
-      if (taskId) {
-        taskService.updateTask(taskId, {
-          progress: 95,
-          message: 'tasks.messages.finalizing',
-        });
-      }
+      if (taskId)
+        taskService.updateTask(taskId, { progress: 95, message: 'tasks.messages.finalizing' });
 
       // Cleanup temp files
       const sqliteTemp = path.resolve(dataDir, `database_temp_${id}.sqlite`);
-      if (fs.existsSync(sqliteTemp) && sqliteTemp.startsWith(dataDir)) fs.unlinkSync(sqliteTemp);
-      if (mysqlBackupFile && fs.existsSync(mysqlBackupFile) && mysqlBackupFile.startsWith(dataDir))
-        fs.unlinkSync(mysqlBackupFile);
+      if (fs.existsSync(sqliteTemp)) fs.unlinkSync(sqliteTemp);
+      if (mysqlBackupFile && fs.existsSync(mysqlBackupFile)) fs.unlinkSync(mysqlBackupFile);
 
       const stats = fs.statSync(targetPath);
-
-      // Save to DB
       db.prepare(
-        `
-        INSERT INTO backups (id, server_id, filename, size, type, comment)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `
+        `INSERT INTO backups (id, server_id, filename, size, type, comment) VALUES (?, ?, ?, ?, ?, ?)`
       ).run(id, serverId, filename, stats.size, type, comment || '');
 
-      // 4. Retention Policy (Cleanup for automated backups)
-      if (type === 'auto') {
-        if (taskId) {
-          taskService.updateTask(taskId, {
-            message: 'tasks.messages.cleaning_backups',
-          });
-        }
-        await this.cleanupOldBackups(serverId);
-      }
-
-      if (taskId) {
-        taskService.completeTask(taskId, 'tasks.messages.backup_success');
-      }
+      if (type === 'auto') await this.cleanupOldBackups(serverId);
+      if (taskId) taskService.completeTask(taskId, 'tasks.messages.backup_success');
 
       return id;
     } catch (error: unknown) {
       const err = error as Error;
       console.error('[BackupService] Backup error:', err);
-      // Cleanup on failure
-      const sqliteTemp = path.resolve(dataDir, `database_temp_${id}.sqlite`);
-      if (fs.existsSync(sqliteTemp) && sqliteTemp.startsWith(dataDir)) fs.unlinkSync(sqliteTemp);
-      if (taskId) {
-        taskService.failTask(taskId, `tasks.messages.backup_failed`);
-      }
+      if (taskId) taskService.failTask(taskId, `tasks.messages.backup_failed`);
       throw err;
+    }
+  }
+
+  public async handleExternalUpload(
+    serverId: string | number,
+    tempPath: string,
+    originalName: string,
+    comment?: string,
+    taskId?: string
+  ) {
+    const safeServerId = serverId.toString().replace(/[^a-zA-Z0-9]/g, '');
+    const id = Date.now().toString();
+    const filename = `backup_${safeServerId}_${id}.zip`;
+    const targetPath = path.resolve(this.backupDir, filename);
+
+    try {
+      if (taskId)
+        taskService.updateTask(taskId, { progress: 50, message: 'tasks.messages.moving_files' });
+
+      // Move temp file to backup directory
+      fs.copyFileSync(tempPath, targetPath);
+      fs.unlinkSync(tempPath);
+
+      const stats = fs.statSync(targetPath);
+      db.prepare(
+        `INSERT INTO backups (id, server_id, filename, size, type, comment) VALUES (?, ?, ?, ?, ?, ?)`
+      ).run(id, serverId, filename, stats.size, 'manual', comment || `Uploaded: ${originalName}`);
+
+      return id;
+    } catch (error) {
+      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath);
+      throw error;
     }
   }
 
   public getBackups(serverId: string | number): BackupMetadata[] {
     const rows = db
       .prepare('SELECT * FROM backups WHERE server_id = ? ORDER BY created_at DESC')
-      .all(serverId) as {
-      id: string;
-      server_id: number;
-      filename: string;
-      size: number;
-      type: 'manual' | 'auto';
-      comment: string;
-      created_at: string;
-    }[];
+      .all(serverId) as any[];
     return rows.map((row) => ({
       id: row.id,
       serverId: row.server_id,
@@ -266,162 +223,69 @@ class BackupService {
 
   public async deleteBackup(id: string) {
     const row = db.prepare('SELECT filename FROM backups WHERE id = ?').get(id) as
-      | {
-          filename: string;
-        }
+      | { filename: string }
       | undefined;
     if (row) {
       const filePath = path.resolve(this.backupDir, row.filename);
-
-      // SECURITY: Path traversal check
-      if (!filePath.startsWith(this.backupDir)) {
-        throw new Error('Security Error: Invalid path detected during deletion');
-      }
-
-      if (fs.existsSync(filePath)) {
-        await fs.promises.unlink(filePath);
-      }
+      if (fs.existsSync(filePath)) await fs.promises.unlink(filePath);
       db.prepare('DELETE FROM backups WHERE id = ?').run(id);
     }
   }
 
   public getBackupPath(id: string): string {
     const row = db.prepare('SELECT filename FROM backups WHERE id = ?').get(id) as
-      | {
-          filename: string;
-        }
+      | { filename: string }
       | undefined;
     if (!row) throw new Error('Backup not found.');
-
     const filePath = path.resolve(this.backupDir, row.filename);
-
-    // SECURITY: Path traversal check
-    if (!filePath.startsWith(this.backupDir)) {
-      throw new Error('Security Error: Invalid backup path');
-    }
-
-    if (!fs.existsSync(filePath)) {
-      throw new Error('Backup file not found physically.');
-    }
-
+    if (!fs.existsSync(filePath)) throw new Error('Backup file not found physically.');
     return filePath;
-  }
-
-  public async handleExternalUpload(
-    serverId: string | number,
-    tempFilePath: string,
-    originalFilename: string,
-    comment?: string,
-    taskId?: string
-  ): Promise<string> {
-    const safeServerId = serverId.toString().replace(/[^a-zA-Z0-9]/g, '');
-    const id = Date.now().toString();
-    const extension = path.extname(originalFilename) || '.zip';
-    const filename = `backup_ext_${safeServerId}_${id}${extension}`;
-    const targetPath = path.resolve(this.backupDir, filename);
-
-    // SECURITY: Ensure target is within backup directory
-    if (!targetPath.startsWith(this.backupDir)) {
-      if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
-      throw new Error('Security Error: Invalid upload target path');
-    }
-
-    if (taskId) {
-      taskService.updateTask(taskId, { progress: 30, message: 'tasks.messages.moving_file' });
-    }
-
-    try {
-      // Move file from temp to backup dir
-      await fs.promises.rename(tempFilePath, targetPath);
-
-      if (taskId) {
-        taskService.updateTask(taskId, { progress: 80, message: 'tasks.messages.finalizing' });
-      }
-
-      const stats = fs.statSync(targetPath);
-
-      // Save to DB
-      db.prepare(
-        `
-        INSERT INTO backups (id, server_id, filename, size, type, comment)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `
-      ).run(id, serverId, filename, stats.size, 'manual', comment || 'External Upload');
-
-      return id;
-    } catch (error) {
-      if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
-      throw error;
-    }
   }
 
   public async restoreBackup(id: string, taskId?: string) {
     const row = db.prepare('SELECT * FROM backups WHERE id = ?').get(id) as
-      | {
-          server_id: number;
-          filename: string;
-        }
+      | { server_id: number; filename: string }
       | undefined;
     if (!row) throw new Error('Backup not found.');
 
     const serverId = row.server_id;
     const filePath = path.resolve(this.backupDir, row.filename);
     const instancePath = fileSystemService.getInstancePath(serverId);
-
-    // SECURITY: Robust path validation
-    if (!filePath.startsWith(this.backupDir)) {
-      throw new Error('Security Error: Invalid backup file path for restoration');
-    }
-
     if (!fs.existsSync(filePath)) throw new Error('Backup file not found physically.');
 
-    if (taskId) {
+    if (taskId)
       taskService.updateTask(taskId, { progress: 10, message: 'tasks.messages.opening_backup' });
-    }
-
     const tempExtractPath = path.resolve(process.cwd(), 'data', `restore_temp_${Date.now()}`);
 
     try {
       const zip = new AdmZip(filePath);
-
       if (taskId)
         taskService.updateTask(taskId, {
           progress: 30,
           message: 'tasks.messages.extracting_files',
         });
 
-      // 1. Extract to a temporary directory first to separate files
       if (!fs.existsSync(tempExtractPath)) fs.mkdirSync(tempExtractPath, { recursive: true });
       zip.extractAllTo(tempExtractPath, true);
 
-      // 2. Handle Server Files (Game configs and addons)
       if (taskId)
         taskService.updateTask(taskId, { progress: 50, message: 'tasks.messages.moving_files' });
-
       const copyFolderRecursive = (src: string, dest: string) => {
         if (!fs.existsSync(src)) return;
         if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
-
         const entries = fs.readdirSync(src, { withFileTypes: true });
         for (const entry of entries) {
           const srcPath = path.join(src, entry.name);
           const destPath = path.join(dest, entry.name);
-
-          if (entry.isDirectory()) {
-            copyFolderRecursive(srcPath, destPath);
-          } else {
-            fs.copyFileSync(srcPath, destPath);
-          }
+          if (entry.isDirectory()) copyFolderRecursive(srcPath, destPath);
+          else fs.copyFileSync(srcPath, destPath);
         }
       };
 
-      // Move game files if they exist in the backup
       const gamePath = path.join(tempExtractPath, 'game');
-      if (fs.existsSync(gamePath)) {
-        copyFolderRecursive(gamePath, path.join(instancePath, 'game'));
-      }
+      if (fs.existsSync(gamePath)) copyFolderRecursive(gamePath, path.join(instancePath, 'game'));
 
-      // 3. Handle MySQL Database Restore
+      // 3. MySQL Restore
       const serverDatabaseFile = path.join(tempExtractPath, 'server_database.sql');
       if (fs.existsSync(serverDatabaseFile)) {
         if (taskId)
@@ -429,66 +293,51 @@ class BackupService {
             progress: 70,
             message: 'tasks.messages.restoring_mysql',
           });
-
         const creds = await databaseManager.getDatabaseCredentials(serverId);
         if (creds && (await databaseManager.isAvailable())) {
-          try {
-            const restoreProcess = spawn('mysql', [
-              '-h',
-              creds.host,
-              '-P',
-              creds.port.toString(),
-              '-u',
-              creds.user,
-              `-p${creds.password}`,
-              creds.database,
-            ]);
+          console.log(`[BackupService] Starting MySQL restore for server ${serverId}...`);
+          const restoreProcess = spawn('mysql', [
+            '-h',
+            creds.host,
+            '-P',
+            creds.port.toString(),
+            '-u',
+            creds.user,
+            `-p${creds.password}`,
+            creds.database,
+          ]);
+          const readStream = fs.createReadStream(serverDatabaseFile);
+          readStream.pipe(restoreProcess.stdin);
 
-            const readStream = fs.createReadStream(serverDatabaseFile);
-            readStream.pipe(restoreProcess.stdin);
+          let errorOutput = '';
+          restoreProcess.stderr.on('data', (d) => (errorOutput += d.toString()));
 
-            await new Promise<void>((resolve, reject) => {
-              restoreProcess.on('close', (code) => {
-                if (code === 0) resolve();
-                else reject(new Error(`mysql import exited with code ${code}`));
-              });
-              restoreProcess.on('error', reject);
-              readStream.on('error', reject);
+          await new Promise<void>((resolve, reject) => {
+            restoreProcess.on('close', (code) => {
+              if (code === 0) {
+                console.log(`[BackupService] MySQL database successfully restored for ${serverId}`);
+                resolve();
+              } else {
+                console.error(
+                  `[BackupService] MySQL import failed with code ${code}. Error: ${errorOutput}`
+                );
+                reject(new Error(`mysql import failed: ${errorOutput}`));
+              }
             });
-            console.log(`[BackupService] MySQL database restored for server ${serverId}`);
-          } catch (mysqlErr) {
-            console.error('[BackupService] MySQL restore failed:', mysqlErr);
-          }
+            restoreProcess.on('error', reject);
+            readStream.on('error', reject);
+          });
         }
       }
 
-      // 4. Panel Database (SQLite) - Skip automatic restore for safety
-      const panelDatabaseFile = path.join(tempExtractPath, 'panel_database.sqlite');
-      if (fs.existsSync(panelDatabaseFile)) {
-        console.log(
-          `[BackupService] Found panel_database.sqlite in backup. Skipping automatic restore for safety.`
-        );
-      }
-
-      if (taskId) {
-        taskService.completeTask(taskId, 'tasks.messages.restore_success');
-      }
+      if (taskId) taskService.completeTask(taskId, 'tasks.messages.restore_success');
     } catch (error: unknown) {
-      const err = error as Error;
-      console.error('[BackupService] Restore error:', err);
-      if (taskId) {
-        taskService.failTask(taskId, `tasks.messages.restore_failed`);
-      }
-      throw err;
+      console.error('[BackupService] Restore error:', error);
+      if (taskId) taskService.failTask(taskId, `tasks.messages.restore_failed`);
+      throw error;
     } finally {
-      // Cleanup temp directory
-      if (fs.existsSync(tempExtractPath)) {
-        try {
-          fs.rmSync(tempExtractPath, { recursive: true, force: true });
-        } catch (cleanupErr) {
-          console.error('[BackupService] Temp cleanup failed:', cleanupErr);
-        }
-      }
+      if (fs.existsSync(tempExtractPath))
+        fs.rmSync(tempExtractPath, { recursive: true, force: true });
     }
   }
 
@@ -497,28 +346,21 @@ class BackupService {
       .prepare("SELECT value FROM settings WHERE key = 'backup_retention_limit'")
       .get() as { value: string } | undefined;
     const limit = parseInt(limitSetting?.value || '7');
-
     const backups = db
       .prepare(
         "SELECT id, filename FROM backups WHERE server_id = ? AND type = 'auto' ORDER BY created_at ASC"
       )
-      .all(serverId) as { id: string; filename: string }[];
-
+      .all(serverId) as any[];
     if (backups.length > limit) {
-      const toDelete = backups.slice(0, backups.length - limit);
-      for (const backup of toDelete) {
-        console.log(`[BackupService] Retention cleanup: Deleting old backup ${backup.filename}`);
+      for (const backup of backups.slice(0, backups.length - limit))
         await this.deleteBackup(backup.id);
-      }
     }
   }
 
   public startScheduledBackups() {
     console.log('\x1b[32m[SYSTEM]\x1b[0m Scheduled Backup Service initialized.');
-
     setInterval(async () => {
       const now = new Date();
-
       const autoEnabled = db
         .prepare("SELECT value FROM settings WHERE key = 'backup_auto_enabled'")
         .get() as { value: string } | undefined;
@@ -527,62 +369,26 @@ class BackupService {
       const timeSetting = db
         .prepare("SELECT value FROM settings WHERE key = 'backup_schedule_time'")
         .get() as { value: string } | undefined;
-      const scheduleTime = timeSetting?.value || '03:00';
-      const [schedHours, schedMinutes] = scheduleTime.split(':').map((n) => parseInt(n));
+      const [schedHours, schedMinutes] = (timeSetting?.value || '03:00')
+        .split(':')
+        .map((n) => parseInt(n));
 
-      // Check if current time matches scheduled time
       if (now.getHours() === schedHours && now.getMinutes() === schedMinutes) {
-        const frequencySetting = db
+        const freqSetting = db
           .prepare("SELECT value FROM settings WHERE key = 'backup_frequency'")
           .get() as { value: string } | undefined;
-        const freq = frequencySetting?.value || 'daily';
-
-        const specificDateSetting = db
-          .prepare("SELECT value FROM settings WHERE key = 'backup_specific_date'")
-          .get() as { value: string } | undefined;
-        const todayStr = now.toISOString().split('T')[0]; // 2026-02-14
-
-        let shouldRun = false;
-
-        // Check for specific one-time date
-        if (specificDateSetting?.value && specificDateSetting.value === todayStr) {
-          shouldRun = true;
-          // Clear specific date after trigger so it doesn't run again
-          db.prepare("UPDATE settings SET value = '' WHERE key = 'backup_specific_date'").run();
-          console.log(`[BackupService] One-time specific date backup triggered for ${todayStr}.`);
-        } else {
-          // Standard frequency check
-          if (freq === 'daily') {
-            shouldRun = true;
-          } else if (freq === 'weekly') {
-            shouldRun = now.getDay() === 0; // Sunday
-          } else if (freq === 'monthly') {
-            shouldRun = now.getDate() === 1; // 1st of month
-          }
-        }
+        const shouldRun =
+          freqSetting?.value === 'daily' ||
+          (freqSetting?.value === 'weekly' && now.getDay() === 0) ||
+          (freqSetting?.value === 'monthly' && now.getDate() === 1);
 
         if (shouldRun) {
-          console.log(`[BackupService] Starting scheduled ${freq} backups for ${scheduleTime}...`);
-          try {
-            const servers = db.prepare('SELECT id, is_installed FROM servers').all() as {
-              id: number;
-              is_installed: number;
-            }[];
-            for (const server of servers) {
-              if (server.is_installed) {
-                await this.createBackup(
-                  server.id,
-                  'auto',
-                  `${freq.charAt(0).toUpperCase() + freq.slice(1)} Automated Backup`
-                );
-              }
-            }
-          } catch (error) {
-            console.error('[BackupService] Scheduled backup failed:', error);
-          }
+          const servers = db.prepare('SELECT id, is_installed FROM servers').all() as any[];
+          for (const s of servers)
+            if (s.is_installed) await this.createBackup(s.id, 'auto', `Automated Backup`);
         }
       }
-    }, 60000); // Check every minute
+    }, 60000);
   }
 }
 

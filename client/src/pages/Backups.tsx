@@ -1,46 +1,81 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Archive,
-  Trash2,
-  RotateCcw,
   Plus,
-  HardDrive,
-  Calendar,
-  AlertCircle,
-  Clock,
   Download,
+  Trash2,
+  RefreshCw,
+  Clock,
+  Database,
+  FileText,
   Upload,
   Server,
+  Loader2,
 } from 'lucide-react';
-import { formatDate } from '../utils/date';
-import toast from 'react-hot-toast';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
-import { apiFetch } from '../utils/api';
+import { apiFetch } from '../utils/api.js';
+import Button from '../components/ui/Button.js';
+import SearchInput from '../components/ui/SearchInput.js';
+import { toast } from 'react-hot-toast';
 import socket from '../utils/socket.js';
-import type { Backup, Instance } from '../types';
-import BackupScheduleModal from '../components/backups/BackupScheduleModal';
-import CustomSelect from '../components/ui/CustomSelect';
-import SearchInput from '../components/ui/SearchInput';
-import Button from '../components/ui/Button';
-import IconButton from '../components/ui/IconButton';
+import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
+import CustomSelect from '../components/ui/CustomSelect.js';
+import { useTasks } from '../hooks/useTasks.js';
+import { clsx } from 'clsx';
 
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+interface Backup {
+  id: string;
+  server_id: number;
+  filename: string;
+  size: number;
+  type: 'manual' | 'auto';
+  comment: string;
+  created_at: string;
+}
+
+interface Instance {
+  id: number;
+  name: string;
 }
 
 const Backups: React.FC = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { showConfirm } = useConfirmDialog();
+  const { addTask, updateTask, removeTask } = useTasks();
   const [backups, setBackups] = useState<Backup[]>([]);
   const [servers, setServers] = useState<Instance[]>([]);
-  const [selectedServerId, setSelectedServerId] = useState<string | number>('');
+  const [selectedServerId, setSelectedServerId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchBackups = async (serverId: string) => {
+    setLoading(true);
+    try {
+      const response = await apiFetch(`/api/backups/${serverId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setBackups(data);
+      }
+    } catch (err) {
+      console.error('Fetch backups error:', err);
+      toast.error(t('backups.fetch_error'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchServers = async () => {
+    try {
+      const response = await apiFetch('/api/servers');
+      if (response.ok) {
+        const data = await response.json();
+        setServers(data);
+      }
+    } catch (err) {
+      console.error('Fetch servers error:', err);
+      toast.error(t('backups.fetch_servers_error'));
+    }
+  };
 
   useEffect(() => {
     fetchServers();
@@ -54,7 +89,6 @@ const Backups: React.FC = () => {
       setLoading(false);
     }
 
-    // Listen for task completion to refresh backups
     const handleTaskCompletion = (task: any) => {
       const isRelevant =
         (task.type === 'backup_create' ||
@@ -75,64 +109,40 @@ const Backups: React.FC = () => {
     };
   }, [selectedServerId]);
 
-  const fetchServers = async () => {
-    try {
-      const response = await apiFetch('/api/servers');
-      if (!response.ok) throw new Error('API Error');
-      const data = await response.json();
-
-      const serverArray = (Array.isArray(data) ? data : []) as Instance[];
-      setServers(serverArray);
-
-      if (serverArray && serverArray.length > 0) {
-        setSelectedServerId(serverArray[0].id);
-      } else {
-        setLoading(false);
-      }
-    } catch {
-      toast.error(t('backups.error_fetch_servers'));
-      setLoading(false);
-    }
-  };
-
-  const fetchBackups = async (serverId: string | number) => {
-    setLoading(true);
-    try {
-      const response = await apiFetch(`/api/backups/${serverId}`);
-      if (!response.ok) throw new Error('API Error');
-      const data = await response.json();
-      setBackups((Array.isArray(data) ? data : []) as Backup[]);
-    } catch {
-      toast.error(t('backups.error_fetch_backups'));
-      setBackups([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCreateBackup = async () => {
     if (!selectedServerId) return;
 
-    try {
-      const response = await apiFetch(`/api/backups/${selectedServerId}/create`, {
-        method: 'POST',
-        body: JSON.stringify({ comment: 'Manual Backup', type: 'manual' }),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to start backup');
+    const confirmed = await showConfirm({
+      title: t('backups.create_confirm_title'),
+      message: t('backups.create_confirm_message'),
+      confirmText: t('backups.create_new'),
+      cancelText: t('common.cancel'),
+    });
+
+    if (confirmed) {
+      try {
+        const response = await apiFetch(`/api/backups/${selectedServerId}`, {
+          method: 'POST',
+          body: JSON.stringify({ comment: 'Manual Backup' }),
+        });
+
+        if (response.ok) {
+          toast.success(t('backups.create_started'));
+        } else {
+          throw new Error();
+        }
+      } catch (err) {
+        console.error('Create backup error:', err);
+        toast.error(t('backups.create_failed'));
       }
-      // Success is handled by GlobalTaskOverlay
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
     }
   };
 
   const handleRestore = async (backup: Backup) => {
     const confirmed = await showConfirm({
       title: t('backups.restore_confirm_title'),
-      message: t('backups.restore_confirm_message', { filename: backup.filename }),
-      confirmText: t('common.start'),
+      message: t('backups.restore_confirm_message', { name: backup.filename }),
+      confirmText: t('backups.restore'),
       cancelText: t('common.cancel'),
       type: 'warning',
     });
@@ -142,11 +152,11 @@ const Backups: React.FC = () => {
         const response = await apiFetch(`/api/backups/${backup.id}/restore`, {
           method: 'POST',
         });
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || 'Failed to start restore');
+        if (response.ok) {
+          toast.success(t('backups.restore_started'));
+        } else {
+          throw new Error();
         }
-        // Success is handled by GlobalTaskOverlay
       } catch (err) {
         toast.error(err instanceof Error ? err.message : String(err));
       }
@@ -154,15 +164,10 @@ const Backups: React.FC = () => {
   };
 
   const handleDownload = async (backup: Backup) => {
-    try {
-      // Direct download link with token
-      const token = localStorage.getItem('token');
-      const downloadUrl = `${window.location.origin}/api/backups/${backup.id}/download?token=${token}`;
-      window.open(downloadUrl, '_blank');
-      toast.success(t('backups.download_started'));
-    } catch {
-      toast.error(t('backups.download_failed'));
-    }
+    const token = localStorage.getItem('token');
+    const downloadUrl = `${window.location.origin}/api/backups/${backup.id}/download?token=${token}`;
+    window.open(downloadUrl, '_blank');
+    toast.success(t('backups.download_started'));
   };
 
   const handleUploadClick = () => {
@@ -177,27 +182,55 @@ const Backups: React.FC = () => {
     formData.append('backup', file);
     formData.append('comment', 'External Upload');
 
-    try {
-      const response = await fetch(`/api/backups/${selectedServerId}/upload`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: formData,
-      });
+    const localTaskId = `local_upload_${Date.now()}`;
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Upload failed');
+    addTask({
+      id: localTaskId,
+      type: 'backup_upload',
+      status: 'pending',
+      progress: 0,
+      message: 'tasks.messages.uploading_file',
+      startTime: Date.now(),
+    });
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `/api/backups/${selectedServerId}/upload`);
+    xhr.setRequestHeader('Authorization', `Bearer ${localStorage.getItem('token')}`);
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percent = (event.loaded / event.total) * 100;
+        updateTask(localTaskId, { status: 'running', progress: percent * 0.9 });
       }
+    };
 
-      // Task will handle UI feedback
-      toast.success(t('backups.upload_started'));
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        updateTask(localTaskId, { progress: 95, message: 'tasks.messages.processing_on_server' });
+        setTimeout(() => removeTask(localTaskId), 3000);
+        toast.success(t('backups.upload_started'));
+      } else {
+        let errorMsg = 'Upload failed';
+        try {
+          const data = JSON.parse(xhr.responseText);
+          errorMsg = data.error || errorMsg;
+        } catch (err) {
+          console.error('XHR load parse error:', err);
+        }
+        updateTask(localTaskId, { status: 'failed', message: errorMsg });
+        toast.error(errorMsg);
+        setTimeout(() => removeTask(localTaskId), 5000);
+      }
+    };
+
+    xhr.onerror = () => {
+      updateTask(localTaskId, { status: 'failed', message: 'Network error' });
+      toast.error('Network error');
+      setTimeout(() => removeTask(localTaskId), 5000);
+    };
+
+    xhr.send(formData);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleDelete = async (id: string) => {
@@ -218,7 +251,8 @@ const Backups: React.FC = () => {
         } else {
           throw new Error();
         }
-      } catch {
+      } catch (err) {
+        console.error('Delete backup error:', err);
         toast.error(t('backups.delete_failed'));
       }
     }
@@ -241,7 +275,6 @@ const Backups: React.FC = () => {
   return (
     <>
       <div className="p-6 space-y-8 animate-in fade-in duration-700">
-        {/* Header Area */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-1">
             <h1 className="text-2xl font-bold text-white tracking-tight">{t('backups.title')}</h1>
@@ -249,11 +282,7 @@ const Backups: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button
-              onClick={() => setIsScheduleModalOpen(true)}
-              variant="secondary"
-              icon={<Clock size={16} />}
-            >
+            <Button variant="secondary" icon={<Clock size={16} />}>
               {t('backups.schedule_settings_title')}
             </Button>
             <Button
@@ -262,7 +291,7 @@ const Backups: React.FC = () => {
               icon={<Plus size={16} />}
               disabled={!selectedServerId}
             >
-              {t('backups.create_new')}{' '}
+              {t('backups.create_new')}
             </Button>
             <Button
               onClick={handleUploadClick}
@@ -283,211 +312,124 @@ const Backups: React.FC = () => {
           </div>
         </div>
 
-        {/* Control Bar */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="relative group">
             <CustomSelect
               options={servers.map((s) => ({
-                value: s.id,
+                value: s.id.toString(),
                 label: s.name,
               }))}
               value={selectedServerId}
-              onChange={(val) => setSelectedServerId(val)}
+              onChange={(val) => setSelectedServerId(val.toString())}
               placeholder={t('backups.select_server')}
               icon={<Server className="w-4 h-4" />}
               size="sm"
             />
           </div>
-
-          <div className="lg:col-span-2">
+          <div className="relative group lg:col-span-2">
             <SearchInput
               placeholder={t('backups.search_placeholder')}
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
 
-        {/* Backups List */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-sm shadow-xl relative min-h-[400px]">
-          {loading ? (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-4">
-                <IconButton
-                  isLoading
-                  variant="ghost"
-                  size="lg"
-                  className="text-primary pointer-events-none"
-                >
-                  <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-                </IconButton>
-                <p className="text-gray-400 font-medium">{t('common.loading')}</p>
-              </div>
-            </div>
-          ) : filteredBackups.length > 0 ? (
-            <>
-              {/* Backup Count Info */}
-              <div className="px-6 py-3 bg-white/5 border-b border-white/10">
-                <p className="text-sm text-gray-400">
-                  {t('common.backup', { count: filteredBackups.length })}
-                </p>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-white/10 text-left">
-                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                        {t('backups.column_date')}
-                      </th>
-                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                        {t('backups.column_filename')}
-                      </th>
-                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                        {t('backups.column_size')}
-                      </th>
-                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                        {t('backups.column_type')}
-                      </th>
-                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-right">
-                        {t('common.actions')}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {filteredBackups.map((backup) => (
-                      <tr key={backup.id} className="group hover:bg-white/5 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <Calendar className="w-4 h-4 text-gray-500 group-hover:text-primary transition-colors" />
-                            <span className="text-sm font-medium text-white whitespace-nowrap">
-                              {formatDate(
-                                backup.createdAt,
-                                t('common.date_formats.long'),
-                                i18n.language
-                              )}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col max-w-[300px]">
-                            <span
-                              className="text-sm font-semibold text-gray-200 truncate"
-                              title={backup.filename}
-                            >
-                              {backup.filename}
-                            </span>
-                            {backup.comment && (
-                              <span className="text-xs text-gray-500 truncate">
-                                {backup.comment}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <HardDrive className="w-4 h-4 text-gray-500" />
-                            <span className="text-sm text-gray-300 font-medium tabular-nums">
-                              {formatSize(backup.size)}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span
-                            className={cn(
-                              'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider',
-                              backup.type === 'manual'
-                                ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                                : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                            )}
-                          >
-                            {backup.type === 'manual'
-                              ? t('backups.type_manual')
-                              : t('backups.type_auto')}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2 px-1">
-                            <IconButton
-                              onClick={() => handleRestore(backup)}
-                              variant="ghost"
-                              className="text-primary hover:bg-primary/10"
-                              title={t('backups.restore')}
-                            >
-                              <RotateCcw className="w-5 h-5" />
-                            </IconButton>
-                            <IconButton
-                              onClick={() => handleDownload(backup)}
-                              variant="ghost"
-                              className="text-blue-400 hover:bg-blue-400/10"
-                              title={t('backups.download')}
-                            >
-                              <Download className="w-5 h-5" />
-                            </IconButton>
-                            <IconButton
-                              onClick={() => handleDelete(backup.id)}
-                              variant="ghost"
-                              className="text-gray-500 hover:text-red-400 hover:bg-red-400/10"
-                              title={t('common.delete')}
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </IconButton>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          ) : (
-            <div className="h-[400px] flex flex-col items-center justify-center text-center p-8">
-              <div className="w-20 h-20 bg-white/5 rounded-3xl flex items-center justify-center mb-6 group hover:bg-white/10 transition-colors">
-                <Archive className="w-10 h-10 text-gray-600 group-hover:text-primary/50 transition-colors" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2">{t('backups.no_backups_found')}</h3>
-              <p className="text-gray-500 max-w-sm mb-8">
-                {selectedServerId
-                  ? t('backups.no_backups_desc')
-                  : t('backups.no_server_selected_desc')}
-              </p>
-              {selectedServerId && (
-                <Button
-                  onClick={handleCreateBackup}
-                  variant="secondary"
-                  size="sm"
-                  icon={<Plus className="w-5 h-5" />}
-                >
-                  {t('backups.create_new')}
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 bg-gray-900/50 backdrop-blur-sm border border-white/5 rounded-2xl">
+            <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+            <p className="text-gray-400 animate-pulse">{t('common.loading')}</p>
+          </div>
+        ) : filteredBackups.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filteredBackups.map((backup) => (
+              <div
+                key={backup.id}
+                className="group relative bg-gray-900/40 hover:bg-gray-900/60 backdrop-blur-md border border-white/5 hover:border-primary/30 rounded-2xl p-5 transition-all duration-300 hover:shadow-2xl hover:shadow-primary/5 hover:-translate-y-1"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="p-3 bg-primary/10 rounded-xl text-primary group-hover:scale-110 transition-transform duration-300">
+                    <Database size={24} />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span
+                      className={clsx(
+                        'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider',
+                        backup.type === 'auto'
+                          ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                          : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      )}
+                    >
+                      {backup.type}
+                    </span>
+                  </div>
+                </div>
 
-        {/* Proactive Tip */}
-        <div className="flex items-start gap-4 p-5 bg-primary/5 border border-primary/10 rounded-2xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-            <AlertCircle className="w-24 h-24 text-primary" />
+                <div className="space-y-3">
+                  <h3 className="text-white font-semibold truncate group-hover:text-primary transition-colors">
+                    {backup.filename}
+                  </h3>
+                  <p className="text-xs text-gray-400 line-clamp-1 italic">
+                    {backup.comment || t('backups.no_comment')}
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-3 py-3 border-y border-white/5">
+                    <div className="flex items-center gap-2 text-gray-400">
+                      <Clock size={14} className="text-primary/60" />
+                      <span className="text-[11px] font-medium tabular-nums">
+                        {new Date(backup.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-400">
+                      <FileText size={14} className="text-primary/60" />
+                      <span className="text-[11px] font-medium tracking-tight">
+                        {formatSize(backup.size)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 mt-5">
+                  <Button
+                    onClick={() => handleRestore(backup)}
+                    className="flex-1 bg-primary/10 hover:bg-primary text-primary hover:text-white border-transparent"
+                    size="sm"
+                    icon={<RefreshCw size={14} />}
+                  >
+                    {t('backups.restore')}
+                  </Button>
+                  <Button
+                    onClick={() => handleDownload(backup)}
+                    variant="secondary"
+                    className="aspect-square p-0 w-9 h-9 border-white/10 hover:border-primary/50"
+                    size="sm"
+                    title={t('backups.download')}
+                  >
+                    <Download size={14} />
+                  </Button>
+                  <Button
+                    onClick={() => handleDelete(backup.id)}
+                    variant="danger"
+                    className="aspect-square p-0 w-9 h-9 bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500"
+                    size="sm"
+                    title={t('common.delete')}
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
-          <div className="p-2.5 bg-primary/10 rounded-xl text-primary shrink-0 shadow-inner">
-            <AlertCircle className="w-6 h-6" />
+        ) : (
+          <div className="flex flex-col items-center justify-center py-24 bg-gray-900/30 backdrop-blur-sm border border-dashed border-white/10 rounded-3xl">
+            <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6">
+              <Database className="w-10 h-10 text-gray-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">{t('backups.empty_title')}</h3>
+            <p className="text-gray-500 text-center max-w-sm">{t('backups.empty_message')}</p>
           </div>
-          <div className="space-y-1 relative z-10">
-            <h4 className="text-sm font-bold text-white uppercase tracking-wider">
-              {t('backups.tip_title')}
-            </h4>
-            <p className="text-sm text-gray-400 leading-relaxed font-medium">
-              {t('backups.tip_message')}
-            </p>
-          </div>
-        </div>
+        )}
       </div>
-
-      {/* Modal */}
-      <BackupScheduleModal
-        isOpen={isScheduleModalOpen}
-        onClose={() => setIsScheduleModalOpen(false)}
-      />
     </>
   );
 };
