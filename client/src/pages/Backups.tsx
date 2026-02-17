@@ -19,6 +19,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { apiFetch } from '../utils/api';
+import socket from '../utils/socket.js';
 import type { Backup, Instance } from '../types';
 import BackupScheduleModal from '../components/backups/BackupScheduleModal';
 import CustomSelect from '../components/ui/CustomSelect';
@@ -52,6 +53,26 @@ const Backups: React.FC = () => {
       setBackups([]);
       setLoading(false);
     }
+
+    // Listen for task completion to refresh backups
+    const handleTaskCompletion = (task: any) => {
+      const isRelevant =
+        (task.type === 'backup_create' ||
+          task.type === 'backup_upload' ||
+          task.type === 'backup_restore') &&
+        (String(task.metadata?.serverId) === String(selectedServerId) ||
+          String(task.metadata?.backupId) === String(selectedServerId));
+
+      if (isRelevant) {
+        fetchBackups(selectedServerId);
+      }
+    };
+
+    socket.on('task_completed', handleTaskCompletion);
+
+    return () => {
+      socket.off('task_completed', handleTaskCompletion);
+    };
   }, [selectedServerId]);
 
   const fetchServers = async () => {

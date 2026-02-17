@@ -293,7 +293,8 @@ class BackupService {
     serverId: string | number,
     tempFilePath: string,
     originalFilename: string,
-    comment?: string
+    comment?: string,
+    taskId?: string
   ): Promise<string> {
     const safeServerId = serverId.toString().replace(/[^a-zA-Z0-9]/g, '');
     const id = Date.now().toString();
@@ -307,9 +308,17 @@ class BackupService {
       throw new Error('Security Error: Invalid upload target path');
     }
 
+    if (taskId) {
+      taskService.updateTask(taskId, { progress: 30, message: 'tasks.messages.moving_file' });
+    }
+
     try {
       // Move file from temp to backup dir
       await fs.promises.rename(tempFilePath, targetPath);
+
+      if (taskId) {
+        taskService.updateTask(taskId, { progress: 80, message: 'tasks.messages.finalizing' });
+      }
 
       const stats = fs.statSync(targetPath);
 

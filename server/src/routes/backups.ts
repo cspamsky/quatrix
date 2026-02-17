@@ -88,11 +88,11 @@ router.post('/:serverId/upload', upload.single('backup'), async (req: Request, r
     taskService.createTask(taskId, 'backup_upload', { serverId, filename: req.file.originalname });
 
     backupService
-      .handleExternalUpload(serverId, req.file.path, req.file.originalname, comment)
+      .handleExternalUpload(serverId, req.file.path, req.file.originalname, comment, taskId)
       .then(() => {
         taskService.completeTask(taskId, 'tasks.messages.upload_success');
       })
-      .catch((err) => {
+      .catch((err: Error) => {
         console.error('[API] Upload failed:', err);
         taskService.failTask(taskId, 'tasks.messages.upload_failed');
       });

@@ -1,7 +1,17 @@
 import { useTasks } from '../hooks/useTasks.js';
 import { type Task } from '../contexts/TaskContext.js';
 import { useTranslation } from 'react-i18next';
-import { Loader2, CheckCircle2, XCircle, Server, Download, Database, Info } from 'lucide-react';
+import {
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Server,
+  Download,
+  Database,
+  Info,
+  Upload,
+  RotateCcw,
+} from 'lucide-react';
 import { clsx } from 'clsx';
 
 const GlobalTaskOverlay: React.FC = () => {
@@ -18,6 +28,10 @@ const GlobalTaskOverlay: React.FC = () => {
         return <Download className="w-4 h-4" />;
       case 'backup_create':
         return <Database className="w-4 h-4" />;
+      case 'backup_upload':
+        return <Upload className="w-4 h-4" />;
+      case 'backup_restore':
+        return <RotateCcw className="w-4 h-4" />;
       default:
         return <Info className="w-4 h-4" />;
     }

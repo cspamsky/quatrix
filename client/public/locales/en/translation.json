@@ -990,7 +990,10 @@
       "validation_success": "File validation completed successfully",
       "verifying": "Verifying...",
       "fetching_steam_metadata": "Fetching Steam metadata...",
-      "workshop_success": "Workshop map registered successfully"
+      "workshop_success": "Workshop map registered successfully",
+      "upload_success": "Backup uploaded successfully",
+      "upload_failed": "Backup upload failed",
+      "moving_file": "Moving file to backup directory..."
     },
     "type": {
       "backup_create": "Creating Backup",
@@ -998,6 +1001,7 @@
       "plugin_install": "Plugin Installation",
       "plugin_uninstall": "Plugin Uninstallation",
       "plugin_update": "Plugin Update",
+      "backup_upload": "Uploading Backup",
       "server_install": "Server Installation"
     }
   },

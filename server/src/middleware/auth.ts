@@ -8,8 +8,15 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     console.error('CRITICAL: JWT_SECRET is not defined.');
     return res.status(500).json({ message: 'Server configuration error' });
   }
+
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  let token = authHeader && authHeader.split(' ')[1];
+
+  // If no bearer token, check query parameters (useful for direct file downloads)
+  if (!token && req.query.token) {
+    token = req.query.token as string;
+  }
+
   if (!token) return res.status(401).json({ message: 'Authentication required' });
 
   jwt.verify(token, process.env.JWT_SECRET, (err: unknown, decoded: unknown) => {

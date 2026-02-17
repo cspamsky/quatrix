@@ -12,11 +12,13 @@ import {
 } from 'lucide-react';
 import { SERVER_REGIONS } from '../config/regions';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import CustomSelect from '../components/ui/CustomSelect';
 
 const CreateInstance = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -88,6 +90,9 @@ const CreateInstance = () => {
       if (!response.ok) {
         throw new Error(data.message || t('createInstance.create_error'));
       }
+
+      // Invalidate servers query to ensure the new server shows up in Instances list
+      queryClient.invalidateQueries({ queryKey: ['servers'] });
 
       navigate('/instances');
     } catch (err: unknown) {

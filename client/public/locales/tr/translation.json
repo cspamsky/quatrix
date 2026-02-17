@@ -990,11 +990,15 @@
       "validation_success": "Dosya doğrulaması başarıyla tamamlandı",
       "verifying": "Doğrulanıyor...",
       "fetching_steam_metadata": "Steam metadata bilgileri alınıyor...",
-      "workshop_success": "Atölye haritası başarıyla kaydedildi"
+      "workshop_success": "Atölye haritası başarıyla kaydedildi",
+      "upload_success": "Yedek başarıyla yüklendi",
+      "upload_failed": "Yedek yükleme başarısız oldu",
+      "moving_file": "Dosya yedek dizinine taşınıyor..."
     },
     "type": {
       "backup_create": "Yedek Oluşturma",
       "backup_restore": "Yedek Geri Yükleme",
+      "backup_upload": "Yedek Yükleme",
       "plugin_install": "Eklenti Kurulumu",
       "plugin_uninstall": "Eklenti Kaldırma",
       "plugin_update": "Eklenti Güncelleme",
