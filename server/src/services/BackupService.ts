@@ -200,13 +200,21 @@ class BackupService {
     const filename = `backup_${safeServerId}_${id}.zip`;
     const targetPath = path.resolve(this.backupDir, filename);
 
+    // Ensure the temporary path is within the expected uploads temp directory
+    const tempRoot = fs.realpathSync(path.resolve(process.cwd(), 'data', 'temp'));
+    const resolvedTempPath = fs.realpathSync(tempPath);
+    const tempRootWithSep = tempRoot.endsWith(path.sep) ? tempRoot : tempRoot + path.sep;
+    if (!resolvedTempPath.startsWith(tempRootWithSep)) {
+      throw new Error('Invalid temporary upload path');
+    }
+
     try {
       if (taskId)
         taskService.updateTask(taskId, { progress: 50, message: 'tasks.messages.moving_files' });
 
       // Move temp file to backup directory
-      fs.copyFileSync(tempPath, targetPath);
-      fs.unlinkSync(tempPath);
+      fs.copyFileSync(resolvedTempPath, targetPath);
+      fs.unlinkSync(resolvedTempPath);
 
       const stats = fs.statSync(targetPath);
       db.prepare(
@@ -215,7 +223,7 @@ class BackupService {
 
       return id;
     } catch (error) {
-      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      if (fs.existsSync(resolvedTempPath)) fs.unlinkSync(resolvedTempPath);
       if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath);
       throw error;
     }
