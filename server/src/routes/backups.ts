@@ -4,7 +4,6 @@ import { backupService } from '../services/BackupService.js';
 import { taskService } from '../services/TaskService.js';
 import { authenticateToken } from '../middleware/auth.js';
 import multer from 'multer';
-import path from 'path';
 import fs from 'fs';
 
 const upload = multer({ dest: 'data/temp/' });

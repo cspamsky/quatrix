@@ -10,7 +10,6 @@ import { pluginDiscovery } from './plugin/PluginDiscovery.js';
 import { pluginConfigManager } from './plugin/PluginConfigManager.js';
 import { pluginInstaller } from './plugin/PluginInstaller.js';
 import { taskService } from './TaskService.js';
-import { databaseManager } from './DatabaseManager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

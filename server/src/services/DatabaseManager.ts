@@ -114,19 +114,29 @@ export class DatabaseManager {
       // 2. Create Database if not exists
       await this.pool.query('CREATE DATABASE IF NOT EXISTS ??', [dbName]);
 
-      // 3. Create User/Grant (using a robust approach)
-      // Note: In MariaDB/MySQL 5.7+, IDENTIFIED BY for existing user might require different syntax
-      // but CREATE USER IF NOT EXISTS ... IDENTIFIED BY works for creating.
-      try {
-        await this.pool.query("CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?", [dbUser, dbPass]);
-      } catch {
-        // If user exists but host differs or other issue, we try to force password reset if possible
-        await this.pool
-          .query("SET PASSWORD FOR ?@'%' = PASSWORD(?)", [dbUser, dbPass])
-          .catch(() => {});
+      // 3. Create User/Grant (using a robust approach for both % and localhost)
+      const hosts = ['%', 'localhost'];
+      for (const host of hosts) {
+        try {
+          // Identify if user exists, if not create. MariaDB/MySQL 8+ compatible.
+          await this.pool.query(`CREATE USER IF NOT EXISTS ?@? IDENTIFIED BY ?`, [
+            dbUser,
+            host,
+            dbPass,
+          ]);
+          // Force password update in case it was different in the past
+          await this.pool.query(`ALTER USER ?@? IDENTIFIED BY ?`, [dbUser, host, dbPass]);
+          // Grant privileges
+          await this.pool.query(`GRANT ALL PRIVILEGES ON ??.* TO ?@?`, [dbName, dbUser, host]);
+        } catch (uErr: unknown) {
+          const err = uErr as Error;
+          console.warn(
+            `[DB] Warning: Could not fully ensure quatrix user for host ${host}:`,
+            err.message
+          );
+        }
       }
 
-      await this.pool.query("GRANT ALL PRIVILEGES ON ??.* TO ?@'%'", [dbName, dbUser]);
       await this.pool.query(`FLUSH PRIVILEGES`);
 
       const creds = {

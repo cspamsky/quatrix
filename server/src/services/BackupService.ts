@@ -17,6 +17,21 @@ export interface BackupMetadata {
   comment?: string;
 }
 
+interface BackupRow {
+  id: string;
+  server_id: number;
+  filename: string;
+  size: number;
+  type: 'manual' | 'auto';
+  comment: string | null;
+  created_at: string;
+}
+
+interface ServerRow {
+  id: number;
+  is_installed: number;
+}
+
 class BackupService {
   private backupDir: string;
 
@@ -209,16 +224,19 @@ class BackupService {
   public getBackups(serverId: string | number): BackupMetadata[] {
     const rows = db
       .prepare('SELECT * FROM backups WHERE server_id = ? ORDER BY created_at DESC')
-      .all(serverId) as any[];
-    return rows.map((row) => ({
-      id: row.id,
-      serverId: row.server_id,
-      filename: row.filename,
-      size: row.size,
-      type: row.type,
-      comment: row.comment,
-      createdAt: new Date(row.created_at).getTime(),
-    }));
+      .all(serverId) as BackupRow[];
+    return rows.map((row) => {
+      const metadata: BackupMetadata = {
+        id: row.id,
+        serverId: row.server_id,
+        filename: row.filename,
+        size: row.size,
+        type: row.type,
+        createdAt: new Date(row.created_at).getTime(),
+      };
+      if (row.comment) metadata.comment = row.comment;
+      return metadata;
+    });
   }
 
   public async deleteBackup(id: string) {
@@ -350,7 +368,7 @@ class BackupService {
       .prepare(
         "SELECT id, filename FROM backups WHERE server_id = ? AND type = 'auto' ORDER BY created_at ASC"
       )
-      .all(serverId) as any[];
+      .all(serverId) as Pick<BackupRow, 'id' | 'filename'>[];
     if (backups.length > limit) {
       for (const backup of backups.slice(0, backups.length - limit))
         await this.deleteBackup(backup.id);
@@ -383,7 +401,7 @@ class BackupService {
           (freqSetting?.value === 'monthly' && now.getDate() === 1);
 
         if (shouldRun) {
-          const servers = db.prepare('SELECT id, is_installed FROM servers').all() as any[];
+          const servers = db.prepare('SELECT id, is_installed FROM servers').all() as ServerRow[];
           for (const s of servers)
             if (s.is_installed) await this.createBackup(s.id, 'auto', `Automated Backup`);
         }

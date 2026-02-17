@@ -8,7 +8,6 @@ import { pluginDiscovery } from './PluginDiscovery.js';
 import { pluginConfigManager } from './PluginConfigManager.js';
 import db from '../../db.js';
 import { taskService } from '../TaskService.js';
-import { databaseManager } from '../DatabaseManager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

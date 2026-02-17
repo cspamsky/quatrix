@@ -9,7 +9,6 @@ import { createServerLimiter } from '../middleware/rateLimiter.js';
 import { runtimeService } from '../services/RuntimeService.js';
 import { fileSystemService } from '../services/FileSystemService.js';
 import { databaseManager } from '../services/DatabaseManager.js';
-import { pluginManager } from '../services/PluginManager.js';
 import { logActivity, emitDashboardStats } from '../index.js';
 import type {
   AuthenticatedRequest,

@@ -7,7 +7,6 @@ import {
   RefreshCw,
   Clock,
   Database,
-  FileText,
   Upload,
   Server,
   Loader2,
@@ -21,6 +20,7 @@ import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import CustomSelect from '../components/ui/CustomSelect.js';
 import { useTasks } from '../hooks/useTasks.js';
 import { clsx } from 'clsx';
+import type { Task } from '../contexts/TaskContext.js';
 
 interface Backup {
   id: string;
@@ -89,13 +89,16 @@ const Backups: React.FC = () => {
       setLoading(false);
     }
 
-    const handleTaskCompletion = (task: any) => {
+    const handleTaskCompletion = (task: Task) => {
+      const metadata = task.metadata as
+        | { serverId?: string | number; backupId?: string | number }
+        | undefined;
       const isRelevant =
         (task.type === 'backup_create' ||
           task.type === 'backup_upload' ||
           task.type === 'backup_restore') &&
-        (String(task.metadata?.serverId) === String(selectedServerId) ||
-          String(task.metadata?.backupId) === String(selectedServerId));
+        (String(metadata?.serverId) === String(selectedServerId) ||
+          String(metadata?.backupId) === String(selectedServerId));
 
       if (isRelevant) {
         fetchBackups(selectedServerId);
@@ -110,7 +113,11 @@ const Backups: React.FC = () => {
   }, [selectedServerId]);
 
   const handleCreateBackup = async () => {
-    if (!selectedServerId) return;
+    console.log('[Backups] Create Backup button clicked, selectedServer:', selectedServerId);
+    if (!selectedServerId) {
+      toast.error(t('backups.select_server_warning'));
+      return;
+    }
 
     const confirmed = await showConfirm({
       title: t('backups.create_confirm_title'),
@@ -139,6 +146,7 @@ const Backups: React.FC = () => {
   };
 
   const handleRestore = async (backup: Backup) => {
+    console.log('[Backups] Restore button clicked for:', backup.filename);
     const confirmed = await showConfirm({
       title: t('backups.restore_confirm_title'),
       message: t('backups.restore_confirm_message', { name: backup.filename }),
@@ -341,84 +349,88 @@ const Backups: React.FC = () => {
             <p className="text-gray-400 animate-pulse">{t('common.loading')}</p>
           </div>
         ) : filteredBackups.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredBackups.map((backup) => (
-              <div
-                key={backup.id}
-                className="group relative bg-gray-900/40 hover:bg-gray-900/60 backdrop-blur-md border border-white/5 hover:border-primary/30 rounded-2xl p-5 transition-all duration-300 hover:shadow-2xl hover:shadow-primary/5 hover:-translate-y-1"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="p-3 bg-primary/10 rounded-xl text-primary group-hover:scale-110 transition-transform duration-300">
-                    <Database size={24} />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span
-                      className={clsx(
-                        'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider',
-                        backup.type === 'auto'
-                          ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                          : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                      )}
-                    >
-                      {backup.type}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="text-white font-semibold truncate group-hover:text-primary transition-colors">
-                    {backup.filename}
-                  </h3>
-                  <p className="text-xs text-gray-400 line-clamp-1 italic">
-                    {backup.comment || t('backups.no_comment')}
-                  </p>
-
-                  <div className="grid grid-cols-2 gap-3 py-3 border-y border-white/5">
-                    <div className="flex items-center gap-2 text-gray-400">
-                      <Clock size={14} className="text-primary/60" />
-                      <span className="text-[11px] font-medium tabular-nums">
-                        {new Date(backup.created_at).toLocaleDateString()}
+          <div className="overflow-x-auto bg-gray-900/40 backdrop-blur-md border border-white/5 rounded-2xl">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-white/5 text-gray-400 text-xs uppercase tracking-wider">
+                  <th className="px-6 py-4 font-semibold">{t('backups.filename')}</th>
+                  <th className="px-6 py-4 font-semibold">{t('backups.type')}</th>
+                  <th className="px-6 py-4 font-semibold">{t('backups.size')}</th>
+                  <th className="px-6 py-4 font-semibold">{t('backups.date')}</th>
+                  <th className="px-12 py-4 font-semibold text-right">{t('common.actions')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filteredBackups.map((backup) => (
+                  <tr
+                    key={backup.id}
+                    className="group hover:bg-white/5 transition-colors duration-200"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                          <Database size={18} />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-medium text-white truncate">
+                            {backup.filename}
+                          </span>
+                          <span className="text-xs text-gray-500 truncate">
+                            {backup.comment || t('backups.no_comment')}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={clsx(
+                          'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border',
+                          backup.type === 'auto'
+                            ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        )}
+                      >
+                        {backup.type}
                       </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-400">
-                      <FileText size={14} className="text-primary/60" />
-                      <span className="text-[11px] font-medium tracking-tight">
-                        {formatSize(backup.size)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 mt-5">
-                  <Button
-                    onClick={() => handleRestore(backup)}
-                    className="flex-1 bg-primary/10 hover:bg-primary text-primary hover:text-white border-transparent"
-                    size="sm"
-                    icon={<RefreshCw size={14} />}
-                  >
-                    {t('backups.restore')}
-                  </Button>
-                  <Button
-                    onClick={() => handleDownload(backup)}
-                    variant="secondary"
-                    className="aspect-square p-0 w-9 h-9 border-white/10 hover:border-primary/50"
-                    size="sm"
-                    title={t('backups.download')}
-                  >
-                    <Download size={14} />
-                  </Button>
-                  <Button
-                    onClick={() => handleDelete(backup.id)}
-                    variant="danger"
-                    className="aspect-square p-0 w-9 h-9 bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500"
-                    size="sm"
-                    title={t('common.delete')}
-                  >
-                    <Trash2 size={14} />
-                  </Button>
-                </div>
-              </div>
-            ))}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-300 tabular-nums">
+                      {formatSize(backup.size)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-300">
+                      {new Date(backup.created_at).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          onClick={() => handleRestore(backup)}
+                          variant="secondary"
+                          className="h-8 px-3 text-xs bg-primary/10 hover:bg-primary text-primary hover:text-white border-transparent"
+                          icon={<RefreshCw size={14} />}
+                        >
+                          {t('backups.restore')}
+                        </Button>
+                        <Button
+                          onClick={() => handleDownload(backup)}
+                          variant="secondary"
+                          className="h-8 w-8 p-0 border-white/10 hover:border-primary/50"
+                          title={t('backups.download')}
+                        >
+                          <Download size={14} />
+                        </Button>
+                        <Button
+                          onClick={() => handleDelete(backup.id)}
+                          variant="danger"
+                          className="h-8 w-8 p-0 bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500"
+                          title={t('common.delete')}
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-24 bg-gray-900/30 backdrop-blur-sm border border-dashed border-white/10 rounded-3xl">
