@@ -267,6 +267,67 @@ class BackupService {
     }
   }
 
+  public getBackupPath(id: string): string {
+    const row = db.prepare('SELECT filename FROM backups WHERE id = ?').get(id) as
+      | {
+          filename: string;
+        }
+      | undefined;
+    if (!row) throw new Error('Backup not found.');
+
+    const filePath = path.resolve(this.backupDir, row.filename);
+
+    // SECURITY: Path traversal check
+    if (!filePath.startsWith(this.backupDir)) {
+      throw new Error('Security Error: Invalid backup path');
+    }
+
+    if (!fs.existsSync(filePath)) {
+      throw new Error('Backup file not found physically.');
+    }
+
+    return filePath;
+  }
+
+  public async handleExternalUpload(
+    serverId: string | number,
+    tempFilePath: string,
+    originalFilename: string,
+    comment?: string
+  ): Promise<string> {
+    const safeServerId = serverId.toString().replace(/[^a-zA-Z0-9]/g, '');
+    const id = Date.now().toString();
+    const extension = path.extname(originalFilename) || '.zip';
+    const filename = `backup_ext_${safeServerId}_${id}${extension}`;
+    const targetPath = path.resolve(this.backupDir, filename);
+
+    // SECURITY: Ensure target is within backup directory
+    if (!targetPath.startsWith(this.backupDir)) {
+      if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+      throw new Error('Security Error: Invalid upload target path');
+    }
+
+    try {
+      // Move file from temp to backup dir
+      await fs.promises.rename(tempFilePath, targetPath);
+
+      const stats = fs.statSync(targetPath);
+
+      // Save to DB
+      db.prepare(
+        `
+        INSERT INTO backups (id, server_id, filename, size, type, comment)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `
+      ).run(id, serverId, filename, stats.size, 'manual', comment || 'External Upload');
+
+      return id;
+    } catch (error) {
+      if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+      throw error;
+    }
+  }
+
   public async restoreBackup(id: string, taskId?: string) {
     const row = db.prepare('SELECT * FROM backups WHERE id = ?').get(id) as
       | {

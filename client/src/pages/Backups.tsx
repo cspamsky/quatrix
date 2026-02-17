@@ -10,6 +10,8 @@ import {
   Search,
   AlertCircle,
   Clock,
+  Download,
+  Upload,
 } from 'lucide-react';
 import { formatDate } from '../utils/date';
 import toast from 'react-hot-toast';
@@ -30,6 +32,7 @@ const Backups: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchServers();
@@ -122,6 +125,53 @@ const Backups: React.FC = () => {
     }
   };
 
+  const handleDownload = async (backup: Backup) => {
+    try {
+      // Direct download link with token
+      const token = localStorage.getItem('token');
+      const downloadUrl = `${window.location.origin}/api/backups/${backup.id}/download?token=${token}`;
+      window.open(downloadUrl, '_blank');
+      toast.success(t('backups.download_started'));
+    } catch {
+      toast.error(t('backups.download_failed'));
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedServerId) return;
+
+    const formData = new FormData();
+    formData.append('backup', file);
+    formData.append('comment', 'External Upload');
+
+    try {
+      const response = await fetch(`/api/backups/${selectedServerId}/upload`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Upload failed');
+      }
+
+      // Task will handle UI feedback
+      toast.success(t('backups.upload_started'));
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const handleDelete = async (id: string) => {
     const confirmed = await showConfirm({
       title: t('backups.delete_confirm_title'),
@@ -186,6 +236,21 @@ const Backups: React.FC = () => {
               <Plus className="w-5 h-5" />
               {t('backups.create_new')}
             </button>
+            <button
+              onClick={handleUploadClick}
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 transition-all active:scale-95 disabled:opacity-50"
+              disabled={!selectedServerId}
+            >
+              <Upload className="w-5 h-5" />
+              {t('backups.upload_external')}
+            </button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".zip"
+              className="hidden"
+            />
           </div>
         </div>
 
@@ -315,6 +380,13 @@ const Backups: React.FC = () => {
                               title={t('backups.restore')}
                             >
                               <RotateCcw className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDownload(backup)}
+                              className="p-2 text-blue-400 hover:bg-blue-400/20 rounded-lg transition-all active:scale-95"
+                              title={t('backups.download')}
+                            >
+                              <Download className="w-5 h-5" />
                             </button>
                             <button
                               onClick={() => handleDelete(backup.id)}
