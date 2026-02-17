@@ -128,7 +128,7 @@ const Backups: React.FC = () => {
 
     if (confirmed) {
       try {
-        const response = await apiFetch(`/api/backups/${selectedServerId}`, {
+        const response = await apiFetch(`/api/backups/${selectedServerId}/create`, {
           method: 'POST',
           body: JSON.stringify({ comment: 'Manual Backup' }),
         });
@@ -353,10 +353,10 @@ const Backups: React.FC = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-white/5 text-gray-400 text-xs uppercase tracking-wider">
-                  <th className="px-6 py-4 font-semibold">{t('backups.filename')}</th>
-                  <th className="px-6 py-4 font-semibold">{t('backups.type')}</th>
-                  <th className="px-6 py-4 font-semibold">{t('backups.size')}</th>
-                  <th className="px-6 py-4 font-semibold">{t('backups.date')}</th>
+                  <th className="px-6 py-4 font-semibold">{t('backups.column_filename')}</th>
+                  <th className="px-6 py-4 font-semibold">{t('backups.column_type')}</th>
+                  <th className="px-6 py-4 font-semibold">{t('backups.column_size')}</th>
+                  <th className="px-6 py-4 font-semibold">{t('backups.column_date')}</th>
                   <th className="px-12 py-4 font-semibold text-right">{t('common.actions')}</th>
                 </tr>
               </thead>
@@ -390,7 +390,7 @@ const Backups: React.FC = () => {
                             : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                         )}
                       >
-                        {backup.type}
+                        {t(`backups.type_${backup.type}`)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-300 tabular-nums">
@@ -437,8 +437,10 @@ const Backups: React.FC = () => {
             <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6">
               <Database className="w-10 h-10 text-gray-600" />
             </div>
-            <h3 className="text-xl font-semibold text-white mb-2">{t('backups.empty_title')}</h3>
-            <p className="text-gray-500 text-center max-w-sm">{t('backups.empty_message')}</p>
+            <h3 className="text-xl font-semibold text-white mb-2">
+              {t('backups.no_backups_found')}
+            </h3>
+            <p className="text-gray-500 text-center max-w-sm">{t('backups.no_backups_desc')}</p>
           </div>
         )}
       </div>

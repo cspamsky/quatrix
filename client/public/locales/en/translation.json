@@ -159,6 +159,7 @@
     "title": "Backup Management",
     "type_auto": "Auto",
     "type_manual": "Manual",
+    "no_comment": "No comment provided",
     "download": "Download",
     "download_started": "Backup download started",
     "download_failed": "Failed to download backup",

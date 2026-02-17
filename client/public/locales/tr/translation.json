@@ -159,6 +159,7 @@
     "title": "Yedekleme Yönetimi",
     "type_auto": "Otomatik",
     "type_manual": "Manuel",
+    "no_comment": "Not eklenmemiş",
     "download": "İndir",
     "download_started": "Yedek indirme işlemi başlatıldı",
     "download_failed": "Yedek indirilemedi",
