@@ -5,8 +5,20 @@ import { taskService } from '../services/TaskService.js';
 import { authenticateToken } from '../middleware/auth.js';
 import multer from 'multer';
 import fs from 'fs';
+import path from 'path';
 
 const upload = multer({ dest: 'data/temp/' });
+
+const getSafeTempPath = (filePath: string): string => {
+  const tempRoot = fs.realpathSync(path.resolve(process.cwd(), 'data', 'temp'));
+  const resolvedPath = fs.realpathSync(path.resolve(filePath));
+  const tempRootWithSep = tempRoot.endsWith(path.sep) ? tempRoot : tempRoot + path.sep;
+
+  if (!resolvedPath.startsWith(tempRootWithSep)) {
+    throw new Error('Security Error: Invalid temporary path');
+  }
+  return resolvedPath;
+};
 
 const router = Router();
 
@@ -72,7 +84,13 @@ router.post('/:serverId/upload', upload.single('backup'), async (req: Request, r
   try {
     const serverId = req.params.serverId as string;
     if (!serverId || !/^[a-zA-Z0-9\-_]+$/.test(serverId)) {
-      if (req.file) fs.unlinkSync(req.file.path);
+      if (req.file) {
+        try {
+          fs.unlinkSync(getSafeTempPath(req.file.path));
+        } catch (e) {
+          console.error('[API] Failed to unlink unsafe temp file:', e);
+        }
+      }
       return res.status(400).json({ error: 'Invalid server ID format' });
     }
 
@@ -99,7 +117,13 @@ router.post('/:serverId/upload', upload.single('backup'), async (req: Request, r
     res.json({ taskId, message: 'Backup upload started.' });
   } catch (error: unknown) {
     const err = error as Error;
-    if (req.file) fs.unlinkSync(req.file.path);
+    if (req.file) {
+      try {
+        fs.unlinkSync(getSafeTempPath(req.file.path));
+      } catch (e) {
+        console.error('[API] Failed to unlink unsafe temp file:', e);
+      }
+    }
     res.status(500).json({ error: err.message });
   }
 });
