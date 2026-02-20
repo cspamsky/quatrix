@@ -134,7 +134,25 @@ apt-get install -y php-fpm php-mysql nginx phpmyadmin
 
 # Configure Nginx for phpMyAdmin on port 8080
 info "Configuring Nginx virtual host for phpMyAdmin (port 8080)..."
-PHP_VER=$(php -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;")
+
+# Robust PHP-FPM version detection
+# First, try to find an active systemd unit for php-fpm
+FPM_SERVICE=$(systemctl list-units --type=service --state=active | grep -oE "php[0-9]+\.[0-9]+-fpm" | head -n1 || true)
+
+if [ -z "$FPM_SERVICE" ]; then
+    # Fallback: check /lib/systemd/system for any installed php-fpm service
+    FPM_SERVICE=$(ls /lib/systemd/system/php*-fpm.service 2>/dev/null | head -n1 | xargs -n1 basename | sed 's/\.service//' || true)
+fi
+
+if [ -n "$FPM_SERVICE" ]; then
+    PHP_VER=$(echo $FPM_SERVICE | sed -E 's/php([0-9]+\.[0-9]+)-fpm/\1/')
+    info "Detected installed PHP-FPM service: $FPM_SERVICE (Version: $PHP_VER)"
+else
+    # Ultimate fallback to CLI version
+    PHP_VER=$(php -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;")
+    FPM_SERVICE="php${PHP_VER}-fpm"
+    warn "Could not detect active FPM service. Falling back to CLI version: $PHP_VER"
+fi
 
 cat <<'NGINX_EOF' > /etc/nginx/sites-available/phpmyadmin
 server {
@@ -160,7 +178,7 @@ sed -i "s/phpPHP_VER/php${PHP_VER}/g" /etc/nginx/sites-available/phpmyadmin
 ln -sf /etc/nginx/sites-available/phpmyadmin /etc/nginx/sites-enabled/
 
 # Test and restart services
-nginx -t && systemctl restart nginx "php${PHP_VER}-fpm"
+nginx -t && systemctl restart nginx "$FPM_SERVICE"
 success "phpMyAdmin configured and accessible on port 8080."
 
 # 5. Environment Automation
