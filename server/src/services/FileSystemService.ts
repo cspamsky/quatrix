@@ -266,6 +266,14 @@ class FileSystemService {
 
       const stat = await fs.promises.stat(source);
       const symlinkType = stat.isDirectory() ? 'dir' : 'file';
+      
+      // Ensure source directory is accessible if it's a directory
+      if (symlinkType === 'dir' && process.platform !== 'win32') {
+        try {
+          await fs.promises.chmod(source, 0o755);
+        } catch { /* ignore if we don't own it */ }
+      }
+
       await fs.promises.symlink(source, target, symlinkType);
     } catch (e) {
       console.error('[FileSystem] Failed to link:', source, '->', target, e);
@@ -294,6 +302,10 @@ class FileSystemService {
     }
 
     await fs.promises.mkdir(target, { recursive: true });
+    if (process.platform !== 'win32') {
+      await fs.promises.chmod(target, 0o755);
+    }
+
     const items = await fs.promises.readdir(source);
 
     for (const item of items) {
@@ -308,6 +320,10 @@ class FileSystemService {
           await fs.promises.copyFile(srcPath, dstPath);
           await this.ensureExecutable(dstPath);
         } else {
+          // Ensure source file is readable before linking (optional but safer)
+          if (process.platform !== 'win32' && !item.endsWith('.so') && !item.endsWith('.dll')) {
+             try { await fs.promises.chmod(srcPath, 0o644); } catch { /* ignore */ }
+          }
           await this.createSymlink(srcPath, dstPath);
         }
       }

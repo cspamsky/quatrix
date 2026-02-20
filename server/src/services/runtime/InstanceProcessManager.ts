@@ -205,7 +205,8 @@ export class InstanceProcessManager {
         armsrace: { type: 1, mode: 0 },
         demolition: { type: 1, mode: 1 },
         deathmatch: { type: 1, mode: 2 },
-        training: { type: 3, mode: 0 },
+        training: { type: 2, mode: 0 },
+        custom: { type: 3, mode: 0 },
       };
 
       if (aliasMap[alias]) {
@@ -214,8 +215,8 @@ export class InstanceProcessManager {
       }
     }
 
-    args.push('+game_type', gameType.toString());
-    args.push('+game_mode', gameMode.toString());
+    args.push('-game_type', gameType.toString());
+    args.push('-game_mode', gameMode.toString());
 
     // Add default mapgroup and ensure it's a convar
     args.push('+mapgroup', 'mg_active');
