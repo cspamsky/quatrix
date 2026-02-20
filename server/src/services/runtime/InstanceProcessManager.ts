@@ -220,9 +220,7 @@ export class InstanceProcessManager {
       console.log(`[ProcessManager] No alias provided. Using values: type ${gameType}, mode ${gameMode}`);
     }
 
-    // Try using both engine parameters and cvars for maximum reliability
-    args.push('-game_type', gameType.toString());
-    args.push('-game_mode', gameMode.toString());
+    // Use convar format (+) for game settings as CS2 treats them as ConVars, not engine switches
     args.push('+game_type', gameType.toString());
     args.push('+game_mode', gameMode.toString());
 
