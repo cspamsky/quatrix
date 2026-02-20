@@ -7,7 +7,7 @@ import { authorize } from '../middleware/authorize.js';
 const router = Router();
 
 router.use(authenticateToken);
-router.use(authorize('servers.players'));
+router.use(authorize('players.manage'));
 
 // GET /api/servers/:id/players
 router.get('/:id/players', async (req: Request, res: Response) => {

@@ -20,13 +20,17 @@ import type {
 const router = Router();
 
 // GET /api/servers/database/status (Global MariaDB Status)
-router.get('/database/status', authenticateToken, async (_req: Request, res: Response) => {
-  const available = await databaseManager.isAvailable();
-  res.json({ status: available ? 'ONLINE' : 'OFFLINE' });
-});
+router.get(
+  '/database/status',
+  authorize('servers.database'),
+  async (_req: Request, res: Response) => {
+    const available = await databaseManager.isAvailable();
+    res.json({ status: available ? 'ONLINE' : 'OFFLINE' });
+  }
+);
 
 // GET /api/servers/:id/database
-router.get('/:id/database', authenticateToken, async (req: Request, res: Response) => {
+router.get('/:id/database', authorize('servers.database'), async (req: Request, res: Response) => {
   try {
     const creds = await databaseManager.getDatabaseCredentials(req.params.id as string);
     if (!creds) {
@@ -112,7 +116,7 @@ export const createServerSchema = z.object({
 router.use(authenticateToken);
 
 // GET /api/servers
-router.get('/', (req: Request, res: Response) => {
+router.get('/', authorize('servers.view'), (req: Request, res: Response) => {
   const authReq = req as AuthenticatedRequest;
   try {
     // Join with workshop_maps to get map images and names if they exist
@@ -185,7 +189,7 @@ router.get('/stats', (req: Request, res: Response) => {
 });
 
 // GET /api/servers/:id
-router.get('/:id', (req: Request, res: Response) => {
+router.get('/:id', authorize('servers.view'), (req: Request, res: Response) => {
   try {
     const server = db.prepare('SELECT * FROM servers WHERE id = ?').get(req.params.id as string);
     if (!server) return res.status(404).json({ message: 'Server not found' });
@@ -196,7 +200,7 @@ router.get('/:id', (req: Request, res: Response) => {
 });
 
 // GET /api/servers/:id/logs
-router.get('/:id/logs', (req: Request, res: Response) => {
+router.get('/:id/logs', authorize('servers.console'), (req: Request, res: Response) => {
   try {
     const logs = runtimeService.getLogBuffer(req.params.id as string);
     res.json(logs);

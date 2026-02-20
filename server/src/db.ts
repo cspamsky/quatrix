@@ -24,14 +24,21 @@ const db: DatabaseType = new Database(dbPath);
 db.pragma('foreign_keys = ON');
 
 export const ALL_PERMISSIONS = [
+  'servers.view',
   'servers.create',
   'servers.delete',
   'servers.update',
   'servers.console',
   'servers.files',
   'servers.database',
+  'maps.manage',
+  'players.manage',
+  'admins.manage',
+  'backups.manage',
   'plugins.manage',
+  'settings.manage',
   'analytics.view',
+  'dashboard.view',
   'users.manage',
 ];
 

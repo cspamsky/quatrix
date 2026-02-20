@@ -26,7 +26,7 @@ fetchPublicIp();
 router.use(authenticateToken);
 
 // GET /api/settings
-router.get('/settings', (req: Request, res: Response) => {
+router.get('/settings', authorize('settings.manage'), (req: Request, res: Response) => {
   try {
     const settings = db.prepare('SELECT * FROM settings').all() as Array<{
       key: string;
@@ -43,7 +43,7 @@ router.get('/settings', (req: Request, res: Response) => {
 });
 
 // GET /api/stats - Global dashboard stats (Optimized with SQL aggregation)
-router.get('/stats', (req: Request, res: Response) => {
+router.get('/stats', authorize('dashboard.view'), (req: Request, res: Response) => {
   const authReq = req as AuthenticatedRequest;
   try {
     // Single SQL query with aggregation - offloads work to SQLite engine
@@ -71,7 +71,7 @@ router.get('/stats', (req: Request, res: Response) => {
 });
 
 // PUT /api/settings
-router.put('/settings', authorize('users.manage'), (req: Request, res: Response) => {
+router.put('/settings', authorize('settings.manage'), (req: Request, res: Response) => {
   try {
     const updates = req.body;
     const stmt = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
@@ -96,7 +96,7 @@ router.put('/settings', authorize('users.manage'), (req: Request, res: Response)
 });
 
 // GET /api/system/health
-router.get('/system/health', authorize('users.manage'), async (req: Request, res: Response) => {
+router.get('/system/health', authorize('settings.manage'), async (req: Request, res: Response) => {
   try {
     const health = await serverManager.getSystemHealth();
     res.json(health);
@@ -108,7 +108,7 @@ router.get('/system/health', authorize('users.manage'), async (req: Request, res
 // POST /api/system/health/repair
 router.post(
   '/system/health/repair',
-  authorize('users.manage'),
+  authorize('settings.manage'),
   async (req: Request, res: Response) => {
     try {
       const result = await serverManager.repairSystemHealth();
@@ -147,7 +147,7 @@ router.get('/system-info', async (req: Request, res: Response) => {
 // POST /api/settings/steamcmd/download
 router.post(
   '/settings/steamcmd/download',
-  authorize('users.manage'),
+  authorize('settings.manage'),
   async (req: Request, res: Response) => {
     try {
       const { path: steamPath } = req.body;
@@ -176,31 +176,39 @@ router.post(
 );
 
 // GET /api/system/timezones
-router.get('/system/timezones', authorize('users.manage'), async (req: Request, res: Response) => {
-  try {
-    const timezones = await systemService.getTimezones();
-    const current = await systemService.getCurrentTimezone();
-    res.json({ timezones, current });
-  } catch {
-    res.status(500).json({ message: 'Failed to fetch timezones' });
+router.get(
+  '/system/timezones',
+  authorize('settings.manage'),
+  async (req: Request, res: Response) => {
+    try {
+      const timezones = await systemService.getTimezones();
+      const current = await systemService.getCurrentTimezone();
+      res.json({ timezones, current });
+    } catch {
+      res.status(500).json({ message: 'Failed to fetch timezones' });
+    }
   }
-});
+);
 
 // POST /api/system/timezone
-router.post('/system/timezone', authorize('users.manage'), async (req: Request, res: Response) => {
-  try {
-    const { timezone } = req.body;
-    if (!timezone) return res.status(400).json({ message: 'Timezone is required' });
+router.post(
+  '/system/timezone',
+  authorize('settings.manage'),
+  async (req: Request, res: Response) => {
+    try {
+      const { timezone } = req.body;
+      if (!timezone) return res.status(400).json({ message: 'Timezone is required' });
 
-    const result = await systemService.setTimezone(timezone);
-    if (result.success) {
-      res.json(result);
-    } else {
-      res.status(500).json(result);
+      const result = await systemService.setTimezone(timezone);
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(500).json(result);
+      }
+    } catch {
+      res.status(500).json({ message: 'Failed to set timezone' });
     }
-  } catch {
-    res.status(500).json({ message: 'Failed to set timezone' });
   }
-});
+);
 
 export default router;

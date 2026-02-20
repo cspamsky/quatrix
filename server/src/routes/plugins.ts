@@ -3,6 +3,7 @@ import type { Request, Response, NextFunction } from 'express';
 import db from '../db.js';
 import { serverManager } from '../serverManager.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { authorize } from '../middleware/authorize.js';
 import { type PluginId } from '../config/plugins.js';
 
 import multer from 'multer';
@@ -13,6 +14,7 @@ import { taskService } from '../services/TaskService.js';
 
 const router = Router();
 router.use(authenticateToken);
+router.use(authorize('plugins.manage'));
 
 // Configure multer for ZIP uploads
 const upload = multer({

@@ -24,7 +24,7 @@ const getSafeTempPath = (filePath: string): string => {
 const router = Router();
 
 router.use(authenticateToken);
-router.use(authorize('servers.backups'));
+router.use(authorize('backups.manage'));
 
 // List backups
 router.get('/:serverId', (req: Request, res: Response) => {

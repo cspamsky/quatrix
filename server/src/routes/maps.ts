@@ -10,7 +10,7 @@ import type { AuthenticatedRequest } from '../types/index.js';
 const router = Router();
 
 router.use(authenticateToken);
-router.use(authorize('servers.maps'));
+router.use(authorize('maps.manage'));
 
 // GET /api/maps/config/:serverId/:mapName
 router.get('/config/:serverId/:mapName', async (req: Request, res: Response) => {

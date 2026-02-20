@@ -2,12 +2,13 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import db from '../db.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { authorize } from '../middleware/authorize.js';
 
 const router = Router();
 
 // GET /api/analytics
 // Query params: range=24h (default), 7d, 30d
-router.get('/', authenticateToken, (req: Request, res: Response) => {
+router.get('/', authenticateToken, authorize('analytics.view'), (req: Request, res: Response) => {
   try {
     const { range } = req.query;
     let timeFilter = '-24 hours';

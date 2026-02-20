@@ -4,6 +4,7 @@ import db from '../db.js';
 import { serverManager } from '../serverManager.js';
 import { taskService } from '../services/TaskService.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { authorize } from '../middleware/authorize.js';
 import { logActivity, emitDashboardStats } from '../index.js';
 import type { AuthenticatedRequest, Server } from '../types/index.js';
 
@@ -12,7 +13,7 @@ const router = Router();
 router.use(authenticateToken);
 
 // POST /api/servers/:id/start
-router.post('/:id/start', async (req: Request, res: Response) => {
+router.post('/:id/start', authorize('servers.console'), async (req: Request, res: Response) => {
   const { id } = req.params;
   const authReq = req as AuthenticatedRequest;
   try {
@@ -47,7 +48,7 @@ router.post('/:id/start', async (req: Request, res: Response) => {
 });
 
 // POST /api/servers/:id/stop
-router.post('/:id/stop', async (req: Request, res: Response) => {
+router.post('/:id/stop', authorize('servers.console'), async (req: Request, res: Response) => {
   const { id } = req.params;
   const authReq = req as AuthenticatedRequest;
   try {
@@ -77,7 +78,7 @@ router.post('/:id/stop', async (req: Request, res: Response) => {
 });
 
 // POST /api/servers/:id/restart
-router.post('/:id/restart', async (req: Request, res: Response) => {
+router.post('/:id/restart', authorize('servers.console'), async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
     const server = db.prepare('SELECT * FROM servers WHERE id = ?').get(id as string) as
@@ -121,7 +122,7 @@ router.post('/:id/restart', async (req: Request, res: Response) => {
 });
 
 // POST /api/servers/:id/install
-router.post('/:id/install', async (req: Request, res: Response) => {
+router.post('/:id/install', authorize('servers.console'), async (req: Request, res: Response) => {
   const { id } = req.params;
   console.log('[API] POST /api/servers/install - Manual install trigger for:', id);
   try {
@@ -162,23 +163,27 @@ router.post('/:id/install', async (req: Request, res: Response) => {
 });
 
 // POST /api/servers/:id/abort-install
-router.post('/:id/abort-install', async (req: Request, res: Response) => {
-  const { id } = req.params;
-  try {
-    await serverManager.stopServer(id as string); // Use generic stop
+router.post(
+  '/:id/abort-install',
+  authorize('servers.console'),
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    try {
+      await serverManager.stopServer(id as string); // Use generic stop
 
-    db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id as string);
-    const io = req.app.get('io');
-    if (io) io.emit('status_update', { serverId: id, status: 'OFFLINE', is_installed: 0 });
+      db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id as string);
+      const io = req.app.get('io');
+      if (io) io.emit('status_update', { serverId: id, status: 'OFFLINE', is_installed: 0 });
 
-    res.json({ message: 'Installation aborted' });
-  } catch {
-    res.status(500).json({ message: 'Failed to abort installation' });
+      res.json({ message: 'Installation aborted' });
+    } catch {
+      res.status(500).json({ message: 'Failed to abort installation' });
+    }
   }
-});
+);
 
 // POST /api/servers/:id/rcon
-router.post('/:id/rcon', async (req: Request, res: Response) => {
+router.post('/:id/rcon', authorize('servers.console'), async (req: Request, res: Response) => {
   const { id } = req.params;
   const authReq = req as AuthenticatedRequest;
   try {
