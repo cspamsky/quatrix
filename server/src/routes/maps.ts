@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import db from '../db.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { authorize } from '../middleware/authorize.js';
 import { mapManager } from '../services/MapManager.js';
 import { taskService } from '../services/TaskService.js';
 import type { AuthenticatedRequest } from '../types/index.js';
@@ -9,6 +10,7 @@ import type { AuthenticatedRequest } from '../types/index.js';
 const router = Router();
 
 router.use(authenticateToken);
+router.use(authorize('servers.maps'));
 
 // GET /api/maps/config/:serverId/:mapName
 router.get('/config/:serverId/:mapName', async (req: Request, res: Response) => {

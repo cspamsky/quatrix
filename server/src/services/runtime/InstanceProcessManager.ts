@@ -173,7 +173,7 @@ export class InstanceProcessManager {
     const args: string[] = [];
 
     args.push('-dedicated', '-console', '-usercon');
-    args.push('--graphics-provider', '""');
+    args.push('--graphics-provider', 'none');
 
     if (options.auto_update) args.push('-autoupdate');
     if (options.steam_api_key) args.push('-authkey', options.steam_api_key);
@@ -183,10 +183,10 @@ export class InstanceProcessManager {
 
     if (options.vac_enabled === false) args.push('-insecure');
 
-    args.push('+ip', '0.0.0.0');
-    args.push('+port', options.port.toString());
+    args.push('-ip', '0.0.0.0');
+    args.push('-port', options.port.toString());
 
-    // Game Mode & Alias Logic
+    // Game Mode & Alias Logic (Using hyphens for engine parameters)
     let gameType = options.game_type ?? 0;
     let gameMode = options.game_mode ?? 0;
 
@@ -210,6 +210,9 @@ export class InstanceProcessManager {
 
     args.push('+game_type', gameType.toString());
     args.push('+game_mode', gameMode.toString());
+
+    // Add default mapgroup and ensure it's a convar
+    args.push('+mapgroup', 'mg_active');
 
     if (options.gslt_token) args.push('+sv_setsteamaccount', options.gslt_token);
     if (options.name) args.push('+hostname', options.name);

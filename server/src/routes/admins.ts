@@ -27,7 +27,7 @@ type AdminsJson = Record<string, AdminData>;
 const router = Router();
 
 router.use(authenticateToken);
-router.use(authorize('servers.update'));
+router.use(authorize('servers.admins'));
 
 const ADMINS_FILE_PATH = 'addons/counterstrikesharp/configs/admins.json';
 // Ensure all path parts are lowercase for Linux consistency

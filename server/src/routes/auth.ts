@@ -1,6 +1,7 @@
 import express, { type Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { verify } from 'otplib';
 import db from '../db.js';
 import { rateLimiter } from '../rateLimiter.js';
@@ -31,6 +32,8 @@ const authLimiter = rateLimiter({
   message: 'Too many login/register attempts, please try again later',
 });
 
+const DEFAULT_PERMISSIONS: string[] = [];
+
 router.post('/register', authLimiter, async (req, res) => {
   if (!process.env.JWT_SECRET) {
     return res.status(500).json({ message: 'Server configuration error' });
@@ -42,16 +45,17 @@ router.post('/register', authLimiter, async (req, res) => {
 
   try {
     const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
-    const permissions = userCount.count === 0 ? ['*'] : [];
+    const permissions = userCount.count === 0 ? ['*'] : DEFAULT_PERMISSIONS;
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = db
       .prepare('INSERT INTO users (username, password) VALUES (?, ?)')
       .run(username, hashedPassword);
 
-    const tokenId = Math.random().toString(36).substring(7);
+    const userId = Number(result.lastInsertRowid);
+    const tokenId = crypto.randomBytes(32).toString('hex');
     const token = jwt.sign(
-      { id: result.lastInsertRowid, username, permissions, jti: tokenId },
+      { id: userId, username, permissions, jti: tokenId },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -62,22 +66,17 @@ router.post('/register', authLimiter, async (req, res) => {
       INSERT INTO user_sessions (user_id, token_id, device_info, ip_address) 
       VALUES (?, ?, ?, ?)
     `
-    ).run(
-      result.lastInsertRowid,
-      tokenId,
-      req.headers['user-agent'] || 'Unknown',
-      req.ip || '127.0.0.1'
-    );
+    ).run(userId, tokenId, req.headers['user-agent'] || 'Unknown', req.ip || '127.0.0.1');
 
     // Also set permissions string in DB for this new user
     db.prepare('UPDATE users SET permissions = ? WHERE id = ?').run(
       JSON.stringify(permissions),
-      result.lastInsertRowid
+      userId
     );
 
     res.status(201).json({
       token,
-      user: { id: result.lastInsertRowid, username, permissions, avatar_url: null },
+      user: { id: userId, username, permissions, role: 'viewer', avatar_url: null },
     });
   } catch (error: unknown) {
     const err = error as { code?: string; message: string };
@@ -118,7 +117,7 @@ router.post('/login', authLimiter, async (req, res) => {
     if (user.two_factor_enabled) {
       // Return a temporary token
       const tempToken = jwt.sign(
-        { id: user.id, username: user.username, permissions, pending_2fa: true },
+        { id: Number(user.id), username: user.username, permissions, pending_2fa: true },
         process.env.JWT_SECRET,
         { expiresIn: '5m' }
       );
@@ -128,9 +127,9 @@ router.post('/login', authLimiter, async (req, res) => {
       });
     }
 
-    const tokenId = Math.random().toString(36).substring(7);
+    const tokenId = crypto.randomBytes(32).toString('hex');
     const token = jwt.sign(
-      { id: user.id, username: user.username, permissions, jti: tokenId },
+      { id: Number(user.id), username: user.username, permissions, jti: tokenId },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -194,9 +193,9 @@ router.post('/login/2fa', authLimiter, async (req, res) => {
     }
 
     const permissions = JSON.parse(user.permissions || '[]');
-    const tokenId = Math.random().toString(36).substring(7);
+    const tokenId = crypto.randomBytes(32).toString('hex');
     const token = jwt.sign(
-      { id: user.id, username: user.username, permissions, jti: tokenId },
+      { id: Number(user.id), username: user.username, permissions, jti: tokenId },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );

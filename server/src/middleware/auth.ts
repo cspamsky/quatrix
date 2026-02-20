@@ -27,11 +27,17 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     // REAL-TIME SESSION CHECK:
     // Check if the session still exists in the database
     if (user.jti) {
+      console.log(
+        `[AUTH] Checking session for User: ${user.id} (${typeof user.id}), JTI: ${user.jti}`
+      );
       const session = db
         .prepare('SELECT 1 FROM user_sessions WHERE token_id = ? AND user_id = ?')
         .get(user.jti, user.id);
       if (!session) {
-        return res.status(403).json({ message: 'Session has been terminated' });
+        console.warn(
+          `[AUTH] Session validation failed for User ID: ${user.id}, Token ID: ${user.jti}`
+        );
+        return res.status(401).json({ message: 'Session has been terminated or is invalid' });
       }
 
       // Update last active

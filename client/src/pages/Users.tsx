@@ -42,15 +42,35 @@ const Users = () => {
 
   const availablePermissions = useMemo(
     () => [
-      { id: 'servers.create', label: t('permissions.create_servers', 'Create Servers') },
-      { id: 'servers.delete', label: t('permissions.delete_servers', 'Delete Servers') },
-      { id: 'servers.update', label: t('permissions.update_servers', 'Update Server Settings') },
-      { id: 'servers.console', label: t('permissions.access_console', 'Access Console') },
-      { id: 'servers.files', label: t('permissions.manage_files', 'Manage Files') },
-      { id: 'servers.database', label: t('permissions.manage_databases', 'Manage Databases') },
-      { id: 'plugins.manage', label: t('permissions.manage_plugins', 'Manage Plugins') },
-      { id: 'analytics.view', label: t('permissions.view_analytics', 'View Analytics') },
-      { id: 'users.manage', label: t('permissions.manage_users', 'Manage Users') },
+      { id: 'servers.view', label: t('users.permissions_list.view_servers', 'View Instances') },
+      { id: 'servers.create', label: t('users.permissions_list.create_servers', 'Create Servers') },
+      { id: 'servers.delete', label: t('users.permissions_list.delete_servers', 'Delete Servers') },
+      {
+        id: 'servers.update',
+        label: t('users.permissions_list.update_settings', 'Update Server Settings'),
+      },
+      {
+        id: 'servers.console',
+        label: t('users.permissions_list.access_console', 'Access Console'),
+      },
+      { id: 'servers.files', label: t('users.permissions_list.manage_files', 'Manage Files') },
+      {
+        id: 'servers.database',
+        label: t('users.permissions_list.manage_databases', 'Manage Databases'),
+      },
+      { id: 'servers.maps', label: t('users.permissions_list.manage_maps', 'Manage Maps') },
+      {
+        id: 'servers.players',
+        label: t('users.permissions_list.manage_players', 'Manage Players'),
+      },
+      { id: 'servers.admins', label: t('users.permissions_list.manage_admins', 'Manage Admins') },
+      {
+        id: 'servers.backups',
+        label: t('users.permissions_list.manage_backups', 'Manage Backups'),
+      },
+      { id: 'plugins.manage', label: t('users.permissions_list.manage_plugins', 'Manage Plugins') },
+      { id: 'analytics.view', label: t('users.permissions_list.view_analytics', 'View Analytics') },
+      { id: 'users.manage', label: t('users.permissions_list.manage_users', 'Manage Users') },
     ],
     [t]
   );

@@ -26,7 +26,7 @@ fetchPublicIp();
 router.use(authenticateToken);
 
 // GET /api/settings
-router.get('/settings', authorize('users.manage'), (req: Request, res: Response) => {
+router.get('/settings', (req: Request, res: Response) => {
   try {
     const settings = db.prepare('SELECT * FROM settings').all() as Array<{
       key: string;

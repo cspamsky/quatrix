@@ -2,10 +2,12 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { serverManager } from '../serverManager.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { authorize } from '../middleware/authorize.js';
 
 const router = Router();
 
 router.use(authenticateToken);
+router.use(authorize('servers.players'));
 
 // GET /api/servers/:id/players
 router.get('/:id/players', async (req: Request, res: Response) => {

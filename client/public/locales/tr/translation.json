@@ -1029,6 +1029,22 @@
     "two_fa_active": "2FA Aktif",
     "two_fa_disabled": "2FA Devre Dışı",
     "update_failed": "Güncelleme başarısız",
-    "update_success": "İzinler güncellendi"
+    "update_success": "İzinler güncellendi",
+    "permissions_list": {
+      "view_servers": "Örnekleri Görüntüle",
+      "create_servers": "Örnek Oluştur",
+      "delete_servers": "Örnek Sil",
+      "update_settings": "Panel Ayarları",
+      "access_console": "Konsola Erişim",
+      "manage_files": "Dosyaları Yönet",
+      "manage_databases": "Veritabanlarını Yönet",
+      "manage_maps": "Haritaları Yönet",
+      "manage_players": "Oyuncuları Yönet",
+      "manage_admins": "Adminleri Yönet",
+      "manage_backups": "Yedekleri Yönet",
+      "manage_plugins": "Eklentileri Yönet",
+      "view_analytics": "Analizleri Görüntüle",
+      "manage_users": "Kullanıcıları Yönet"
+    }
   }
 }

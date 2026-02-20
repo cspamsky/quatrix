@@ -17,7 +17,7 @@ export const apiFetch = async (url: string, options: RequestInit = {}) => {
 
     const isLoginEndpoint = url.includes('/api/login');
 
-    if ((response.status === 401 || response.status === 403) && !isLoginEndpoint) {
+    if (response.status === 401 && !isLoginEndpoint) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';

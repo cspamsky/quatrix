@@ -1,7 +1,7 @@
 import {
   LayoutDashboard,
   Map as MapIcon,
-  Users,
+  Users as UsersIcon,
   UserCog,
   Puzzle,
   Settings,
@@ -61,25 +61,15 @@ const Layout = () => {
     { path: '/instances', icon: Layers, label: t('nav.instances'), permission: 'servers.view' },
     { path: '/chat', icon: MessageSquare, label: t('nav.chat'), permission: 'servers.console' },
     { path: '/console', icon: Terminal, label: t('nav.console'), permission: 'servers.console' },
-    {
-      path: '/maps',
-      icon: MapIcon,
-      label: t('nav.maps'),
-      permission: 'servers.update',
-    },
-    {
-      path: '/players',
-      icon: Users,
-      label: t('nav.players'),
-      permission: 'servers.update',
-    },
+    { path: '/maps', icon: MapIcon, label: t('nav.maps'), permission: 'servers.maps' },
+    { path: '/players', icon: UsersIcon, label: t('nav.players'), permission: 'servers.players' },
     {
       path: '/plugins',
       icon: Puzzle,
       label: t('nav.plugins'),
       permission: 'plugins.manage',
     },
-    { path: '/admins', icon: ShieldCheck, label: t('nav.admins'), permission: 'servers.update' },
+    { path: '/admins', icon: ShieldCheck, label: t('nav.admins'), permission: 'servers.admins' },
     {
       path: '/database',
       icon: Database,
@@ -98,8 +88,13 @@ const Layout = () => {
       label: t('nav.users'),
       permission: 'users.manage',
     },
-    { path: '/backups', icon: Archive, label: t('nav.backups'), permission: 'servers.update' },
-    { path: '/settings', icon: Settings, label: t('nav.settings'), permission: '*' },
+    { path: '/backups', icon: Archive, label: t('nav.backups'), permission: 'servers.backups' },
+    {
+      path: '/settings',
+      icon: Settings,
+      label: t('nav.settings'),
+      permission: 'servers.update',
+    },
   ];
 
   const filteredNavItems = navItems.filter((item) => {

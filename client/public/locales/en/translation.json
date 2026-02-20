@@ -1029,6 +1029,22 @@
     "two_fa_active": "2FA Active",
     "two_fa_disabled": "2FA Disabled",
     "update_failed": "Update failed",
-    "update_success": "Permissions updated"
+    "update_success": "Permissions updated",
+    "permissions_list": {
+      "view_servers": "View Instances",
+      "create_servers": "Create Servers",
+      "delete_servers": "Delete Servers",
+      "update_settings": "Panel Settings",
+      "access_console": "Access Console",
+      "manage_files": "Manage Files",
+      "manage_databases": "Manage Databases",
+      "manage_maps": "Manage Maps",
+      "manage_players": "Manage Players",
+      "manage_admins": "Manage Admins",
+      "manage_backups": "Manage Backups",
+      "manage_plugins": "Manage Plugins",
+      "view_analytics": "View Analytics",
+      "manage_users": "Manage Users"
+    }
   }
 }

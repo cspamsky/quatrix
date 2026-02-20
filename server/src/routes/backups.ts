@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { backupService } from '../services/BackupService.js';
 import { taskService } from '../services/TaskService.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { authorize } from '../middleware/authorize.js';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
@@ -23,6 +24,7 @@ const getSafeTempPath = (filePath: string): string => {
 const router = Router();
 
 router.use(authenticateToken);
+router.use(authorize('servers.backups'));
 
 // List backups
 router.get('/:serverId', (req: Request, res: Response) => {
