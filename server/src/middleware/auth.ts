@@ -21,8 +21,13 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
 
   jwt.verify(token, process.env.JWT_SECRET, (err: unknown, decoded: unknown) => {
     if (err) {
-      console.warn(`[AUTH] Token verification failed: ${err instanceof Error ? err.message : String(err)}`);
-      return res.status(403).json({ message: 'Forbidden: Invalid or expired token', details: err instanceof Error ? err.message : String(err) });
+      console.warn(
+        `[AUTH] Token verification failed: ${err instanceof Error ? err.message : String(err)}`
+      );
+      return res.status(403).json({
+        message: 'Forbidden: Invalid or expired token',
+        details: err instanceof Error ? err.message : String(err),
+      });
     }
 
     const user = decoded as User;

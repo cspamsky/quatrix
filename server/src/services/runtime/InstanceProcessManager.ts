@@ -168,9 +168,14 @@ export class InstanceProcessManager {
       // We wrap it in a subshell to fall back to standard priority if nice fails.
       const niceVal = Math.round(cpuPriority).toString();
       const originalExecutable = executable;
-      
+
       executable = 'sh';
-      finalArgs.push('-c', `nice -n ${niceVal} "${originalExecutable}" "$@" || exec "${originalExecutable}" "$@"`, '--', originalExecutable);
+      finalArgs.push(
+        '-c',
+        `nice -n ${niceVal} "${originalExecutable}" "$@" || exec "${originalExecutable}" "$@"`,
+        '--',
+        originalExecutable
+      );
     }
 
     const mapName = options.map || 'de_dust2';
@@ -212,12 +217,18 @@ export class InstanceProcessManager {
       if (aliasMap[alias]) {
         gameType = aliasMap[alias]!.type;
         gameMode = aliasMap[alias]!.mode;
-        console.log(`[ProcessManager] Alias matched: ${alias} -> type: ${gameType}, mode: ${gameMode}`);
+        console.log(
+          `[ProcessManager] Alias matched: ${alias} -> type: ${gameType}, mode: ${gameMode}`
+        );
       } else {
-        console.warn(`[ProcessManager] Unknown alias: ${alias}. Using defaults: type ${gameType}, mode ${gameMode}`);
+        console.warn(
+          `[ProcessManager] Unknown alias: ${alias}. Using defaults: type ${gameType}, mode ${gameMode}`
+        );
       }
     } else {
-      console.log(`[ProcessManager] No alias provided. Using values: type ${gameType}, mode ${gameMode}`);
+      console.log(
+        `[ProcessManager] No alias provided. Using values: type ${gameType}, mode ${gameMode}`
+      );
     }
 
     // Use convar format (+) for game settings as CS2 treats them as ConVars, not engine switches
