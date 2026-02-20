@@ -54,3 +54,4 @@ data/*
 
 # Test and Debug Artifacts
 Dockerfile.test
+.dockerignore

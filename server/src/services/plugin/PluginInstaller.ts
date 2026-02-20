@@ -616,6 +616,7 @@ export class PluginInstaller {
     try {
       const items = await fs.readdir(dirPath, { withFileTypes: true });
       for (const item of items) {
+        if (item.isSymbolicLink()) continue; // SECURITY: Never follow symlinks to avoid corrupting core files
         const fullPath = path.join(dirPath, item.name);
         if (item.isDirectory()) {
           await fs.chmod(fullPath, 0o755).catch(() => {});
