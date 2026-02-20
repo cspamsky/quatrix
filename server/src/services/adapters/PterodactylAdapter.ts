@@ -71,9 +71,7 @@ export class PterodactylAdapter {
       );
     }
 
-    console.log(
-      `[Pterodactyl] Requesting: ${method} ${url} (Key prefix: ${authKey.substring(0, 10)}...)`
-    );
+    console.log(`[Pterodactyl] Requesting: ${method} ${url} (API Type: ${apiType.toUpperCase()})`);
 
     const isRaw = method === 'GET' && endpoint.includes('/files/contents');
 

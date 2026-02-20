@@ -32,7 +32,7 @@ const authLimiter = rateLimiter({
   message: 'Too many login/register attempts, please try again later',
 });
 
-const DEFAULT_PERMISSIONS: string[] = [];
+const DEFAULT_PERMISSIONS: string[] = ['analytics.view'];
 
 router.post('/register', authLimiter, async (req, res) => {
   if (!process.env.JWT_SECRET) {

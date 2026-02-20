@@ -50,7 +50,13 @@ app.set('trust proxy', true);
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
-  cors: { origin: '*', methods: ['GET', 'POST'] },
+  cors: { 
+    origin: true,
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  allowEIO3: true,
+  transports: ['websocket', 'polling']
 });
 
 // Make io accessible to routes
