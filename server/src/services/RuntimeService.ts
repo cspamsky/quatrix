@@ -35,6 +35,9 @@ export interface InstanceOptions {
   hibernate?: number | boolean;
   tv_enabled?: boolean;
   additional_args?: string | null;
+  game_type?: number;
+  game_mode?: number;
+  game_alias?: string | null;
 }
 
 class RuntimeService {

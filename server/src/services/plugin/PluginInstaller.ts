@@ -232,6 +232,12 @@ export class PluginInstaller {
         await this.configureMetamod(csgoDir, taskId);
       }
 
+      // 9. Fix Permissions (Crucial for Linux/Debian 12)
+      if (process.platform === 'linux') {
+        const instanceDir = path.join(installDir, instanceId.toString());
+        await this.fixPermissionsRecursive(instanceDir).catch(() => {});
+      }
+
       console.log('[PLUGIN]', pluginInfo.name, 'sync complete.');
 
       if (taskId) {
@@ -600,6 +606,32 @@ export class PluginInstaller {
       // Cleanup
       await fs.rm(tempExtractDir, { recursive: true, force: true }).catch(() => {});
       await fs.rm(filePath, { force: true }).catch(() => {});
+    }
+  }
+
+  /**
+   * Fixes permissions recursively for an instance or plugin directory
+   */
+  private async fixPermissionsRecursive(dirPath: string): Promise<void> {
+    try {
+      const items = await fs.readdir(dirPath, { withFileTypes: true });
+      for (const item of items) {
+        const fullPath = path.join(dirPath, item.name);
+        if (item.isDirectory()) {
+          await fs.chmod(fullPath, 0o755).catch(() => {});
+          await this.fixPermissionsRecursive(fullPath);
+        } else {
+          // If it's a binary or script, make it executable
+          const isExecutable =
+            item.name.endsWith('.so') ||
+            item.name.endsWith('.dll') ||
+            item.name.endsWith('.sh') ||
+            item.name === 'cs2';
+          await fs.chmod(fullPath, isExecutable ? 0o755 : 0o644).catch(() => {});
+        }
+      }
+    } catch {
+      /* ignore */
     }
   }
 }

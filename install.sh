@@ -249,6 +249,22 @@ echo "quatrix ALL=(ALL) NOPASSWD: /usr/bin/timedatectl" > /etc/sudoers.d/quatrix
 chmod 440 /etc/sudoers.d/quatrix-panel
 success "Sudoers permissions configured for 'quatrix' user."
 
+# 11. System Limits Optimization
+info "Optimizing system limits (inotify)..."
+if ! grep -q "fs.inotify.max_user_instances" /etc/sysctl.conf; then
+    echo "fs.inotify.max_user_instances=512" >> /etc/sysctl.conf
+    sysctl -p
+    success "Inotify limits increased to 512."
+else
+    # Update if exists but lower
+    CURRENT_LIMIT=$(sysctl -n fs.inotify.max_user_instances)
+    if [ "$CURRENT_LIMIT" -lt 512 ]; then
+        sed -i 's/fs.inotify.max_user_instances=.*/fs.inotify.max_user_instances=512/' /etc/sysctl.conf
+        sysctl -p
+        success "Inotify limits updated to 512."
+    fi
+fi
+
 # Final Output
 echo -e "\n${GREEN}${BRIGHT}============================================================${NC}"
 success "INSTALLATION COMPLETE!"

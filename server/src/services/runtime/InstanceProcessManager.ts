@@ -186,6 +186,31 @@ export class InstanceProcessManager {
     args.push('+ip', '0.0.0.0');
     args.push('+port', options.port.toString());
 
+    // Game Mode & Alias Logic
+    let gameType = options.game_type ?? 0;
+    let gameMode = options.game_mode ?? 0;
+
+    if (options.game_alias) {
+      const alias = options.game_alias.toLowerCase();
+      const aliasMap: Record<string, { type: number; mode: number }> = {
+        casual: { type: 0, mode: 0 },
+        competitive: { type: 0, mode: 1 },
+        wingman: { type: 0, mode: 2 },
+        armsrace: { type: 1, mode: 0 },
+        demolition: { type: 1, mode: 1 },
+        deathmatch: { type: 1, mode: 2 },
+        training: { type: 3, mode: 0 },
+      };
+
+      if (aliasMap[alias]) {
+        gameType = aliasMap[alias]!.type;
+        gameMode = aliasMap[alias]!.mode;
+      }
+    }
+
+    args.push('+game_type', gameType.toString());
+    args.push('+game_mode', gameMode.toString());
+
     if (options.gslt_token) args.push('+sv_setsteamaccount', options.gslt_token);
     if (options.name) args.push('+hostname', options.name);
     if (options.password) args.push('+sv_password', options.password);

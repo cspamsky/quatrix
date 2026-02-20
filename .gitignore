@@ -51,3 +51,6 @@ data/*
 *.tmp
 *.bak
 *.old
+
+# Test and Debug Artifacts
+Dockerfile.test
