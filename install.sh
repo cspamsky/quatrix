@@ -42,13 +42,17 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
+# 1.1 Baseline System Check (Especially for minimal Docker/Debian)
+info "Checking for baseline tools (sudo, curl, ca-certificates)..."
+apt-get update -qq
+apt-get install -y -qq sudo curl ca-certificates gnupg > /dev/null 2>&1
+
 REPO_URL="https://github.com/cspamsky/quatrix.git"
 INSTALL_DIR="/home/quatrix/quatrix"
 
 # 2. Git & Basic Tool Installation
-info "Updating system packages and checking for Git..."
-apt-get update
-apt-get install -y curl git build-essential ufw sudo mariadb-server mariadb-client
+info "Updating system packages and installing core dependencies..."
+apt-get install -y -qq git build-essential ufw mariadb-server mariadb-client > /dev/null 2>&1
 
 # 3. Dedicated User Setup
 if id "quatrix" &>/dev/null; then
@@ -56,8 +60,10 @@ if id "quatrix" &>/dev/null; then
 else
     info "Creating dedicated 'quatrix' service user..."
     useradd -m -s /bin/bash quatrix
-    usermod -aG sudo quatrix
-    success "User 'quatrix' created."
+    # Ensure sudo is configured for quatrix as well
+    echo "quatrix ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/quatrix
+    chmod 0440 /etc/sudoers.d/quatrix
+    success "User 'quatrix' created and added to sudoers."
 fi
 
 # 4. Project Retrieval / Update
@@ -109,12 +115,16 @@ apt-get install -y lib32gcc-s1 lib32stdc++6 libc6-i386 lib32z1 libicu-dev libkrb
 
 # MariaDB Service & Security
 info "Enabling and configuring MariaDB..."
-systemctl enable mariadb
-systemctl start mariadb
+if command -v systemctl >/dev/null && systemctl status >/dev/null 2>&1; then
+    systemctl enable mariadb || true
+    systemctl start mariadb || true
+else
+    service mariadb start || true
+fi
 
 # Ensure root can connect for management
-mysql -u root -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;"
-mysql -u root -e "FLUSH PRIVILEGES;"
+mysql -u root -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;" || true
+mysql -u root -e "FLUSH PRIVILEGES;" || true
 success "MariaDB configured for local management."
 
 # phpMyAdmin Installation

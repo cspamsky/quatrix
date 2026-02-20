@@ -64,9 +64,26 @@ export class SteamManager {
   ): Promise<void> {
     try {
       await fs.promises.mkdir(targetPath, { recursive: true });
+      if (process.platform === 'linux') {
+        // Ensure SteamCMD can write regardless of current user/mask
+        await fs.promises.chmod(targetPath, 0o777);
+      }
     } catch (error: unknown) {
       const err = error as { code?: string };
       if (err.code !== 'EEXIST') throw error;
+    }
+
+    // Recursive chmod on Linux to handle nested permission issues
+    if (process.platform === 'linux') {
+      try {
+        const { exec } = await import('child_process');
+        const { promisify } = await import('util');
+        const execAsync = promisify(exec);
+        await execAsync(`chmod -R 777 "${targetPath}"`);
+        await execAsync(`chmod -R 777 "${path.dirname(steamCmdExe)}"`);
+      } catch (e) {
+        console.warn('[STEAM] Non-critical: Failed to recursive chmod:', e);
+      }
     }
 
     return new Promise((resolve, reject) => {
@@ -81,9 +98,25 @@ export class SteamManager {
         '+quit',
       ];
 
-      const steamCmdProcess = spawn(steamCmdExe, steamCmdParams);
+      // Use a dedicated HOME for steamcmd to avoid root/permission issues in ~/.steam
+      const steamHome = path.dirname(steamCmdExe);
+
+      const steamCmdProcess = spawn(steamCmdExe, steamCmdParams, {
+        env: {
+          ...process.env,
+          HOME: steamHome,
+        },
+      });
 
       let stdoutBuffer = '';
+      steamCmdProcess.stderr.on('data', (data) => {
+        const message = data.toString().trim();
+        if (message) {
+          console.error(`[STEAMCMD ERROR] ${message}`);
+          if (onLog) onLog(message);
+        }
+      });
+
       steamCmdProcess.stdout.on('data', (data) => {
         stdoutBuffer += data.toString();
         const lines = stdoutBuffer.split(/\r?\n|\r/);
