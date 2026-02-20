@@ -212,11 +212,19 @@ export class InstanceProcessManager {
       if (aliasMap[alias]) {
         gameType = aliasMap[alias]!.type;
         gameMode = aliasMap[alias]!.mode;
+        console.log(`[ProcessManager] Alias matched: ${alias} -> type: ${gameType}, mode: ${gameMode}`);
+      } else {
+        console.warn(`[ProcessManager] Unknown alias: ${alias}. Using defaults: type ${gameType}, mode ${gameMode}`);
       }
+    } else {
+      console.log(`[ProcessManager] No alias provided. Using values: type ${gameType}, mode ${gameMode}`);
     }
 
+    // Try using both engine parameters and cvars for maximum reliability
     args.push('-game_type', gameType.toString());
     args.push('-game_mode', gameMode.toString());
+    args.push('+game_type', gameType.toString());
+    args.push('+game_mode', gameMode.toString());
 
     // Add default mapgroup and ensure it's a convar
     args.push('+mapgroup', 'mg_active');
