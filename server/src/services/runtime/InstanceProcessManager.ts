@@ -29,7 +29,7 @@ export class InstanceProcessManager {
     };
 
     const proc = spawn(executable, args, {
-      cwd: instancePath,
+      cwd: path.join(instancePath, 'game'),
       env: spawnEnv,
       detached: true,
       shell: false,
@@ -163,8 +163,14 @@ export class InstanceProcessManager {
 
     const finalArgs: string[] = [];
     if (cpuPriority !== 0) {
-      finalArgs.push('-n', Math.round(cpuPriority).toString(), executable);
-      executable = 'nice';
+      // Priority between -20 and 19. Only root can set negative values.
+      // If the user is not root and tries to set a negative value, nice will fail with EPERM.
+      // We wrap it in a subshell to fall back to standard priority if nice fails.
+      const niceVal = Math.round(cpuPriority).toString();
+      const originalExecutable = executable;
+      
+      executable = 'sh';
+      finalArgs.push('-c', `nice -n ${niceVal} "${originalExecutable}" "$@" || exec "${originalExecutable}" "$@"`, '--', originalExecutable);
     }
 
     const mapName = options.map || 'de_dust2';
@@ -172,7 +178,7 @@ export class InstanceProcessManager {
 
     const args: string[] = [];
 
-    args.push('-dedicated', '-console', '-usercon');
+    args.push('-dedicated', '-console', '-usercon', '-game', 'csgo');
     args.push('--graphics-provider', 'none');
 
     if (options.auto_update) args.push('-autoupdate');
