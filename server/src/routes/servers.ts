@@ -216,14 +216,22 @@ router.delete('/:id', authorize('servers.delete'), async (req: Request, res: Res
 
     // Stop server if running
     if (server.status === 'ONLINE') {
-      await serverManager.stopServer(server.id.toString());
+      try {
+        await serverManager.stopServer(server.id.toString());
+      } catch (err) {
+        console.warn(`[DELETE] Failed to stop server ${server.id} before deletion:`, err);
+      }
     }
 
-    // Physically delete server folder
-    await fileSystemService.deleteInstance(server.id.toString());
-
-    // Drop associated database and user
-    await databaseManager.dropDatabase(server.id.toString());
+    // Only attempt local cleanup if it's not a remote server (or try anyway but ignore errors)
+    try {
+      if (!server.remote_id) {
+        await fileSystemService.deleteInstance(server.id.toString());
+        await databaseManager.dropDatabase(server.id.toString());
+      }
+    } catch (err) {
+      console.warn(`[DELETE] Local cleanup failed for server ${server.id}:`, err);
+    }
 
     db.prepare('DELETE FROM servers WHERE id = ?').run(req.params.id as string);
     emitDashboardStats();

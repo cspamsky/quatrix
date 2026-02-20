@@ -12,6 +12,7 @@ import { taskService } from './services/TaskService.js';
 import type { PluginId } from './config/plugins.js';
 import { emitDashboardStats } from './index.js';
 import type { Server } from './types/index.js';
+import { pterodactylAdapter } from './services/adapters/PterodactylAdapter.js';
 
 import { promisify } from 'util';
 const execAsync = promisify(exec);
@@ -108,6 +109,7 @@ class ServerManager {
   public async init() {
     await fileSystemService.init();
     await this.refreshSettings();
+    await this.loadPterodactylPanels();
 
     // Linux Pre-Flight Checks
     console.log('[SYSTEM] Running Linux Pre-flight checks...');
@@ -230,10 +232,31 @@ class ServerManager {
   ) {
     const id = instanceId.toString();
     console.log('[SERVER] Request to start instance', id);
-    await this.ensureSteamSdk();
 
     const server = this.getServerStmt.get(id) as Server | undefined;
     if (!server) throw new Error(`Server instance ${id} not found.`);
+
+    // Check if it's a remote Pterodactyl server
+    if (server.remote_id && server.remote_panel_id) {
+      try {
+        console.log(
+          '[SERVER] Remote startup via Pterodactyl:',
+          server.remote_id,
+          'on panel:',
+          server.remote_panel_id
+        );
+        await this.ensurePanelConfig(server.remote_panel_id);
+
+        await pterodactylAdapter.setPowerState(server.remote_panel_id, server.remote_id, 'start');
+        this.updateStatusStmt.run('STARTING', null, id);
+        return;
+      } catch (error: any) {
+        console.error('[SERVER] Pterodactyl Remote Startup Failed:', error.message);
+        throw new Error(`Remote panel error: ${error.message}`);
+      }
+    }
+
+    await this.ensureSteamSdk();
 
     const dbOptions = JSON.parse(server.settings || '{}');
     const mergedOptions: Server = { ...server, ...dbOptions, ...options }; // Combine DB cols, DB settings, and runtime options
@@ -317,6 +340,18 @@ class ServerManager {
 
   public async stopServer(id: string | number) {
     const idStr = id.toString();
+    const server = this.getServerStmt.get(idStr) as Server | undefined;
+
+    // Check if it's a remote Pterodactyl server
+    if (server?.remote_id && server.remote_panel_id) {
+      console.log('[SERVER] Remote stop via Pterodactyl:', server.remote_id);
+      await this.ensurePanelConfig(server.remote_panel_id);
+
+      await pterodactylAdapter.setPowerState(server.remote_panel_id, server.remote_id, 'stop');
+      this.updateStatusStmt.run('STOPPING', null, idStr);
+      return;
+    }
+
     // Delegate to RuntimeService
     const result = await runtimeService.stopInstance(idStr);
 
@@ -512,11 +547,17 @@ class ServerManager {
   public async sendCommand(id: string | number, command: string, retries = 3): Promise<string> {
     const idStr = id.toString();
     const server = this.getServerStmt.get(idStr) as Server | undefined;
-    if (!server) throw new Error('Server not found');
+
+    // Remote console support
+    if (server?.remote_id && server.remote_panel_id) {
+      await this.ensurePanelConfig(server.remote_panel_id);
+      await pterodactylAdapter.sendCommand(server.remote_panel_id, server.remote_id, command);
+      return 'Command sent to remote panel';
+    }
 
     const { Rcon } = await import('rcon-client');
     let rcon = this.rconConnections.get(idStr);
-    const rconPort = server.rcon_port || server.port;
+    const rconPort = server?.rcon_port || server?.port || 27015;
 
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
@@ -525,7 +566,7 @@ class ServerManager {
           const rconClient = (await Rcon.connect({
             host: '127.0.0.1',
             port: parseInt(rconPort.toString()),
-            password: server.rcon_password || '',
+            password: server?.rcon_password || '',
             timeout: 5000,
           })) as {
             send: (cmd: string) => Promise<string>;
@@ -546,6 +587,39 @@ class ServerManager {
       }
     }
     throw new Error('RCON Failed');
+  }
+
+  /**
+   * Helper to ensure panel config is registered in Adapter
+   */
+  public async ensurePanelConfig(panelId: string) {
+    const panel = db.prepare('SELECT * FROM pterodactyl_panels WHERE id = ?').get(panelId) as any;
+    if (!panel) throw new Error(`Pterodactyl Panel ${panelId} not found in database.`);
+
+    pterodactylAdapter.registerPanel(panelId, {
+      baseUrl: panel.base_url,
+      apiKey: panel.api_key,
+      clientApiKey: panel.client_api_key,
+    });
+  }
+
+  /**
+   * Loads and registers all Pterodactyl panels from the database
+   */
+  private async loadPterodactylPanels() {
+    try {
+      const panels = db.prepare('SELECT * FROM pterodactyl_panels').all() as any[];
+      console.log(`[SYSTEM] Registering ${panels.length} Pterodactyl panels...`);
+      for (const panel of panels) {
+        pterodactylAdapter.registerPanel(panel.id, {
+          baseUrl: panel.base_url,
+          apiKey: panel.api_key,
+          clientApiKey: panel.client_api_key,
+        });
+      }
+    } catch (error: any) {
+      console.error('[SYSTEM] Failed to load Pterodactyl panels:', error.message);
+    }
   }
 
   public async getPlayers(

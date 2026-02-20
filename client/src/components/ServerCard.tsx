@@ -20,6 +20,7 @@ import IconButton from './ui/IconButton';
 import Checkbox from './ui/Checkbox';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { Shield } from 'lucide-react';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -37,6 +38,7 @@ interface Instance {
   isInstalled?: boolean;
   workshop_map_name?: string;
   workshop_map_image?: string;
+  remote_id?: string | null;
 }
 
 interface ServerCardProps {
@@ -148,6 +150,12 @@ const ServerCard = memo(
             {instance.workshop_map_image && (
               <div className="px-1.5 py-0.5 rounded-md bg-blue-500/20 border border-blue-500/30 text-[8px] font-black text-blue-400 uppercase tracking-tighter backdrop-blur-sm">
                 {t('serverCard.workshop')}
+              </div>
+            )}
+            {instance.remote_id && (
+              <div className="px-1.5 py-0.5 rounded-md bg-purple-500/20 border border-purple-500/30 text-[8px] font-black text-purple-400 uppercase tracking-tighter backdrop-blur-sm flex items-center gap-1">
+                <Shield className="w-2.5 h-2.5" />
+                Remote
               </div>
             )}
           </div>

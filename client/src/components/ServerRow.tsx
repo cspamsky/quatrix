@@ -11,6 +11,7 @@ import {
   FileText,
   Copy,
   Check,
+  Shield,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import IconButton from './ui/IconButton';
@@ -32,6 +33,7 @@ interface Instance {
   port: number;
   isInstalled?: boolean;
   workshop_map_name?: string;
+  remote_id?: string | null;
 }
 
 interface ServerRowProps {
@@ -109,6 +111,12 @@ const ServerRow = memo(
           <div className="flex items-center gap-2">
             <h3 className="font-bold text-white text-sm truncate">{instance.name}</h3>
             <span className="text-[10px] text-gray-600 font-mono">#{instance.id}</span>
+            {instance.remote_id && (
+              <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 text-[8px] font-black text-purple-500 uppercase tracking-widest">
+                <Shield className="w-2 h-2" />
+                Remote
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-3 mt-0.5">
             <p className="text-[10px] text-gray-500 font-medium uppercase tracking-widest truncate max-w-[120px]">

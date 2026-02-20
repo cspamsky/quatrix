@@ -65,6 +65,8 @@ export interface Server {
   auto_start?: number;
   created_at?: string;
   updated_at?: string;
+  remote_id?: string | null;
+  remote_panel_id?: string | null;
 }
 
 export interface DashboardStats {

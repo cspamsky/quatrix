@@ -18,9 +18,16 @@ import GeneralTab from '../components/settings/GeneralTab';
 // SecurityTab removed - integrated into Profile page
 import ServerEngineTab from '../components/settings/ServerEngineTab';
 import SystemHealthTab from '../components/settings/SystemHealthTab';
+import PterodactylSettingsTab from '../components/settings/PterodactylSettingsTab';
 import { useTranslation } from 'react-i18next';
 
-type TabType = 'general' | 'notifications' | 'api_keys' | 'server_engine' | 'system_health';
+type TabType =
+  | 'general'
+  | 'notifications'
+  | 'api_keys'
+  | 'server_engine'
+  | 'system_health'
+  | 'pterodactyl';
 
 const Settings = () => {
   const { t } = useTranslation();
@@ -199,6 +206,7 @@ const Settings = () => {
     { key: 'system_health', label: t('settings.tab_system_health') },
     { key: 'notifications', label: t('settings.tab_notifications') },
     { key: 'api_keys', label: t('settings.tab_api_keys') },
+    { key: 'pterodactyl', label: 'Pterodactyl' },
   ];
 
   const handleSaveEngineSettings = () => {
@@ -295,7 +303,9 @@ const Settings = () => {
               />
             )}
 
-            {!['general', 'server_engine', 'system_health'].includes(activeTab) && (
+            {activeTab === 'pterodactyl' && <PterodactylSettingsTab />}
+
+            {!['general', 'server_engine', 'system_health', 'pterodactyl'].includes(activeTab) && (
               <div className="py-20 flex flex-col items-center justify-center text-center animate-in fade-in zoom-in-95 duration-300">
                 <RefreshCw className="text-primary w-12 h-12 animate-spin-slow opacity-20 mb-4" />
                 <h3 className="text-xl font-bold text-white mb-2">

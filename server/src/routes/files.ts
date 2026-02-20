@@ -4,6 +4,8 @@ import db from '../db.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { strictLimiter } from '../middleware/rateLimiter.js';
 import { fileSystemService } from '../services/FileSystemService.js';
+import { pterodactylAdapter } from '../services/adapters/PterodactylAdapter.js';
+import { serverManager } from '../serverManager.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -52,9 +54,27 @@ router.get('/', async (req: Request, res: Response) => {
   const authReq = req as AuthenticatedRequest;
   try {
     const server = db
-      .prepare('SELECT id FROM servers WHERE id = ? AND user_id = ?')
-      .get(id as string, authReq.user.id);
+      .prepare('SELECT id, remote_id, remote_panel_id FROM servers WHERE id = ? AND user_id = ?')
+      .get(id as string, authReq.user.id) as any;
     if (!server) return res.status(404).json({ message: 'Server not found' });
+
+    if (server.remote_id && server.remote_panel_id) {
+      await serverManager.ensurePanelConfig(server.remote_panel_id);
+      const remoteFiles = await pterodactylAdapter.listFiles(
+        server.remote_panel_id,
+        server.remote_id,
+        (subDir as string) || ''
+      );
+      const files = remoteFiles.map((item: any) => ({
+        name: item.attributes.name,
+        isDirectory: item.attributes.is_directory || item.attributes.mimetype === 'inode/directory',
+        size: item.attributes.size,
+        path:
+          item.attributes.path ||
+          path.join((subDir as string) || '', item.attributes.name).replace(/\\/g, '/'),
+      }));
+      return res.json(files);
+    }
 
     const serverPath = fileSystemService.getInstancePath(id as string);
     const targetDir = path.join(serverPath, (subDir as string) || '');
@@ -81,9 +101,19 @@ router.get('/read', async (req: Request, res: Response) => {
   const authReq = req as AuthenticatedRequest;
   try {
     const server = db
-      .prepare('SELECT id FROM servers WHERE id = ? AND user_id = ?')
-      .get(id as string, authReq.user.id);
+      .prepare('SELECT id, remote_id, remote_panel_id FROM servers WHERE id = ? AND user_id = ?')
+      .get(id as string, authReq.user.id) as any;
     if (!server) return res.status(404).json({ message: 'Server not found' });
+
+    if (server.remote_id && server.remote_panel_id) {
+      await serverManager.ensurePanelConfig(server.remote_panel_id);
+      const content = await pterodactylAdapter.getFileContent(
+        server.remote_panel_id,
+        server.remote_id,
+        filePath as string
+      );
+      return res.json({ content });
+    }
 
     const serverPath = fileSystemService.getInstancePath(id as string);
     const targetPath = path.join(serverPath, filePath as string);
@@ -104,9 +134,20 @@ router.post('/write', strictLimiter, async (req: Request, res: Response) => {
   const authReq = req as AuthenticatedRequest;
   try {
     const server = db
-      .prepare('SELECT id FROM servers WHERE id = ? AND user_id = ?')
-      .get(id as string, authReq.user.id);
+      .prepare('SELECT id, remote_id, remote_panel_id FROM servers WHERE id = ? AND user_id = ?')
+      .get(id as string, authReq.user.id) as any;
     if (!server) return res.status(404).json({ message: 'Server not found' });
+
+    if (server.remote_id && server.remote_panel_id) {
+      await serverManager.ensurePanelConfig(server.remote_panel_id);
+      await pterodactylAdapter.writeFileContent(
+        server.remote_panel_id,
+        server.remote_id,
+        filePath,
+        content
+      );
+      return res.json({ success: true });
+    }
 
     const serverPath = fileSystemService.getInstancePath(id as string);
     const targetPath = path.join(serverPath, filePath);
@@ -127,9 +168,23 @@ router.delete('/', strictLimiter, async (req: Request, res: Response) => {
   const authReq = req as AuthenticatedRequest;
   try {
     const server = db
-      .prepare('SELECT id FROM servers WHERE id = ? AND user_id = ?')
-      .get(id as string, authReq.user.id);
+      .prepare('SELECT id, remote_id, remote_panel_id FROM servers WHERE id = ? AND user_id = ?')
+      .get(id as string, authReq.user.id) as any;
     if (!server) return res.status(404).json({ message: 'Server not found' });
+
+    if (server.remote_id && server.remote_panel_id) {
+      await serverManager.ensurePanelConfig(server.remote_panel_id);
+      // Pterodactyl delete takes a list of files or folder
+      const dir = path.dirname(filePath as string);
+      const file = path.basename(filePath as string);
+      await pterodactylAdapter.deleteFile(
+        server.remote_panel_id,
+        server.remote_id,
+        dir === '.' ? '/' : dir,
+        [file]
+      );
+      return res.json({ success: true });
+    }
 
     const serverPath = fileSystemService.getInstancePath(id as string);
     const targetPath = path.join(serverPath, filePath as string);
@@ -150,9 +205,22 @@ router.post('/mkdir', strictLimiter, async (req: Request, res: Response) => {
   const authReq = req as AuthenticatedRequest;
   try {
     const server = db
-      .prepare('SELECT id FROM servers WHERE id = ? AND user_id = ?')
-      .get(id as string, authReq.user.id);
+      .prepare('SELECT id, remote_id, remote_panel_id FROM servers WHERE id = ? AND user_id = ?')
+      .get(id as string, authReq.user.id) as any;
     if (!server) return res.status(404).json({ message: 'Server not found' });
+
+    if (server.remote_id && server.remote_panel_id) {
+      await serverManager.ensurePanelConfig(server.remote_panel_id);
+      const root = path.dirname(dirPath) === '.' ? '/' : path.dirname(dirPath);
+      const name = path.basename(dirPath);
+      await pterodactylAdapter.createDirectory(
+        server.remote_panel_id,
+        server.remote_id,
+        root,
+        name
+      );
+      return res.json({ success: true });
+    }
 
     const serverPath = fileSystemService.getInstancePath(id as string);
     const targetPath = path.join(serverPath, dirPath);
@@ -173,9 +241,20 @@ router.post('/rename', strictLimiter, async (req: Request, res: Response) => {
   const authReq = req as AuthenticatedRequest;
   try {
     const server = db
-      .prepare('SELECT id FROM servers WHERE id = ? AND user_id = ?')
-      .get(id as string, authReq.user.id);
+      .prepare('SELECT id, remote_id, remote_panel_id FROM servers WHERE id = ? AND user_id = ?')
+      .get(id as string, authReq.user.id) as any;
     if (!server) return res.status(404).json({ message: 'Server not found' });
+
+    if (server.remote_id && server.remote_panel_id) {
+      await serverManager.ensurePanelConfig(server.remote_panel_id);
+      const root = path.dirname(oldPath) === '.' ? '/' : path.dirname(oldPath);
+      const from = path.basename(oldPath);
+      const to = path.basename(newPath);
+      await pterodactylAdapter.renameFile(server.remote_panel_id, server.remote_id, root, [
+        { from, to },
+      ]);
+      return res.json({ success: true });
+    }
 
     const serverPath = fileSystemService.getInstancePath(id as string);
     const targetOld = path.join(serverPath, oldPath);

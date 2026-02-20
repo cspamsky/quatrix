@@ -8,6 +8,7 @@ import {
   Play,
   Square,
   Trash2,
+  Download,
 } from 'lucide-react';
 import { apiFetch } from '../utils/api';
 import { useEffect, useState, useCallback } from 'react';
@@ -22,6 +23,7 @@ import socket from '../utils/socket';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import ServerCard from '../components/ServerCard';
 import ServerRow from '../components/ServerRow';
+import PterodactylImportModal from '../components/modals/PterodactylImportModal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -41,6 +43,8 @@ interface Instance {
   workshop_map_name?: string;
   workshop_map_image?: string;
   isInstalled?: boolean;
+  remote_id?: string | null;
+  ip?: string | null;
 }
 
 const Instances = () => {
@@ -57,6 +61,7 @@ const Instances = () => {
   const [restartingId, setRestartingId] = useState<number | null>(null);
   const [startingId, setStartingId] = useState<number | null>(null);
   const [stoppingId, setStoppingId] = useState<number | null>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
     return (localStorage.getItem('instances_view_mode') as 'grid' | 'list') || 'grid';
@@ -505,6 +510,16 @@ const Instances = () => {
                 {t('instances.create_new')}
               </Button>
             )}
+            {hasPerm('servers.create') && (
+              <Button
+                onClick={() => setImportModalOpen(true)}
+                variant="ghost"
+                className="border-gray-800 hover:border-primary/50"
+                icon={<Download size={16} />}
+              >
+                Import
+              </Button>
+            )}
           </div>
         </header>
 
@@ -590,7 +605,7 @@ const Instances = () => {
                 <ServerCard
                   key={instance.id}
                   instance={instance}
-                  serverIp={serverIp}
+                  serverIp={instance.ip || serverIp}
                   copiedId={copiedId}
                   installingId={installingId}
                   startingId={startingId}
@@ -614,7 +629,7 @@ const Instances = () => {
                 <ServerRow
                   key={instance.id}
                   instance={instance}
-                  serverIp={serverIp}
+                  serverIp={instance.ip || serverIp}
                   isSelected={selectedIds.has(instance.id)}
                   onSelect={handleSelect}
                   installingId={installingId}
@@ -685,6 +700,11 @@ const Instances = () => {
           </div>
         </div>
       )}
+      <PterodactylImportModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onImported={() => fetchServers()}
+      />
     </div>
   );
 };

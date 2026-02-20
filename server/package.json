@@ -22,6 +22,7 @@
   "description": "",
   "dependencies": {
     "@types/tar": "^6.1.13",
+    "@types/ws": "^8.18.1",
     "adm-zip": "^0.5.16",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.6.0",
@@ -34,6 +35,7 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
     "mysql2": "^3.17.1",
+    "node-fetch": "^3.3.2",
     "otplib": "^13.3.0",
     "qrcode": "^1.5.4",
     "quatrix-root": "file:..",
@@ -43,6 +45,8 @@
     "srcds-rcon": "^2.2.1",
     "systeminformation": "^5.30.8",
     "tar": "^7.5.7",
+    "uuid": "^13.0.0",
+    "ws": "^8.19.0",
     "zod": "^4.3.5"
   },
   "devDependencies": {
@@ -57,7 +61,9 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.0.0",
     "@types/node": "^25.0.5",
+    "@types/node-fetch": "^2.6.13",
     "@types/qrcode": "^1.5.6",
+    "@types/uuid": "^10.0.0",
     "jest": "^29.7.0",
     "rimraf": "^6.1.2",
     "ts-jest": "^29.1.2",

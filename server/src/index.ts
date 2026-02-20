@@ -32,6 +32,8 @@ import profileRouter from './routes/profile.js';
 import steamRouter from './routes/steam.js';
 import analyticsRouter from './routes/analytics.js';
 import usersRouter from './routes/users.js';
+import pterodactylRouter from './routes/pterodactyl.js';
+import { pterodactylConsoleBridge } from './services/adapters/PterodactylConsoleBridge.js';
 import { databaseManager } from './services/DatabaseManager.js';
 import { taskService } from './services/TaskService.js';
 import { monitoringService } from './services/MonitoringService.js';
@@ -65,6 +67,7 @@ if (serverManager && typeof serverManager.setSocketIO === 'function') {
 }
 
 taskService.setSocketIO(io);
+pterodactylConsoleBridge.setIo(io);
 
 const PORT = process.env.PORT || 3001;
 const isProduction = process.env.NODE_ENV === 'production';
@@ -147,6 +150,7 @@ app.use('/api/profile', authenticateToken, profileRouter);
 app.use('/api/steam', authenticateToken, steamRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/pterodactyl', pterodactylRouter);
 
 // --- Serve Frontend in Production ---
 if (isProduction) {
@@ -301,6 +305,23 @@ io.on('connection', (socket: Socket) => {
 
   // Send active tasks
   socket.emit('active_tasks', taskService.getTasks());
+
+  socket.on('join_server', async (serverId: string) => {
+    socket.join(`console:${serverId}`);
+
+    // Remote server handling
+    const server = db
+      .prepare('SELECT remote_id, remote_panel_id FROM servers WHERE id = ?')
+      .get(serverId) as any;
+    if (server?.remote_id && server?.remote_panel_id) {
+      console.log(`[SOCKET] User joined remote server ${serverId}, bridging console...`);
+      await pterodactylConsoleBridge.connect(serverId, server.remote_panel_id, server.remote_id);
+    }
+  });
+
+  socket.on('leave_server', (serverId: string) => {
+    socket.leave(`console:${serverId}`);
+  });
 
   socket.on('disconnect', () => {
     // disconnected logic

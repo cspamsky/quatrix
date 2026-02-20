@@ -304,6 +304,24 @@ try {
   /* ignore */
 }
 
+try {
+  db.exec(`ALTER TABLE servers ADD COLUMN remote_id TEXT`);
+} catch {
+  /* ignore */
+}
+
+try {
+  db.exec(`ALTER TABLE servers ADD COLUMN remote_panel_id TEXT`);
+} catch {
+  /* ignore */
+}
+
+try {
+  db.exec(`ALTER TABLE servers ADD COLUMN ip TEXT`);
+} catch {
+  /* ignore */
+}
+
 // Create settings table
 db.exec(`
   CREATE TABLE IF NOT EXISTS settings (
@@ -311,6 +329,24 @@ db.exec(`
     value TEXT
   )
 `);
+
+// Create Pterodactyl Panels table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS pterodactyl_panels (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    base_url TEXT NOT NULL,
+    api_key TEXT NOT NULL,
+    client_api_key TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+try {
+  db.exec(`ALTER TABLE pterodactyl_panels ADD COLUMN client_api_key TEXT`);
+} catch {
+  // Column already exists
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS player_identities (

@@ -170,8 +170,15 @@ const Console = () => {
       }
     });
 
+    if (id) {
+      socket.emit('join_server', id);
+    }
+
     return () => {
       clearInterval(serverDataInterval);
+      if (id) {
+        socket.emit('leave_server', id);
+      }
       socket.off(eventName);
       socket.off('status_update');
     };
