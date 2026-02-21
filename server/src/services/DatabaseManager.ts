@@ -279,7 +279,7 @@ export class DatabaseManager {
    * isolation. It also performs strict validation to only allow SELECT queries
    * and enforces a default LIMIT to prevent DoS.
    */
-  async executeQuery(serverId: string | number, query: string, params: unknown[] = []) {
+  async executeQuery(serverId: string | number, query: string, params: any[] = []) {
     const id = serverId.toString();
     const creds = await this.getDatabaseCredentials(id);
     if (!creds) throw new Error('No database found for this server.');
