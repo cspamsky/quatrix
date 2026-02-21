@@ -21,7 +21,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@types/tar": "^6.1.13",
+    "@types/tar": "^7.0.87",
     "@types/ws": "^8.18.1",
     "adm-zip": "^0.5.16",
     "bcryptjs": "^3.0.3",
@@ -44,7 +44,7 @@
     "socket.io": "^4.8.3",
     "srcds-rcon": "^2.2.1",
     "systeminformation": "^5.30.8",
-    "tar": "^7.5.8",
+    "tar": "^7.5.9",
     "uuid": "^13.0.0",
     "ws": "^8.19.0",
     "zod": "^4.3.5"
