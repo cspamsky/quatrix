@@ -74,9 +74,11 @@ if [ -d "$INSTALL_DIR/.git" ]; then
     info "Existing Quatrix repository detected in $INSTALL_DIR. Updating..."
     cd "$INSTALL_DIR"
     sudo -u quatrix git pull origin main || warn "Could not pull latest changes. Continuing with local files."
+elif [ "$(ls -A $INSTALL_DIR 2>/dev/null)" ]; then
+    info "Directory $INSTALL_DIR is not empty. Skipping clone and using existing files."
+    cd "$INSTALL_DIR"
 else
     info "Cloning Quatrix from GitHub into $INSTALL_DIR..."
-    # Clone as root into the directory, then fix perms
     git clone $REPO_URL "$INSTALL_DIR"
     chown -R quatrix:quatrix "$INSTALL_DIR"
     cd "$INSTALL_DIR"
