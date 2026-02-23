@@ -250,9 +250,10 @@ class ServerManager {
         await pterodactylAdapter.setPowerState(server.remote_panel_id, server.remote_id, 'start');
         this.updateStatusStmt.run('STARTING', null, id);
         return;
-      } catch (error: any) {
-        console.error('[SERVER] Pterodactyl Remote Startup Failed:', error.message);
-        throw new Error(`Remote panel error: ${error.message}`);
+      } catch (error: unknown) {
+        const err = error as Error;
+        console.error('[SERVER] Pterodactyl Remote Startup Failed:', err.message);
+        throw new Error(`Remote panel error: ${err.message}`);
       }
     }
 
@@ -562,9 +563,10 @@ class ServerManager {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         if (!rcon) {
-          console.log(`[RCON] Connecting to 127.0.0.1:${rconPort}...`);
+          const rconHost = server?.ip && server.ip !== '0.0.0.0' ? server.ip : '127.0.0.1';
+          console.log(`[RCON] Connecting to ${rconHost}:${rconPort}...`);
           const rconClient = (await Rcon.connect({
-            host: '127.0.0.1',
+            host: rconHost,
             port: parseInt(rconPort.toString()),
             password: server?.rcon_password || '',
             timeout: 5000,
@@ -593,7 +595,9 @@ class ServerManager {
    * Helper to ensure panel config is registered in Adapter
    */
   public async ensurePanelConfig(panelId: string) {
-    const panel = db.prepare('SELECT * FROM pterodactyl_panels WHERE id = ?').get(panelId) as any;
+    const panel = db.prepare('SELECT * FROM pterodactyl_panels WHERE id = ?').get(panelId) as
+      | { id: string; base_url: string; api_key: string; client_api_key: string }
+      | undefined;
     if (!panel) throw new Error(`Pterodactyl Panel ${panelId} not found in database.`);
 
     pterodactylAdapter.registerPanel(panelId, {
@@ -608,7 +612,12 @@ class ServerManager {
    */
   private async loadPterodactylPanels() {
     try {
-      const panels = db.prepare('SELECT * FROM pterodactyl_panels').all() as any[];
+      const panels = db.prepare('SELECT * FROM pterodactyl_panels').all() as Array<{
+        id: string;
+        base_url: string;
+        api_key: string;
+        client_api_key: string;
+      }>;
       console.log(`[SYSTEM] Registering ${panels.length} Pterodactyl panels...`);
       for (const panel of panels) {
         pterodactylAdapter.registerPanel(panel.id, {
@@ -617,8 +626,9 @@ class ServerManager {
           clientApiKey: panel.client_api_key,
         });
       }
-    } catch (error: any) {
-      console.error('[SYSTEM] Failed to load Pterodactyl panels:', error.message);
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('[SYSTEM] Failed to load Pterodactyl panels:', err.message);
     }
   }
 

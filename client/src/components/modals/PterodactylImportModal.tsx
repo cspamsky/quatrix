@@ -84,7 +84,7 @@ const PterodactylImportModal = ({
         const err = await res.json();
         toast.error(err.message || 'Failed to list servers');
       }
-    } catch (error) {
+    } catch {
       toast.error('Panel connection failed');
     } finally {
       setLoading(false);
@@ -119,7 +119,7 @@ const PterodactylImportModal = ({
         const err = await res.json();
         toast.error(err.message || 'Import failed');
       }
-    } catch (error) {
+    } catch {
       toast.error('Import error');
     } finally {
       setImportingId(null);

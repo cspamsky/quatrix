@@ -576,7 +576,9 @@ router.post(
       }
 
       let sql = `SELECT ${selectedColumns} FROM ${databaseManager.escapeIdentifier(table)}`;
-      const queryParams: unknown[] = Array.isArray(params) ? params : [];
+      const queryParams: (string | number | boolean | null)[] = Array.isArray(params)
+        ? (params as (string | number | boolean | null)[])
+        : [];
 
       // Build WHERE clause from structured filters using parameter binding
       if (filters && typeof filters === 'object') {
@@ -616,11 +618,11 @@ router.post(
             }
 
             whereClauses.push(`${column} ${op.toUpperCase()} ?`);
-            queryParams.push(condition.value);
+            queryParams.push(condition.value as string | number | boolean | null);
           } else {
             // Simple equality filter: { filters: { column: value } }
             whereClauses.push(`${column} = ?`);
-            queryParams.push(rawCondition);
+            queryParams.push(rawCondition as string | number | boolean | null);
           }
         }
 

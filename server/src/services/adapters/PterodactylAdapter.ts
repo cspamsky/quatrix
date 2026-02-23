@@ -1,5 +1,4 @@
 import fetch from 'node-fetch';
-import { logActivity } from '../../index.js';
 
 interface PterodactylConfig {
   baseUrl: string;
@@ -13,6 +12,26 @@ export interface PterodactylServer {
   name: string;
   node: string;
   status: string | null;
+}
+
+interface PterodactylResponse<T> {
+  object: string;
+  data: T;
+  meta?: {
+    pagination?: {
+      total: number;
+      count: number;
+      per_page: number;
+      current_page: number;
+      total_pages: number;
+    };
+  };
+}
+
+interface GenericAttributes {
+  identifier: string;
+  uuid: string;
+  [key: string]: unknown;
 }
 
 export class PterodactylAdapter {
@@ -50,11 +69,11 @@ export class PterodactylAdapter {
   /**
    * Generic API request helper
    */
-  private async request<T = any>(
+  private async request<T>(
     panelId: string,
     endpoint: string,
     method: string = 'GET',
-    body?: any,
+    body?: unknown,
     apiType: 'client' | 'application' = 'client'
   ): Promise<T> {
     const config = this.configs.get(panelId);
@@ -83,7 +102,7 @@ export class PterodactylAdapter {
         Accept: isRaw ? 'text/plain' : 'application/json',
       },
       body: body ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
-    } as any);
+    } as import('node-fetch').RequestInit);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -97,7 +116,7 @@ export class PterodactylAdapter {
     }
 
     const text = await response.text();
-    if (isRaw) return text as any;
+    if (isRaw) return text as unknown as T;
     return (text ? JSON.parse(text) : {}) as T;
   }
 
@@ -105,7 +124,9 @@ export class PterodactylAdapter {
    * List all servers accessible by the API key
    * Smart Fallback: Tries Application API first, then Client API if unauthorized
    */
-  public async listServers(panelId: string): Promise<any> {
+  public async listServers(
+    panelId: string
+  ): Promise<PterodactylResponse<{ attributes: GenericAttributes }[]>> {
     const config = this.configs.get(panelId);
     if (!config) throw new Error(`Pterodactyl Panel ${panelId} not configured.`);
 
@@ -115,9 +136,11 @@ export class PterodactylAdapter {
     if (likelyClient) {
       console.log(`[Pterodactyl] Detected Client Key prefix. Trying Client API list...`);
       try {
-        const response = await this.request(panelId, '', 'GET', undefined, 'client');
+        const response = await this.request<
+          PterodactylResponse<{ attributes: GenericAttributes }[]>
+        >(panelId, '', 'GET', undefined, 'client');
         return response;
-      } catch (err) {
+      } catch {
         console.warn(
           `[Pterodactyl] Client API list failed, trying Application API as last resort...`
         );
@@ -126,23 +149,30 @@ export class PterodactylAdapter {
 
     try {
       // Endpoint for Application API is /servers
-      return await this.request(
+      return await this.request<PterodactylResponse<{ attributes: GenericAttributes }[]>>(
         panelId,
         '/servers?include=allocations',
         'GET',
         undefined,
         'application'
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       // Fallback to Client API listing if Application API fails with Auth error
-      if (error.message.includes('401') || error.message.includes('403')) {
+      if (err.message.includes('401') || err.message.includes('403')) {
         console.log(
-          `[Pterodactyl] Application API list failed (${error.message}). Falling back to Client API...`
+          `[Pterodactyl] Application API list failed (${err.message}). Falling back to Client API...`
         );
         // Endpoint for Client API list is just the root
-        return await this.request(panelId, '', 'GET', undefined, 'client');
+        return await this.request<PterodactylResponse<{ attributes: GenericAttributes }[]>>(
+          panelId,
+          '',
+          'GET',
+          undefined,
+          'client'
+        );
       }
-      throw error;
+      throw err;
     }
   }
 
@@ -168,7 +198,10 @@ export class PterodactylAdapter {
    * Get remote server details (Client API)
    */
   public async getServerDetails(panelId: string, serverId: string) {
-    return this.request(panelId, `/servers/${serverId}`);
+    return this.request<PterodactylResponse<{ attributes: GenericAttributes }>>(
+      panelId,
+      `/servers/${serverId}`
+    );
   }
 
   /**
@@ -178,7 +211,7 @@ export class PterodactylAdapter {
     panelId: string,
     serverId: string
   ): Promise<{ token: string; socket: string }> {
-    const response = await this.request(
+    const response = await this.request<PterodactylResponse<{ token: string; socket: string }>>(
       panelId,
       `/servers/${serverId}/websocket`,
       'GET',
@@ -192,15 +225,44 @@ export class PterodactylAdapter {
    * Get resource usage of a remote server
    */
   public async getResources(panelId: string, serverId: string) {
-    return this.request(panelId, `/servers/${serverId}/resources`);
+    return this.request<PterodactylResponse<{ attributes: Record<string, unknown> }>>(
+      panelId,
+      `/servers/${serverId}/resources`
+    );
   }
 
   /**
    * List files in a directory
    */
-  public async listFiles(panelId: string, serverId: string, subPath: string = ''): Promise<any> {
+  public async listFiles(
+    panelId: string,
+    serverId: string,
+    subPath: string = ''
+  ): Promise<
+    {
+      attributes: {
+        name: string;
+        is_directory?: boolean;
+        mimetype?: string;
+        size: number;
+        path?: string;
+      };
+    }[]
+  > {
     const encodedPath = encodeURIComponent(subPath || '/');
-    const response = await this.request(
+    const response = await this.request<
+      PterodactylResponse<
+        {
+          attributes: {
+            name: string;
+            is_directory?: boolean;
+            mimetype?: string;
+            size: number;
+            path?: string;
+          };
+        }[]
+      >
+    >(
       panelId,
       `/servers/${serverId}/files/list?directory=${encodedPath}`,
       'GET',

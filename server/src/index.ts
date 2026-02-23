@@ -3,7 +3,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server, type Socket } from 'socket.io';
 import cors from 'cors';
-import si from 'systeminformation';
+
 import db from './db.js';
 import { serverManager } from './serverManager.js';
 import { apiLimiter } from './middleware/rateLimiter.js';
@@ -262,7 +262,7 @@ io.on('connection', (socket: Socket) => {
     // Remote server handling
     const server = db
       .prepare('SELECT remote_id, remote_panel_id FROM servers WHERE id = ?')
-      .get(serverId) as any;
+      .get(serverId) as { remote_id: string | null; remote_panel_id: string | null } | undefined;
     if (server?.remote_id && server?.remote_panel_id) {
       console.log(`[SOCKET] User joined remote server ${serverId}, bridging console...`);
       await pterodactylConsoleBridge.connect(serverId, server.remote_panel_id, server.remote_id);

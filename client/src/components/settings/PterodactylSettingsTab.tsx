@@ -58,7 +58,7 @@ const PterodactylSettingsTab = () => {
         const err = await res.json();
         toast.error(err.message || 'Failed to register panel');
       }
-    } catch (error) {
+    } catch {
       toast.error('Connection error');
     } finally {
       setAdding(false);
@@ -79,7 +79,7 @@ const PterodactylSettingsTab = () => {
         toast.success('Panel removed');
         fetchPanels();
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete');
     }
   };

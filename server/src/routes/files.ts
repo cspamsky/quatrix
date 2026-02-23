@@ -55,7 +55,9 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const server = db
       .prepare('SELECT id, remote_id, remote_panel_id FROM servers WHERE id = ? AND user_id = ?')
-      .get(id as string, authReq.user.id) as any;
+      .get(id as string, authReq.user.id) as
+      | { id: number; remote_id: string | null; remote_panel_id: string | null }
+      | undefined;
     if (!server) return res.status(404).json({ message: 'Server not found' });
 
     if (server.remote_id && server.remote_panel_id) {
@@ -65,14 +67,25 @@ router.get('/', async (req: Request, res: Response) => {
         server.remote_id,
         (subDir as string) || ''
       );
-      const files = remoteFiles.map((item: any) => ({
-        name: item.attributes.name,
-        isDirectory: item.attributes.is_directory || item.attributes.mimetype === 'inode/directory',
-        size: item.attributes.size,
-        path:
-          item.attributes.path ||
-          path.join((subDir as string) || '', item.attributes.name).replace(/\\/g, '/'),
-      }));
+      const files = remoteFiles.map(
+        (item: {
+          attributes: {
+            name: string;
+            is_directory?: boolean;
+            mimetype?: string;
+            size: number;
+            path?: string;
+          };
+        }) => ({
+          name: item.attributes.name,
+          isDirectory:
+            item.attributes.is_directory || item.attributes.mimetype === 'inode/directory',
+          size: item.attributes.size,
+          path:
+            item.attributes.path ||
+            path.join((subDir as string) || '', item.attributes.name).replace(/\\/g, '/'),
+        })
+      );
       return res.json(files);
     }
 
@@ -102,7 +115,9 @@ router.get('/read', async (req: Request, res: Response) => {
   try {
     const server = db
       .prepare('SELECT id, remote_id, remote_panel_id FROM servers WHERE id = ? AND user_id = ?')
-      .get(id as string, authReq.user.id) as any;
+      .get(id as string, authReq.user.id) as
+      | { id: number; remote_id: string | null; remote_panel_id: string | null }
+      | undefined;
     if (!server) return res.status(404).json({ message: 'Server not found' });
 
     if (server.remote_id && server.remote_panel_id) {
@@ -135,7 +150,9 @@ router.post('/write', strictLimiter, async (req: Request, res: Response) => {
   try {
     const server = db
       .prepare('SELECT id, remote_id, remote_panel_id FROM servers WHERE id = ? AND user_id = ?')
-      .get(id as string, authReq.user.id) as any;
+      .get(id as string, authReq.user.id) as
+      | { id: number; remote_id: string | null; remote_panel_id: string | null }
+      | undefined;
     if (!server) return res.status(404).json({ message: 'Server not found' });
 
     if (server.remote_id && server.remote_panel_id) {
@@ -169,7 +186,9 @@ router.delete('/', strictLimiter, async (req: Request, res: Response) => {
   try {
     const server = db
       .prepare('SELECT id, remote_id, remote_panel_id FROM servers WHERE id = ? AND user_id = ?')
-      .get(id as string, authReq.user.id) as any;
+      .get(id as string, authReq.user.id) as
+      | { id: number; remote_id: string | null; remote_panel_id: string | null }
+      | undefined;
     if (!server) return res.status(404).json({ message: 'Server not found' });
 
     if (server.remote_id && server.remote_panel_id) {
@@ -206,7 +225,9 @@ router.post('/mkdir', strictLimiter, async (req: Request, res: Response) => {
   try {
     const server = db
       .prepare('SELECT id, remote_id, remote_panel_id FROM servers WHERE id = ? AND user_id = ?')
-      .get(id as string, authReq.user.id) as any;
+      .get(id as string, authReq.user.id) as
+      | { id: number; remote_id: string | null; remote_panel_id: string | null }
+      | undefined;
     if (!server) return res.status(404).json({ message: 'Server not found' });
 
     if (server.remote_id && server.remote_panel_id) {
@@ -242,7 +263,9 @@ router.post('/rename', strictLimiter, async (req: Request, res: Response) => {
   try {
     const server = db
       .prepare('SELECT id, remote_id, remote_panel_id FROM servers WHERE id = ? AND user_id = ?')
-      .get(id as string, authReq.user.id) as any;
+      .get(id as string, authReq.user.id) as
+      | { id: number; remote_id: string | null; remote_panel_id: string | null }
+      | undefined;
     if (!server) return res.status(404).json({ message: 'Server not found' });
 
     if (server.remote_id && server.remote_panel_id) {

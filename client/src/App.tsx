@@ -44,7 +44,7 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 1000 * 60, // 1 minute
       refetchOnWindowFocus: false,
-      retry: (failureCount, error: any) => {
+      retry: (failureCount, error: Error) => {
         // Don't retry if it's an auth error
         if (error?.message === 'AUTH_EXPIRED') return false;
         return failureCount < 3;

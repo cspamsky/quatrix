@@ -1,6 +1,6 @@
 import { WebSocket } from 'ws';
 import { pterodactylAdapter } from './PterodactylAdapter.js';
-import { serverManager } from '../../serverManager.js';
+
 import { Server as SocketServer } from 'socket.io';
 
 class PterodactylConsoleBridge {
@@ -54,7 +54,7 @@ class PterodactylConsoleBridge {
               });
             }
           }
-        } catch (e) {
+        } catch {
           // Non-JSON or handleable errors
         }
       });
@@ -69,10 +69,11 @@ class PterodactylConsoleBridge {
       });
 
       this.activeConnections.set(serverId, ws);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       console.error(
         `[Pterodactyl Bridge] Failed to establish connection for ${serverId}:`,
-        error.message
+        err.message
       );
     }
   }

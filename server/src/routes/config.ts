@@ -125,15 +125,20 @@ router.get('/system-info', async (req: Request, res: Response) => {
     const [os, mem, cpu, systemStatus, networkInterfaces] = await Promise.all([
       si.osInfo().catch((e) => {
         console.error('[SI] OS Error:', e);
-        return { distro: 'Generic', release: 'OS', hostname: 'unknown', arch: 'x64' } as any;
+        return {
+          distro: 'Generic',
+          release: 'OS',
+          hostname: 'unknown',
+          arch: 'x64',
+        } as si.Systeminformation.OsData;
       }),
       si.mem().catch((e) => {
         console.error('[SI] MEM Error:', e);
-        return { total: 0 } as any;
+        return { total: 0 } as si.Systeminformation.MemData;
       }),
       si.cpu().catch((e) => {
         console.error('[SI] CPU Error:', e);
-        return { manufacturer: '', brand: '' } as any;
+        return { manufacturer: '', brand: '' } as si.Systeminformation.CpuData;
       }),
       systemService.getSystemStatus().catch((e) => {
         console.error('[SYSTEM] Status Error:', e);
@@ -164,7 +169,7 @@ router.get('/system-info', async (req: Request, res: Response) => {
     let totalMemMB = Math.round((mem.total || 0) / (1024 * 1024));
     if (totalMemMB === 0 && process.platform === 'win32') {
       try {
-        const osMem = (os as any).totalmem;
+        const osMem = (os as si.Systeminformation.OsData & { totalmem?: number }).totalmem;
         if (osMem) totalMemMB = Math.round(osMem / (1024 * 1024));
       } catch {
         // Fallback to 0 if totalmem is not available

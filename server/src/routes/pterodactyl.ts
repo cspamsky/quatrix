@@ -4,6 +4,7 @@ import { authenticateToken } from '../middleware/auth.js';
 import { authorize } from '../middleware/authorize.js';
 import { pterodactylAdapter } from '../services/adapters/PterodactylAdapter.js';
 import { v4 as uuidv4 } from 'uuid';
+import type { AuthenticatedRequest } from '../types/index.js';
 
 const router = Router();
 
@@ -21,7 +22,7 @@ router.get('/panels', authorize('users.manage'), (req, res) => {
       )
       .all();
     res.json(panels);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Failed to fetch panels' });
   }
 });
@@ -42,7 +43,7 @@ router.post('/panels', authorize('users.manage'), (req, res) => {
       'INSERT INTO pterodactyl_panels (id, name, base_url, api_key, client_api_key) VALUES (?, ?, ?, ?, ?)'
     ).run(id, name, base_url, api_key, client_api_key || null);
     res.json({ id, name, base_url });
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Failed to register panel' });
   }
 });
@@ -55,7 +56,7 @@ router.delete('/panels/:id', authorize('users.manage'), (req, res) => {
   try {
     db.prepare('DELETE FROM pterodactyl_panels WHERE id = ?').run(id);
     res.json({ success: true });
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Failed to delete panel' });
   }
 });
@@ -67,7 +68,9 @@ router.delete('/panels/:id', authorize('users.manage'), (req, res) => {
 router.get('/panels/:id/servers', authorize('users.manage'), async (req, res) => {
   const { id } = req.params;
   try {
-    const panel = db.prepare('SELECT * FROM pterodactyl_panels WHERE id = ?').get(id) as any;
+    const panel = db.prepare('SELECT * FROM pterodactyl_panels WHERE id = ?').get(id) as
+      | { id: string; base_url: string; api_key: string; client_api_key: string }
+      | undefined;
     if (!panel) return res.status(404).json({ message: 'Panel not found' });
 
     pterodactylAdapter.registerPanel(panel.id, {
@@ -77,7 +80,9 @@ router.get('/panels/:id/servers', authorize('users.manage'), async (req, res) =>
     });
 
     const response = await pterodactylAdapter.listServers(panel.id);
-    const remoteServers = response.data || [];
+    const remoteServers = (response.data || []) as {
+      attributes: { name: string; identifier: string; uuid: string };
+    }[];
 
     // Get imported server IDs for this panel to mark them in the UI
     const importedServers = db
@@ -85,17 +90,25 @@ router.get('/panels/:id/servers', authorize('users.manage'), async (req, res) =>
       .all(id) as { remote_id: string }[];
     const importedIds = new Set(importedServers.map((s) => s.remote_id));
 
-    const enrichedServers = remoteServers.map((s: any) => {
-      if (!s || !s.attributes) return s;
-      return {
-        ...s,
-        is_imported: importedIds.has(s.attributes.identifier) || importedIds.has(s.attributes.uuid),
-      };
-    });
+    const enrichedServers = remoteServers.map(
+      (s: { attributes?: { identifier: string; uuid: string } }) => {
+        if (!s || !s.attributes) return s;
+        return {
+          ...s,
+          is_imported:
+            importedIds.has(s.attributes.identifier) || importedIds.has(s.attributes.uuid),
+        };
+      }
+    );
 
     res.json(enrichedServers);
-  } catch (error: any) {
-    const isAuthError = error.message.includes('401') || error.message.includes('Unauthorized');
+  } catch (errorValue: unknown) {
+    const error = errorValue as {
+      message: string;
+      response?: { data: unknown };
+      toString: () => string;
+    };
+    const isAuthError = error.message?.includes('401') || error.message?.includes('Unauthorized');
     const helpMessage = isAuthError
       ? 'Unauthorized. Please check your API keys. Make sure to include the "ptla_" or "ptlc_" prefix.'
       : error.message || 'Failed to list remote servers';
@@ -122,7 +135,7 @@ router.get('/panels/:id/servers', authorize('users.manage'), async (req, res) =>
  */
 router.post('/import', authorize('users.manage'), async (req, res) => {
   const { panel_id, remote_id, name, port, ip } = req.body;
-  const user_id = (req as any).user.id;
+  const user_id = (req as AuthenticatedRequest).user.id;
 
   if (!panel_id || !remote_id || !name || !port) {
     return res.status(400).json({ message: 'Missing required fields' });
@@ -154,8 +167,9 @@ router.post('/import', authorize('users.manage'), async (req, res) => {
 
     const result = stmt.run(user_id, name, port, ip || null, remote_id, panel_id);
     res.json({ id: result.lastInsertRowid, name, remote_id });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message || 'Failed to import server' });
+  } catch (error: unknown) {
+    const err = error as Error;
+    res.status(500).json({ message: err.message || 'Failed to import server' });
   }
 });
 
