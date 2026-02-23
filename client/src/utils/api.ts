@@ -17,10 +17,17 @@ export const apiFetch = async (url: string, options: RequestInit = {}) => {
 
     const isLoginEndpoint = url.includes('/api/login');
 
-    if (response.status === 401 && !isLoginEndpoint) {
+    if ((response.status === 401 || response.status === 403) && !isLoginEndpoint) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      // Use window.location.replace to avoid back button issues and force reload
       window.location.href = '/login';
+      throw new Error('AUTH_EXPIRED');
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `API_ERROR_${response.status}`);
     }
 
     return response;

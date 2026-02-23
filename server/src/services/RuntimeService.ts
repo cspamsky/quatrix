@@ -38,6 +38,7 @@ export interface InstanceOptions {
   game_type?: number;
   game_mode?: number;
   game_alias?: string | null;
+  ip?: string;
 }
 
 class RuntimeService {

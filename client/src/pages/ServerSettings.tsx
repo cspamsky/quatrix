@@ -1,7 +1,18 @@
 import { apiFetch } from '../utils/api';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Server, MapPin, Users, Lock, Key, Shield, Globe } from 'lucide-react';
+import {
+  ArrowLeft,
+  Save,
+  Server,
+  MapPin,
+  Users,
+  Lock,
+  Key,
+  Shield,
+  Globe,
+  Network,
+} from 'lucide-react';
 import { SERVER_REGIONS } from '../config/regions';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +41,8 @@ interface ServerData {
   cpu_priority: number;
   ram_limit: number;
   restart_policy?: string;
+  ip?: string;
+  interfaces?: { name: string; ip: string }[];
 }
 
 const ServerSettings = () => {
@@ -56,17 +69,26 @@ const ServerSettings = () => {
 
   const fetchServerData = async () => {
     try {
-      const [srvResponse, dbResponse] = await Promise.all([
+      const [srvResponse, , infoResponse] = await Promise.allSettled([
         apiFetch(`/api/servers/${id}`),
         apiFetch(`/api/servers/${id}/database`),
+        apiFetch('/api/system-info'),
       ]);
 
-      if (srvResponse.ok) {
-        const data = await srvResponse.json();
-        setServer(data);
-      }
-      if (dbResponse.ok) {
-        // Database credentials are now managed in a dedicated page
+      if (
+        srvResponse.status === 'fulfilled' &&
+        (srvResponse as PromiseFulfilledResult<Response>).value.ok
+      ) {
+        const data = await (srvResponse as PromiseFulfilledResult<Response>).value.json();
+        let interfaces = [];
+        if (
+          infoResponse.status === 'fulfilled' &&
+          (infoResponse as PromiseFulfilledResult<Response>).value.ok
+        ) {
+          const info = await (infoResponse as PromiseFulfilledResult<Response>).value.json();
+          interfaces = info.interfaces || [];
+        }
+        setServer({ ...data, interfaces });
       }
     } catch (error) {
       console.error('Failed to fetch server:', error);
@@ -290,6 +312,51 @@ const ServerSettings = () => {
                     placeholder="-tickrate 128 +sv_infinite_ammo 1..."
                     disabled={!canEdit}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-400">
+                    {t('createInstance.bind_ip')}
+                  </label>
+                  <div className="space-y-2">
+                    {server.interfaces && server.interfaces.length > 0 ? (
+                      <div className="relative group/ip">
+                        <input
+                          type="text"
+                          value={server.ip || ''}
+                          onChange={(e) => setServer({ ...server, ip: e.target.value })}
+                          onFocus={(e) => e.target.select()}
+                          className="w-full px-5 py-3 pr-44 bg-black/20 border border-gray-800 rounded-xl text-white font-mono focus:border-primary outline-none transition-all disabled:opacity-50"
+                          placeholder={t('createInstance.bind_ip_placeholder')}
+                          disabled={!canEdit}
+                        />
+                        <div className="absolute right-1.5 top-1.5 bottom-1.5 w-40">
+                          <CustomSelect
+                            options={server.interfaces.map((iface) => ({
+                              value: iface.ip,
+                              label: `${iface.name}: ${iface.ip}`,
+                            }))}
+                            value={server.ip || ''}
+                            onChange={(val) => setServer({ ...server, ip: String(val) })}
+                            placeholder={t('common.select') || 'Select'}
+                            icon={<Network className="w-4 h-4" />}
+                            disabled={!canEdit}
+                            size="sm"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        value={server.ip || ''}
+                        onChange={(e) => setServer({ ...server, ip: e.target.value })}
+                        onFocus={(e) => e.target.select()}
+                        className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono focus:border-primary outline-none transition-all disabled:opacity-50"
+                        placeholder={t('createInstance.bind_ip_placeholder')}
+                        disabled={!canEdit}
+                      />
+                    )}
+                  </div>
                 </div>
 
                 {/* Performance Orchestration */}

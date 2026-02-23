@@ -110,6 +110,7 @@ export const createServerSchema = z.object({
   ram_limit: z.number().int().min(0).optional().default(0),
   restart_policy: z.string().optional().default('on_failure'),
   auto_db_injection: z.number().int().min(0).max(1).optional().default(0),
+  ip: z.string().optional(),
 });
 
 // Middleware for this router
@@ -275,6 +276,7 @@ router.put('/:id', authorize('servers.update'), (req: Request, res: Response) =>
     ram_limit,
     restart_policy,
     auto_db_injection,
+    ip,
   } = req.body as UpdateServerBody;
 
   try {
@@ -289,7 +291,7 @@ router.put('/:id', authorize('servers.update'), (req: Request, res: Response) =>
           rcon_password = ?, vac_enabled = ?, gslt_token = ?, steam_api_key = ?,
           game_type = ?, game_mode = ?, tickrate = ?, game_alias = ?,
           hibernate = ?, validate_files = ?, additional_args = ?,
-          cpu_priority = ?, ram_limit = ?, restart_policy = ?, auto_db_injection = ?
+          cpu_priority = ?, ram_limit = ?, restart_policy = ?, auto_db_injection = ?, ip = ?
       WHERE id = ?
     `
     ).run(
@@ -313,6 +315,7 @@ router.put('/:id', authorize('servers.update'), (req: Request, res: Response) =>
       ram_limit || 0,
       restart_policy || 'on_failure',
       auto_db_injection || 0,
+      ip || '0.0.0.0',
       id as string
     );
 
@@ -366,6 +369,7 @@ router.post(
         ram_limit,
         restart_policy,
         auto_db_injection,
+        ip,
       } = result.data;
 
       const result_count = db
@@ -383,9 +387,9 @@ router.post(
         map, max_players, password, gslt_token, steam_api_key, 
         vac_enabled, game_type, game_mode, tickrate, auto_start,
         game_alias, hibernate, validate_files, additional_args,
-        cpu_priority, ram_limit, restart_policy, auto_db_injection
+        cpu_priority, ram_limit, restart_policy, auto_db_injection, ip
       )
-      VALUES (?, ?, ?, 'OFFLINE', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, 'OFFLINE', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
         )
         .run(
@@ -410,7 +414,8 @@ router.post(
           cpu_priority || 0,
           ram_limit || 0,
           restart_policy || 'on_failure',
-          auto_db_injection || 0
+          auto_db_injection || 0,
+          ip || '0.0.0.0'
         );
 
       const serverId = info.lastInsertRowid as number;

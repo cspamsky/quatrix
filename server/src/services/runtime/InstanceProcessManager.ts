@@ -194,7 +194,7 @@ export class InstanceProcessManager {
 
     if (options.vac_enabled === false) args.push('-insecure');
 
-    args.push('-ip', '0.0.0.0');
+    args.push('-ip', options.ip || '0.0.0.0');
     args.push('-port', options.port.toString());
 
     // Game Mode & Alias Logic (Using hyphens for engine parameters)

@@ -132,7 +132,7 @@ success "MariaDB configured for local management."
 # phpMyAdmin Installation
 info "Installing phpMyAdmin, Nginx, and PHP-FPM..."
 export DEBIAN_FRONTEND=noninteractive
-apt-get install -y php-fpm php-mysql nginx phpmyadmin
+apt-get install -y php-fpm php-mysql php-mbstring php-zip php-gd php-curl php-xml nginx phpmyadmin
 
 # Configure Nginx for phpMyAdmin on port 8080
 info "Configuring Nginx virtual host for phpMyAdmin (port 8080)..."

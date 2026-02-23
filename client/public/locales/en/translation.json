@@ -297,6 +297,8 @@
     "server_password": "Server Password",
     "server_password_placeholder": "Leave empty for public",
     "server_port": "Server Port",
+    "bind_ip": "Bind IP",
+    "bind_ip_placeholder": "e.g. 0.0.0.0",
     "server_region": "Server Region",
     "steam_api_key": "Steam Web API Key",
     "steam_api_placeholder": "For workshop content",

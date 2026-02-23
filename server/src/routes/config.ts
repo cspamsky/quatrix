@@ -122,24 +122,68 @@ router.post(
 // GET /api/system-info
 router.get('/system-info', async (req: Request, res: Response) => {
   try {
-    const [os, mem, cpu, systemStatus] = await Promise.all([
-      si.osInfo(),
-      si.mem(),
-      si.cpu(),
-      systemService.getSystemStatus(),
+    const [os, mem, cpu, systemStatus, networkInterfaces] = await Promise.all([
+      si.osInfo().catch((e) => {
+        console.error('[SI] OS Error:', e);
+        return { distro: 'Generic', release: 'OS', hostname: 'unknown', arch: 'x64' } as any;
+      }),
+      si.mem().catch((e) => {
+        console.error('[SI] MEM Error:', e);
+        return { total: 0 } as any;
+      }),
+      si.cpu().catch((e) => {
+        console.error('[SI] CPU Error:', e);
+        return { manufacturer: '', brand: '' } as any;
+      }),
+      systemService.getSystemStatus().catch((e) => {
+        console.error('[SYSTEM] Status Error:', e);
+        return { timezone: 'UTC', time: new Date().toISOString() };
+      }),
+      si.networkInterfaces().catch((e) => {
+        console.error('[SI] Network Error:', e);
+        return [];
+      }),
     ]);
+
+    // Filter and format network interfaces to get only active IPv4 addresses
+    const interfaces = Array.isArray(networkInterfaces)
+      ? (networkInterfaces as si.Systeminformation.NetworkInterfacesData[])
+          .filter((iface) => iface.ip4 && iface.ip4 !== '127.0.0.1')
+          .map((iface) => ({ name: iface.iface, ip: iface.ip4 }))
+      : [];
+
+    // Better CPU String logic from index.ts
+    let cpuModel = 'Processor';
+    if (cpu.brand || cpu.manufacturer) {
+      cpuModel = `${cpu.manufacturer || ''} ${cpu.brand || ''}`.trim();
+    } else if (process.env.PROCESSOR_IDENTIFIER) {
+      cpuModel = process.env.PROCESSOR_IDENTIFIER;
+    }
+
+    // Memory Guard for Windows
+    let totalMemMB = Math.round((mem.total || 0) / (1024 * 1024));
+    if (totalMemMB === 0 && process.platform === 'win32') {
+      try {
+        const osMem = (os as any).totalmem;
+        if (osMem) totalMemMB = Math.round(osMem / (1024 * 1024));
+      } catch {
+        // Fallback to 0 if totalmem is not available
+      }
+    }
 
     res.json({
       os: `${os.distro} ${os.release}`,
       arch: os.arch,
       hostname: os.hostname,
       publicIp: cachedPublicIp,
-      cpuModel: `${cpu.manufacturer} ${cpu.brand}`,
-      totalMemory: Math.round(mem.total / 1024 / 1024), // MB
+      cpuModel,
+      totalMemory: totalMemMB,
       timezone: systemStatus.timezone,
       serverTime: systemStatus.time,
+      interfaces,
     });
-  } catch {
+  } catch (error) {
+    console.error('[API] system-info critical failure:', error);
     res.status(500).json({ message: 'Failed to fetch system info' });
   }
 });

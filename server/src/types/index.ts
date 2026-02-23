@@ -98,4 +98,5 @@ export interface UpdateServerBody {
   ram_limit: number;
   restart_policy?: string;
   auto_db_injection: number;
+  ip?: string;
 }

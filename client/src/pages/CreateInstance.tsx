@@ -13,6 +13,8 @@ import {
 import { SERVER_REGIONS } from '../config/regions';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { Network } from 'lucide-react';
 import CustomSelect from '../components/ui/CustomSelect';
 
 const CreateInstance = () => {
@@ -21,6 +23,23 @@ const CreateInstance = () => {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchInterfaces = async () => {
+      try {
+        const response = await apiFetch('/api/system-info');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.interfaces && data.interfaces.length > 0) {
+            setFormData((prev) => ({ ...prev, interfaces: data.interfaces }));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch network interfaces:', err);
+      }
+    };
+    fetchInterfaces();
+  }, []);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     serverName: '',
@@ -42,6 +61,8 @@ const CreateInstance = () => {
     region: 3, // Default to Europe
     cpuPriority: 0,
     ramLimit: 0,
+    ip: '',
+    interfaces: [] as { name: string; ip: string }[],
   });
 
   const nextStep = () => setStep((s) => Math.min(s + 1, 3));
@@ -82,6 +103,7 @@ const CreateInstance = () => {
           region: formData.region,
           cpu_priority: formData.cpuPriority,
           ram_limit: formData.ramLimit,
+          ip: formData.ip,
         }),
       });
 
@@ -232,9 +254,57 @@ const CreateInstance = () => {
                         label: t(`regions.${r.code}`),
                       }))}
                       value={formData.region}
-                      onChange={(val) => setFormData((prev) => ({ ...prev, region: Number(val) }))}
+                      onChange={(val: string | number) =>
+                        setFormData((prev) => ({ ...prev, region: Number(val) }))
+                      }
                       icon={<Globe className="w-4 h-4" />}
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="ip" className="block text-sm font-bold text-gray-400">
+                      {t('createInstance.bind_ip')}
+                    </label>
+                    {formData.interfaces && formData.interfaces.length > 0 ? (
+                      <div className="relative group/ip">
+                        <input
+                          id="ip"
+                          type="text"
+                          name="ip"
+                          value={formData.ip}
+                          onChange={handleInputChange}
+                          onFocus={(e) => e.target.select()}
+                          className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 pr-44 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600 font-mono"
+                          placeholder={t('createInstance.bind_ip_placeholder')}
+                        />
+                        <div className="absolute right-1.5 top-1.5 bottom-1.5 w-40">
+                          <CustomSelect
+                            options={formData.interfaces.map((iface) => ({
+                              value: iface.ip,
+                              label: `${iface.name}: ${iface.ip}`,
+                            }))}
+                            value={formData.ip}
+                            onChange={(val: string | number) =>
+                              setFormData((prev) => ({ ...prev, ip: String(val) }))
+                            }
+                            placeholder={t('common.select') || 'Select'}
+                            icon={<Network className="w-4 h-4" />}
+                            size="sm"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <input
+                        id="ip"
+                        type="text"
+                        name="ip"
+                        value={formData.ip}
+                        onChange={handleInputChange}
+                        onFocus={(e) => e.target.select()}
+                        className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600 font-mono"
+                        placeholder={t('createInstance.bind_ip_placeholder')}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
@@ -269,7 +339,7 @@ const CreateInstance = () => {
                       { value: 'de_overpass', label: 'de_overpass' },
                     ]}
                     value={formData.initialMap}
-                    onChange={(val) =>
+                    onChange={(val: string | number) =>
                       setFormData((prev) => ({ ...prev, initialMap: String(val) }))
                     }
                   />
@@ -371,7 +441,7 @@ const CreateInstance = () => {
                         { value: 'custom', label: t('createInstance.game_alias_custom') },
                       ]}
                       value={formData.gameAlias}
-                      onChange={(val) =>
+                      onChange={(val: string | number) =>
                         setFormData((prev) => ({ ...prev, gameAlias: String(val) }))
                       }
                     />
@@ -531,7 +601,7 @@ const CreateInstance = () => {
                           { value: 19, label: t('serverSettings.cpu_idle') },
                         ]}
                         value={formData.cpuPriority}
-                        onChange={(val) =>
+                        onChange={(val: string | number) =>
                           setFormData((prev) => ({ ...prev, cpuPriority: Number(val) }))
                         }
                       />
@@ -548,7 +618,7 @@ const CreateInstance = () => {
                           { value: 16384, label: '16 GB' },
                         ]}
                         value={formData.ramLimit}
-                        onChange={(val) =>
+                        onChange={(val: string | number) =>
                           setFormData((prev) => ({ ...prev, ramLimit: Number(val) }))
                         }
                       />
