@@ -13,6 +13,7 @@ import type { PluginId } from './config/plugins.js';
 import { emitDashboardStats } from './index.js';
 import type { Server } from './types/index.js';
 import { pterodactylAdapter } from './services/adapters/PterodactylAdapter.js';
+import packageJson from '../package.json' with { type: 'json' };
 
 import { promisify } from 'util';
 const execAsync = promisify(exec);
@@ -898,7 +899,7 @@ class ServerManager {
         },
         runtime: {
           node: process.version,
-          panel: '1.0.2-Beta',
+          panel: packageJson.version || '1.0.3-Beta',
           os: `${osInfo.distro} ${osInfo.release}`,
         },
       };

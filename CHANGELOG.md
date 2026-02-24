@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.0.3-Beta] - 2026-02-24
+
+### Added
+
+- **Security & Authorization (ACL)**
+  - **Granular Permission System**: Decomposed the broad `servers.update` permission into resource-specific ones: `servers.maps`, `servers.players`, `servers.admins`, and `servers.backups` for finer access control.
+  - **Middleware Integration**: Reinforced all backend routes with the `authorize()` middleware layer.
+  - **Secure Registration**: Implemented "Least Privilege" principle for new users; default permission is now restricted to `dashboard.view` only.
+
+- **Hybrid Architecture & Pterodactyl Integration**
+  - **Pterodactyl Adapter**: Added support for importing and managing servers from external Pterodactyl panels directly within Quatrix.
+  - **WebSocket Console Bridge**: Implemented a real-time console bridge for remote servers (Pterodactyl Wings), streaming logs and command output to the dashboard via Socket.IO.
+  - **Origin & Auth Hardening**: Resolved 401/403 (Unauthorized/Forbidden) errors in remote connections by utilizing a hybrid key system (Client/Application API keys).
+
+- **System Stability & Type Safety**
+  - **Zero-Any Policy**: Systematically replaced all `any` types in the backend with specific interfaces, ensuring 100% type safety and improved build integrity.
+  - **Robust Process Termination**: Implemented a recursive process tree killer to eliminate "zombie processes" during server shutdowns, using a `SIGTERM` -> `SIGKILL` escalation sequence.
+  - **Symlink Guard**: Added protections to prevent permission fixes from recursively following symbolic links to protect core game assets.
+
+- **UI/UX Modernization**
+  - **Premium Design**: Integrated a visual IP Picker for server creation and replaced all native select elements with the high-fidelity `CustomSelect` component.
+  - **Dynamic Localization**: Relocated language selection to the global header and implemented localized, relative date formatting (e.g., "3 hours ago") using `date-fns`.
+  - **Standardized Aesthetics**: Applied consistent compact styling (`p-1.5` padding, `rounded-xl`) to filters, buttons, and layout containers across all pages.
+
+- **Backups & Maintenance**
+  - **Enhanced Backup Portability**: Added functionality to download existing backups to local storage and upload `.zip` backups directly to the VDS.
+  - **Real-time Progress Engine**: Integrated `XMLHttpRequest` tracking to provide 0-100% live progress indicators during backup uploads.
+  - **Universal Uninstall Script**: Created `uninstall.sh` with self-relocation logic for safe and complete project removal from the system.
+
 ## [1.0.2-Beta] - 2026-02-12
 
 ### Fixed
