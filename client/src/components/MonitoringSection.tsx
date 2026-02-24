@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AreaChart, Area, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, Tooltip, ResponsiveContainer, YAxis, XAxis } from 'recharts';
 import { useTranslation } from 'react-i18next';
 import { Cpu, Database, Globe, HardDrive, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 
@@ -132,6 +132,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
                         </linearGradient>
                       </defs>
                       <Tooltip content={<CustomTooltip unit="%" />} />
+                      <XAxis dataKey="time" hide />
                       <YAxis domain={[0, 100]} hide />
                       <Area
                         name={t('dashboard.graph_cpu')}
@@ -186,6 +187,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
                         </linearGradient>
                       </defs>
                       <Tooltip content={<CustomTooltip unit="%" />} />
+                      <XAxis dataKey="time" hide />
                       <YAxis domain={[0, 100]} hide />
                       <Area
                         name={t('dashboard.graph_ram')}
@@ -250,6 +252,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
                         </linearGradient>
                       </defs>
                       <Tooltip content={<CustomTooltip unit="MB/s" />} />
+                      <XAxis dataKey="time" hide />
                       <YAxis domain={[0, 'auto']} hide />
                       <Area
                         name={t('common.network_in', 'In')}
@@ -321,6 +324,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
                         </linearGradient>
                       </defs>
                       <Tooltip content={<CustomTooltip unit="MB/s" />} />
+                      <XAxis dataKey="time" hide />
                       <YAxis domain={[0, 'auto']} hide />
                       <Area
                         name={t('dashboard.read')}
