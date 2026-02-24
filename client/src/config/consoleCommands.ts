@@ -196,4 +196,8 @@ export const NOISE_PATTERNS = [
   /.*Lag comp.*/,
   /.*cl_.*tick.*/,
   /will\s*switch\s*\d+\s*\d+\.\d+/,
+  /.* (\d+ ticks, \d+\.\.\d+|elapsed, .* sim time, \d+ ticks|ms sim time, \d+ ticks)/,
+  /SteamNetworkingSockets lock held for .*/,
+  /This is usually a symptom of a general performance problem such as thread starvation/,
+  /\[Data\] Ignored bad .* Stray data packet from host with no connection/,
 ];
