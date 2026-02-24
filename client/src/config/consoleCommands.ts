@@ -171,4 +171,22 @@ export const NOISE_PATTERNS = [
   'SV:  VAC secure mode is activated.',
   'Setting mapgroup to \'mg_active\'',
   'Loading map "de_dust2"',
+
+  // --- CleanerCS2 / Aggressive Noise Filter (Optimization) ---
+  /.*UNEXPECTED LONG FRAME DETECTED.*/,
+  /.*weapon services didn't find a shoot position.*/,
+  /sv: Player tick from command clamped by server.*/,
+  /sv: Lag comp - .*/,
+  /sv: Running lag compensation for player.*/,
+  /RemoveArrayElementsOutsideOfArrayMetadataBounds.*/,
+  /Excessive frame time.*/,
+  /sv tick = .*/,
+  /.*Timing.*Performance.*/,
+  /.*NetChan.*/,
+  /.*(Receiving|Sending).*(NetChan|reliable|unreliable).*/,
+  /.*NETWORK_DISCONNECT_.*/,
+  /.*CloseSteamNetConnection.*/,
+  /.*Summary of connection.*/,
+  /.*Lag comp.*/,
+  /.*cl_.*tick.*/,
 ];
