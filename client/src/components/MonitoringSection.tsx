@@ -124,7 +124,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
               <div className="absolute inset-0">
                 {isMounted && (
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                    <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                    <AreaChart data={chartData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
@@ -132,6 +132,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
                         </linearGradient>
                       </defs>
                       <Tooltip content={<CustomTooltip unit="%" />} />
+                      <YAxis domain={[0, 100]} hide />
                       <Area
                         name={t('dashboard.graph_cpu')}
                         type="monotone"
@@ -177,7 +178,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
               <div className="absolute inset-0">
                 {isMounted && (
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                    <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                    <AreaChart data={chartData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4} />
@@ -185,6 +186,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
                         </linearGradient>
                       </defs>
                       <Tooltip content={<CustomTooltip unit="%" />} />
+                      <YAxis domain={[0, 100]} hide />
                       <Area
                         name={t('dashboard.graph_ram')}
                         type="monotone"
@@ -236,7 +238,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
               <div className="absolute inset-0">
                 {isMounted && (
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                    <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                    <AreaChart data={chartData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorNetIn" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
@@ -248,6 +250,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
                         </linearGradient>
                       </defs>
                       <Tooltip content={<CustomTooltip unit="MB/s" />} />
+                      <YAxis domain={[0, 'auto']} hide />
                       <Area
                         name={t('common.network_in', 'In')}
                         type="monotone"
@@ -306,7 +309,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
               <div className="absolute inset-0">
                 {isMounted && (
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                    <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                    <AreaChart data={chartData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorDiskRead" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
@@ -318,6 +321,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
                         </linearGradient>
                       </defs>
                       <Tooltip content={<CustomTooltip unit="MB/s" />} />
+                      <YAxis domain={[0, 'auto']} hide />
                       <Area
                         name={t('dashboard.read')}
                         type="monotone"
