@@ -186,7 +186,10 @@
   "chat": {
     "all": "TÜMÜ",
     "filter_by_user": "Bu kullanıcıya göre filtrele",
-    "no_history": "Bu sunucu için sohbet geçmişi bulunamadı",
+    "no_history": "Bu sunucu henüz bir konuşma kaydetmemiş.",
+    "load_more": "Eski Mesajları Yükle",
+    "filter_by_date": "Tarihe Göre Filtrele",
+    "clear_filter": "Filtreyi Temizle",
     "no_messages": "Aramanızla eşleşen mesaj yok",
     "search_placeholder": "İsim, mesaj ile filtrele...",
     "select_server": "Sunucu seç...",

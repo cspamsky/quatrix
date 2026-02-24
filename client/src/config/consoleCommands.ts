@@ -129,8 +129,6 @@ export const NOISE_PATTERNS = [
   /Using spawn points configuration .*/,
 
   // --- Other System Noise ---
-  /\[QuatrixSync\] API Error: NotFound/,
-  /\[QuatrixSync\] Connection Error:/,
   'GameTypes: missing mapgroupsSP entry',
   'Entry player was not found in surfaceproperties_footsteps.txt',
 

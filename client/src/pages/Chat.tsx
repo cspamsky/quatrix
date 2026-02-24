@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import socket from '../utils/socket';
 import { apiFetch } from '../utils/api';
-import { MessageSquare, User, Clock, Hash, RefreshCw, Server } from 'lucide-react';
+import { MessageSquare, User, Clock, Hash, RefreshCw, Server, Calendar, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../utils/date';
 import { useSteamAvatars } from '../hooks/useSteamAvatars';
@@ -41,8 +41,14 @@ const Chat = () => {
   const [chatLogs, setChatLogs] = useState<ChatLog[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isAutoScroll, setIsAutoScroll] = useState(true);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const lastScrollHeight = useRef<number>(0);
 
   useEffect(() => {
     const fetchServers = async () => {
@@ -67,7 +73,10 @@ const Chat = () => {
 
     if (!id) return;
 
-    fetchChatHistory();
+    setOffset(0);
+    setHasMore(true);
+    setChatLogs([]); // Clear logs on server change to avoid confusion
+    fetchChatHistory(0, true);
 
     // Socket.IO for real-time chat
     socket.on(
@@ -82,7 +91,7 @@ const Chat = () => {
       }) => {
         if (msg.serverId.toString() === id) {
           setChatLogs((prev) => [
-            ...prev.slice(-99), // Keep last 99
+            ...prev,
             {
               id: Date.now(), // Local ID for key
               server_id: parseInt(msg.serverId),
@@ -93,6 +102,11 @@ const Chat = () => {
               created_at: msg.timestamp,
             },
           ]);
+
+          // Only scroll if was at bottom or it's our own message? (simple auto-scroll check)
+          if (isAutoScroll) {
+            setTimeout(scrollToBottom, 50);
+          }
         }
       }
     );
@@ -102,25 +116,82 @@ const Chat = () => {
     };
   }, [id]);
 
-  const fetchChatHistory = async () => {
+  // Scroll detection
+  const handleScroll = () => {
+    if (!chatContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+
+    // Check if at bottom (with 50px tolerance)
+    const atBottom = scrollHeight - scrollTop - clientHeight < 50;
+    setIsAutoScroll(atBottom);
+
+    // Initial infinite scroll trigger if near top
+    if (scrollTop < 100 && !isLoading && hasMore) {
+      loadMore();
+    }
+  };
+
+  const scrollToBottom = () => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const fetchChatHistory = async (newOffset = 0, isInitial = false) => {
     if (!id) return;
     setIsLoading(true);
     try {
-      const response = await apiFetch(`/api/chat/${id}?limit=100`);
+      const limit = 50;
+      let url = `/api/chat/${id}?limit=${limit}&offset=${newOffset}`;
+      if (startDate) url += `&startDate=${startDate} 00:00:00`;
+      if (endDate) url += `&endDate=${endDate} 23:59:59`;
+
+      const response = await apiFetch(url);
       if (response.ok) {
         const data = await response.json();
-        // Sort Oldest -> Newest
+
+        // Sort Oldest -> Newest (API returns newest first DESC)
         const sorted = data.sort(
           (a: ChatLog, b: ChatLog) =>
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
-        setChatLogs(sorted);
+
+        if (isInitial) {
+          setChatLogs(sorted);
+          setTimeout(scrollToBottom, 50);
+        } else if (sorted.length > 0) {
+          // Adjust scroll to maintain position when loading older messages
+          if (chatContainerRef.current) {
+            lastScrollHeight.current = chatContainerRef.current.scrollHeight;
+          }
+
+          setChatLogs((prev) => [...sorted, ...prev]);
+
+          // Keep scroll position relative to the content we just loaded
+          setTimeout(() => {
+            if (chatContainerRef.current) {
+              const newScrollHeight = chatContainerRef.current.scrollHeight;
+              chatContainerRef.current.scrollTop = newScrollHeight - lastScrollHeight.current;
+            }
+          }, 0);
+        }
+
+        if (data.length < limit) {
+          setHasMore(false);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch chat history:', error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const loadMore = () => {
+    if (!hasMore || isLoading) return;
+    const nextOffset = offset + 50;
+    setOffset(nextOffset);
+    fetchChatHistory(nextOffset);
   };
 
   const getTypeColor = (type: string) => {
@@ -136,12 +207,7 @@ const Chat = () => {
       (log.steam_id?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
 
-  // Auto-scroll to bottom when logs change
-  useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [chatLogs, filteredLogs]);
+  // No auto-useEffect scroll here, it's handled in fetchChatHistory and socket listener
 
   // Collect unique SteamIDs for avatar fetching
   const uniqueSteamIds = Array.from(new Set(filteredLogs.map((log) => log.steam_id)));
@@ -157,7 +223,38 @@ const Chat = () => {
           <p className="text-sm text-gray-400 mt-1">{t('chat.subtitle')}</p>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2 bg-[#0d1421] border border-gray-800 rounded-lg px-3 py-1.5 h-10">
+            <Calendar className="w-4 h-4 text-gray-500" />
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="bg-transparent text-xs text-white border-none focus:ring-0 w-28 uppercase"
+              title={t('chat.filter_by_date')}
+            />
+            <span className="text-gray-600">-</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="bg-transparent text-xs text-white border-none focus:ring-0 w-28 uppercase"
+              title={t('chat.filter_by_date')}
+            />
+            {(startDate || endDate) && (
+              <button
+                onClick={() => {
+                  setStartDate('');
+                  setEndDate('');
+                }}
+                className="ml-1 text-gray-500 hover:text-red-400 transition-colors"
+                title={t('chat.clear_filter')}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
           <SearchInput
             placeholder={t('chat.search_placeholder')}
             value={searchTerm}
@@ -182,7 +279,13 @@ const Chat = () => {
             </div>
           </div>
 
-          <IconButton onClick={fetchChatHistory} isLoading={isLoading}>
+          <IconButton
+            onClick={() => {
+              setOffset(0);
+              fetchChatHistory(0, true);
+            }}
+            isLoading={isLoading}
+          >
             <RefreshCw
               className={cn(
                 'w-4 h-4 transition-transform duration-500 group-active:rotate-180',
@@ -199,8 +302,25 @@ const Chat = () => {
           <div
             className="overflow-y-auto flex-1 p-4 flex flex-col custom-scrollbar"
             ref={chatContainerRef}
+            onScroll={handleScroll}
           >
             <div className="space-y-4 pb-2">
+              {hasMore && !searchTerm && (
+                <div className="flex justify-center py-2">
+                  <button
+                    onClick={loadMore}
+                    disabled={isLoading}
+                    className="text-xs text-gray-500 hover:text-primary transition-colors flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-800 hover:border-gray-700 bg-gray-900/50"
+                  >
+                    {isLoading ? (
+                      <RefreshCw size={12} className="animate-spin" />
+                    ) : (
+                      <Clock size={12} />
+                    )}
+                    {t('chat.load_more', { defaultValue: 'Load Older Messages' })}
+                  </button>
+                </div>
+              )}
               {filteredLogs.length === 0 ? (
                 <div className="h-64 flex flex-col items-center justify-center text-gray-500 gap-4">
                   <div className="w-16 h-16 rounded-full bg-gray-800/20 flex items-center justify-center">

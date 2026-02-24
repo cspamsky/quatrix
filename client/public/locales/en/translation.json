@@ -186,7 +186,10 @@
   "chat": {
     "all": "ALL",
     "filter_by_user": "Filter by this user",
-    "no_history": "No chat history found for this server",
+    "no_history": "This server hasn't recorded any conversations yet.",
+    "load_more": "Load Older Messages",
+    "filter_by_date": "Filter by Date",
+    "clear_filter": "Clear Filter",
     "no_messages": "No messages matching your search",
     "search_placeholder": "Filter by name, message...",
     "select_server": "Select server...",
