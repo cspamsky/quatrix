@@ -216,6 +216,8 @@
     "language": "Dil",
     "loading": "Yükleniyor...",
     "logout": "Çıkış Yap",
+    "network_in": "Gelen Trafik",
+    "network_out": "Giden Trafik",
     "offline": "Çevrimdışı",
     "online": "Çevrimiçi",
     "player": "{{count}} oyuncu",

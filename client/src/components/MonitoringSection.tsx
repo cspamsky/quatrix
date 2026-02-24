@@ -140,7 +140,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
                         strokeWidth={2}
                         fillOpacity={1}
                         fill="url(#colorCpu)"
-                        animationDuration={800}
+                        animationDuration={1500}
                         isAnimationActive={true}
                       />
                     </AreaChart>
@@ -180,7 +180,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
                     <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
+                          <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4} />
                           <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
                         </linearGradient>
                       </defs>
@@ -193,7 +193,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
                         strokeWidth={2}
                         fillOpacity={1}
                         fill="url(#colorRam)"
-                        animationDuration={800}
+                        animationDuration={1500}
                         isAnimationActive={true}
                       />
                     </AreaChart>
@@ -238,21 +238,36 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                       <defs>
-                        <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
+                        <linearGradient id="colorNetIn" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
                           <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="colorNetOut" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <Tooltip content={<CustomTooltip unit="MB/s" />} />
                       <Area
-                        name={t('dashboard.graph_network')}
+                        name={t('common.network_in', 'In')}
                         type="monotone"
                         dataKey="netIn"
                         stroke="#10b981"
                         strokeWidth={2}
                         fillOpacity={1}
-                        fill="url(#colorNet)"
-                        animationDuration={800}
+                        fill="url(#colorNetIn)"
+                        animationDuration={1500}
+                        isAnimationActive={true}
+                      />
+                      <Area
+                        name={t('common.network_out', 'Out')}
+                        type="monotone"
+                        dataKey="netOut"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#colorNetOut)"
+                        animationDuration={1500}
                         isAnimationActive={true}
                       />
                     </AreaChart>
@@ -293,21 +308,36 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                       <defs>
-                        <linearGradient id="colorDisk" x1="0" y1="0" x2="0" y2="1">
+                        <linearGradient id="colorDiskRead" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
                           <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="colorDiskWrite" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#64748b" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#64748b" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <Tooltip content={<CustomTooltip unit="MB/s" />} />
                       <Area
-                        name={t('dashboard.graph_disk')}
+                        name={t('dashboard.read')}
                         type="monotone"
                         dataKey="diskRead"
                         stroke="#f97316"
                         strokeWidth={2}
                         fillOpacity={1}
-                        fill="url(#colorDisk)"
-                        animationDuration={800}
+                        fill="url(#colorDiskRead)"
+                        animationDuration={1500}
+                        isAnimationActive={true}
+                      />
+                      <Area
+                        name={t('dashboard.write')}
+                        type="monotone"
+                        dataKey="diskWrite"
+                        stroke="#64748b"
+                        strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#colorDiskWrite)"
+                        animationDuration={1500}
                         isAnimationActive={true}
                       />
                     </AreaChart>

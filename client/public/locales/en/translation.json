@@ -216,6 +216,8 @@
     "language": "Language",
     "loading": "Loading...",
     "logout": "Logout",
+    "network_in": "Incoming Traffic",
+    "network_out": "Outgoing Traffic",
     "offline": "Offline",
     "online": "Online",
     "player": "{{count}} player",

@@ -35,9 +35,11 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     // REAL-TIME SESSION CHECK:
     // Check if the session still exists in the database
     if (user.jti) {
-      console.log(
-        `[AUTH] Checking session for User: ${user.id} (${typeof user.id}), JTI: ${user.jti}`
-      );
+      if (process.env.DEBUG_LOGS === 'true') {
+        console.log(
+          `[AUTH] Checking session for User: ${user.id} (${typeof user.id}), JTI: ${user.jti}`
+        );
+      }
       const session = db
         .prepare('SELECT 1 FROM user_sessions WHERE token_id = ? AND user_id = ?')
         .get(user.jti, user.id);

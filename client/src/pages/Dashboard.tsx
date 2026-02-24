@@ -177,7 +177,7 @@ const Dashboard = () => {
 
     socket.on('stats', (data: TelemetryStats) => {
       setStats(data);
-      setStatsHistory((prev) => [...prev, data].slice(-30));
+      setStatsHistory((prev) => [...prev, data].slice(-100)); // Increased for smoother visuals
     });
 
     socket.on('stats_history', (data: TelemetryStats[]) => {

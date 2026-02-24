@@ -130,7 +130,7 @@ app.use(express.json());
 
 // Simple Request Logger
 app.use((req, res, next) => {
-  if (!req.path.startsWith('/socket.io')) {
+  if (process.env.DEBUG_LOGS === 'true' && !req.path.startsWith('/socket.io')) {
     console.log(`[API] ${req.method} ${req.path}`);
   }
   next();
