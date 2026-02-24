@@ -79,7 +79,7 @@ export class PterodactylAdapter {
     const config = this.configs.get(panelId);
     if (!config) throw new Error(`Pterodactyl Panel ${panelId} not configured.`);
 
-    const url = `${config.baseUrl}/api/${apiType}${endpoint}`;
+    const url = `${config.baseUrl}/api/${apiType}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
     // Choose the right key based on API type
     const authKey = apiType === 'client' ? config.clientApiKey || config.apiKey : config.apiKey;

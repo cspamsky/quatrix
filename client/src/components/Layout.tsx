@@ -26,7 +26,7 @@ import { apiFetch } from '../utils/api';
 import type { User } from '../types';
 
 const Layout = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -281,7 +281,7 @@ const Layout = () => {
             </div>
           }
         >
-          <div key={i18n.language} className="animate-in fade-in duration-500 h-full">
+          <div className="animate-in fade-in duration-500 h-full">
             <Outlet />
           </div>
         </Suspense>

@@ -125,10 +125,15 @@ const Dashboard = () => {
     const updateClock = () => {
       const now = new Date(new Date().getTime() + offset);
       try {
-        const formatted = formatDate(now, t('common.date_formats.time_seconds'), i18n.language);
+        const formatted = now.toLocaleTimeString(i18n.language, {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        });
         setServerClock(formatted);
       } catch {
-        setServerClock(formatDate(now, 'HH:mm:ss', i18n.language));
+        setServerClock(now.toLocaleTimeString());
       }
     };
 

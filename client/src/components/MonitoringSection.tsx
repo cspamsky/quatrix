@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AreaChart, Area, Tooltip, ResponsiveContainer, YAxis, XAxis } from 'recharts';
 import { useTranslation } from 'react-i18next';
 import { Cpu, Database, Globe, HardDrive, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
@@ -43,22 +43,24 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
     setIsMounted(true);
   }, []);
 
-  const chartData = (Array.isArray(data) ? data : []).filter(Boolean).map((item) => ({
-    ...item,
-    cpu: parseFloat(item.cpu || '0'),
-    ram: parseFloat(item.ram || '0'),
-    netIn: parseFloat(item.netIn || '0'),
-    netOut: parseFloat(item.netOut || '0'),
-    diskRead: parseFloat(item.diskRead || '0'),
-    diskWrite: parseFloat(item.diskWrite || '0'),
-    time: item.timestamp
-      ? new Date(item.timestamp).toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        })
-      : '--:--:--',
-  }));
+  const chartData = useMemo(() => {
+    return (Array.isArray(data) ? data : []).filter(Boolean).map((item) => ({
+      ...item,
+      cpu: parseFloat(item.cpu || '0'),
+      ram: parseFloat(item.ram || '0'),
+      netIn: parseFloat(item.netIn || '0'),
+      netOut: parseFloat(item.netOut || '0'),
+      diskRead: parseFloat(item.diskRead || '0'),
+      diskWrite: parseFloat(item.diskWrite || '0'),
+      time: item.timestamp
+        ? new Date(item.timestamp).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          })
+        : '--:--:--',
+    }));
+  }, [data]);
 
   const CustomTooltip = ({
     active,
