@@ -94,14 +94,16 @@ export const NOISE_PATTERNS = [
   /rcon from ".*": command "sv_logfile 0"/,
   /rcon from ".*": command "sv_logbans 1"/,
   /command "(status|css_players|log on|sv_logecho 1|sv_logfile 0|sv_logbans 1)"/, // Catch split lines
+  /.*rcon from ".*[:"]?$/, // Catch fragmented RCON from lines
   /from ".*": command ".+"/, // General RCON from lines
   /: rcon$/, // First line of split RCON
 
   // --- Engine & Resource Warnings (No user action possible) ---
-  'sequence/animation name collision found',
+  /sequence\/animation name collision found/,
   /ResourceHandleToData.*failed! Falling back to error texture!/,
   /texturebase.cpp.*failed! Falling back to error texture!/,
-  /Long frame \(WarmupPeriod\):/,
+  /.*Long frame .*/,
+  /Giving up attempts to make more random spawn points./,
   'CNavGenParams - Nav mesh requests project default generation parameters',
   'Failed loading resource "maps/prefabs/misc/terrorist_team_intro_variant2/world_visibility.vvis_c"',
 
@@ -148,7 +150,7 @@ export const NOISE_PATTERNS = [
   /SDR RelayNetworkStatus: .*/,
   /AuthStatus \(.*\): .*/,
   /Initializing CSGO VScript Game System/,
-  /SV:  (Executing server defaults|Executing dedicated server config file|Level loading started|CGameRulesGameSystem::GameInit|30 player server started|Connection to Steam servers successful)/,
+  /SV:\s*(Executing server defaults|Executing dedicated server config file|Level loading started|CGameRulesGameSystem::GameInit|30 player server started|Connection to Steam servers successful|Spawn Server: .*)/,
   /LoadResponseSystem .*/,
   /CResponseSystem: .*/,
   /CPlayerVoiceListener::GameInit\(\)/,
@@ -160,10 +162,10 @@ export const NOISE_PATTERNS = [
   /Gameserver logged on to Steam .*/,
   /Set SteamNetworkingSockets P2P_STUN_ServerList .*/,
   /CSource2Server::ApplyGameSettings game settings payload received:.*/,
-  /::ExecGameTypeCfg {/,
+  /::ExecGameTypeCfg \{/,
   /CNetworkGameServerBase::SetServerState .*/,
-  /SV:  IGameSystem::LoopActivateAllSystems .*/,
-  /HO:  (IGameSystem::LoopActivateAllSystems|}) .*/,
+  /SV:\s*.*IGameSystem::LoopActivateAllSystems .*/,
+  /HO:\s*.*IGameSystem::LoopActivateAllSystems.*/,
   /Created physics for .*/,
   /used during construction differ from defaults\. Please re-export the map\./,
   /ClientPutInServer create new player controller .*/,
@@ -171,6 +173,12 @@ export const NOISE_PATTERNS = [
   'SV:  VAC secure mode is activated.',
   'Setting mapgroup to \'mg_active\'',
   'Loading map "de_dust2"',
+
+  // --- Map Settings Block (Non-JSON) ---
+  /^(map|launchoptions|ct_models|t_models|maplist)\s*\{/,
+  /^(mapname|levelname|mode|loadmap|changelevel|mapgroup|requires_attr|numSlots|c_game_type|c_game_mode|default_game_type|default_game_mode|ct_arms|t_arms|ctm_|tm_|de_).*/,
+  /^\}$/,
+  /L \d{2}\/\d{2}\/\d{4} - \d{2}:\d{2}:\d{2}: Started:  "".*/,
 
   // --- CleanerCS2 / Aggressive Noise Filter (Optimization) ---
   /.*UNEXPECTED LONG FRAME DETECTED.*/,
@@ -189,4 +197,5 @@ export const NOISE_PATTERNS = [
   /.*Summary of connection.*/,
   /.*Lag comp.*/,
   /.*cl_.*tick.*/,
+  /will\s*switch\s*\d+\s*\d+\.\d+/,
 ];
