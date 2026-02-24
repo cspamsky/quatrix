@@ -245,7 +245,7 @@
     "action_initiated": "İşlem başlatıldı",
     "auto_scroll_paused": "Otomatik kaydırma duraklatıldı - Yakalamak için tıklayın",
     "command_placeholder": "Konsol komutu yazın...",
-    "connected_to": "Konsoluna bağlanıldı...",
+    "connected_to": "{{name}} konsoluna bağlanıldı...",
     "connecting": "Örnek Konsola bağlanılıyor...",
     "connection_error": "Bağlantı hatası:",
     "filter_logs": "Logları Filtrele",

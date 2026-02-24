@@ -245,7 +245,7 @@
     "action_initiated": "Action",
     "auto_scroll_paused": "Auto-scroll Paused - Click to catch up",
     "command_placeholder": "Type console command...",
-    "connected_to": "Connected to",
+    "connected_to": "Connected to {{name}} console...",
     "connecting": "Connecting to server...",
     "connection_error": "Connection error:",
     "filter_logs": "Filter Logs",

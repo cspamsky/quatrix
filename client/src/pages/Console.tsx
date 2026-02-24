@@ -193,7 +193,7 @@ const Console = () => {
         timestamp: new Date().toLocaleTimeString(),
         type: 'INFO',
         message: id
-          ? `${t('console.connected_to')} ${server?.name || 'Instance'} ${t('console.connected_to').split(' ')[0]}...`
+          ? t('console.connected_to', { name: server?.name || 'Instance' })
           : t('console.select_instance'),
       },
     ]);
