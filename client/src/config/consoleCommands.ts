@@ -184,9 +184,16 @@ export const NOISE_PATTERNS = [
   /^(command line arguments|protected command line arguments \(stripped from above\)):/,
   /^-dedicated -console -usercon .*/,
   /^\+rcon_password <protected>$/,
-  /^(Using breakpad crash handler|Forcing breakpad minidump interfaces to load|Console initialized|Steam AppId.*|InitSteamLogin_Internal.*|Steam Universe is invalid.*|ResetBreakpadAppId.*|Visibility enabled|USRLOCAL path not found|Trying to set dxlevel.*|Network System Initialized|MOD desires lightbinner GPU.*|Physics Console Communications is not initialized|reward_drop_list int.*|CSource2Server::GameServerSteamAPIActivated|\[S_API\] SteamAPI_Init)/,
-  /^(CL:  CLoopModeLevelLoad|Logging into Steam gameserver account|CNetworkSystem::InitGameServer|Initialized low level socket|Created poll group|Network socket 'server' opened|GameTypes: could not find matching game mode|SV:\s*(maxplayers set to|ServerSteamID=)|\[STARTUP\].*logged on to Steam|Gameserver logged on to Steam|Certificate expires in)/,
+  /^(Using breakpad crash handler|Forcing breakpad minidump interfaces to load|Console initialized|Steam AppId.*|InitSteamLogin_Internal.*|Steam Universe is invalid.*|ResetBreakpadAppId.*|Visibility enabled|USRLOCAL path not found|Trying to set dxlevel.*|Network System Initialized|MOD desires lightbinner GPU.*|Physics Console Communications is not initialized|reward_drop_list int.*|CSource2Server::GameServerSteamAPIActivated|\[S_API\] SteamAPI_Init|Steam Universe valid after having been requested when invalid)/,
+  /^(CL:  CLoopModeLevelLoad|Logging into Steam gameserver account|CNetworkSystem::InitGameServer|Initialized low level socket|Created poll group|Network socket 'server' opened|GameTypes: could not find matching game mode|SV:\s*(maxplayers set to|ServerSteamID=)|\[STARTUP\].*logged on to Steam|Gameserver logged on to Steam|Certificate expires in|map de_dust2)/,
   /^(Accepting Steam Net connection|Sending S2C_CHALLENGE|Receiving C2S_CONNECT|CNetworkGameServerBase::ConnectClient|CServerSideClientBase::Connect|Client \d+ .* signon state|Sending S2C_CONNECTION|Client #\d+ .* connected|\[.*\] cl_interp_ratio=.*|SV:\s*.*STEAM USERID validated|SV:  Sending full update to client|Netchan queued message new high water mark|Removing Steam Net Connection).*/,
+  /L \d{2}\/\d{2}\/\d{4} - \d{2}:\d{2}:\d{2}: ".*<.*><BOT><.*>".*/, // Bot connectivity
+  /L \d{2}\/\d{2}\/\d{4} - \d{2}:\d{2}:\d{2}: ".*<.*><BOT>" switched from team .*/, // Bot team change
+  /".*<.*><BOT><.*>" ChangeTeam\(\) CTMDBG .*/, // Bot team change internal
+  /L \d{2}\/\d{2}\/\d{4} - \d{2}:\d{2}:\d{2}: (World triggered|Starting Freeze period)/,
+  /L \d{2}\/\d{2}\/\d{4} - \d{2}:\d{2}:\d{2}: "(round_number|score_t|score_ct|map|server|fields|players|player_\d+)".*/, // Stats blocks
+  /Model models\/.*: sequence\/animation name collision found .*/,
+  /Model models\/.*\.v/, // Generic model loading
 
   // --- CleanerCS2 / Aggressive Noise Filter (Optimization) ---
   /.*UNEXPECTED LONG FRAME DETECTED.*/,
