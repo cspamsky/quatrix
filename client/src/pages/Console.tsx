@@ -12,7 +12,7 @@ import {
 import { useParams, useNavigate } from 'react-router-dom';
 import socket from '../utils/socket';
 import { generateUUID } from '../utils/uuid';
-import { COMMON_COMMANDS } from '../config/consoleCommands';
+import { COMMON_COMMANDS, NOISE_PATTERNS } from '../config/consoleCommands';
 import { useTranslation } from 'react-i18next';
 import CustomSelect from '../components/ui/CustomSelect';
 import Button from '../components/ui/Button';
@@ -48,6 +48,7 @@ const Console = () => {
   const [command, setCommand] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [isAutoScroll, setIsAutoScroll] = useState(true);
+  const [isFilterActive, setIsFilterActive] = useState(true);
   const logEndRef = useRef<HTMLDivElement>(null);
   const consoleRef = useRef<HTMLDivElement>(null);
 
@@ -406,6 +407,21 @@ const Console = () => {
               <span className="text-sm font-semibold text-slate-200">
                 {t('console.live_console')}
               </span>
+              <div className="w-px h-3 bg-gray-700 mx-1"></div>
+              <button
+                onClick={() => setIsFilterActive(!isFilterActive)}
+                className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tight transition-all border ${
+                  isFilterActive
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                    : 'bg-gray-800/50 text-gray-500 border-gray-700/50 hover:text-gray-300'
+                }`}
+                title={t('console.filter_logs')}
+              >
+                <div
+                  className={`w-1.5 h-1.5 rounded-full ${isFilterActive ? 'bg-emerald-400 animate-pulse' : 'bg-gray-600'}`}
+                ></div>
+                {isFilterActive ? t('console.clean_view') : t('console.full_view')}
+              </button>
             </div>
             {!isAutoScroll && (
               <button
@@ -426,26 +442,41 @@ const Console = () => {
             className="flex-1 overflow-y-auto p-5 font-mono text-sm custom-scrollbar bg-black/20"
           >
             <div className="space-y-1">
-              {logs.map((log) => (
-                <div key={log.id} className="flex gap-3">
-                  <span className="text-slate-500 shrink-0 select-none">[{log.timestamp}]</span>
-                  <p className="break-all">
-                    {log.type !== 'RAW' && log.type !== 'CHAT' && (
-                      <span className={`${getTypeStyle(log.type)} mr-2`}>{log.type}:</span>
-                    )}
-                    {log.type === 'CHAT' && (
-                      <span className="text-primary font-bold mr-2">CHAT:</span>
-                    )}
-                    <span
-                      className={`whitespace-pre-wrap ${
-                        log.type === 'RAW' ? 'text-slate-300' : ''
-                      }`}
-                    >
-                      {log.message}
-                    </span>
-                  </p>
-                </div>
-              ))}
+              {logs
+                .filter((log) => {
+                  if (!isFilterActive) return true;
+                  // Never filter user commands or explicit types
+                  if (log.type !== 'RAW' && log.type !== 'CHAT') return true;
+                  if (log.message.startsWith('> ')) return true;
+
+                  // Check against noise patterns
+                  return !NOISE_PATTERNS.some((pattern: string | RegExp) => {
+                    if (typeof pattern === 'string') {
+                      return log.message.includes(pattern);
+                    }
+                    return pattern.test(log.message);
+                  });
+                })
+                .map((log) => (
+                  <div key={log.id} className="flex gap-3 animate-in fade-in duration-300">
+                    <span className="text-slate-500 shrink-0 select-none">[{log.timestamp}]</span>
+                    <p className="break-all">
+                      {log.type !== 'RAW' && log.type !== 'CHAT' && (
+                        <span className={`${getTypeStyle(log.type)} mr-2`}>{log.type}:</span>
+                      )}
+                      {log.type === 'CHAT' && (
+                        <span className="text-primary font-bold mr-2">CHAT:</span>
+                      )}
+                      <span
+                        className={`whitespace-pre-wrap ${
+                          log.type === 'RAW' ? 'text-slate-300' : ''
+                        }`}
+                      >
+                        {log.message}
+                      </span>
+                    </p>
+                  </div>
+                ))}
               <div ref={logEndRef} />
             </div>
           </div>

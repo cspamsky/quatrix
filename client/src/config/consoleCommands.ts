@@ -84,3 +84,29 @@ export const COMMON_COMMANDS = [
   'css_plugins unload ',
   'exec ',
 ].sort();
+
+export const NOISE_PATTERNS = [
+  // --- Admin & Panel RCON Queries (Frequent Noise) ---
+  /rcon from ".*": command "status"/,
+  /rcon from ".*": command "css_players"/,
+  /rcon from ".*": command "log on"/,
+  /rcon from ".*": command "sv_logecho 1"/,
+  /rcon from ".*": command "sv_logfile 0"/,
+  /rcon from ".*": command "sv_logbans 1"/,
+
+  // --- Engine & Resource Warnings (No user action possible) ---
+  'sequence/animation name collision found',
+  /ResourceHandleToData.*failed! Falling back to error texture!/,
+  /texturebase.cpp.*failed! Falling back to error texture!/,
+  /Long frame \(WarmupPeriod\):/,
+  'CNavGenParams - Nav mesh requests project default generation parameters',
+  'Failed loading resource "maps/prefabs/misc/terrorist_team_intro_variant2/world_visibility.vvis_c"',
+
+  // --- Sync Plugin Noise ---
+  /\[QuatrixSync\] API Error: NotFound/,
+  /\[QuatrixSync\] Connection Error:/,
+
+  // --- Other System Noise ---
+  'GameTypes: missing mapgroupsSP entry',
+  'Entry player was not found in surfaceproperties_footsteps.txt',
+];
