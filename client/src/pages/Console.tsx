@@ -187,17 +187,29 @@ const Console = () => {
 
   // Reset logs when server changes
   useEffect(() => {
+    if (!id) return;
     setLogs([
       {
-        id: generateUUID(),
+        id: 'init-msg',
         timestamp: new Date().toLocaleTimeString(),
         type: 'INFO',
-        message: id
-          ? t('console.connected_to', { name: server?.name || 'Instance' })
-          : t('console.select_instance'),
+        message: t('console.connected_to', { name: server?.name || '...' }),
       },
     ]);
   }, [id]);
+
+  // Update initial message once server name is loaded
+  useEffect(() => {
+    if (server?.name && id) {
+      setLogs((prev) =>
+        prev.map((log) =>
+          log.id === 'init-msg' && log.message.includes('...')
+            ? { ...log, message: t('console.connected_to', { name: server.name }) }
+            : log
+        )
+      );
+    }
+  }, [server?.name, id]);
 
   // --- Auto-scroll Effect ---
   useEffect(() => {

@@ -93,6 +93,9 @@ export const NOISE_PATTERNS = [
   /rcon from ".*": command "sv_logecho 1"/,
   /rcon from ".*": command "sv_logfile 0"/,
   /rcon from ".*": command "sv_logbans 1"/,
+  /command "(status|css_players|log on|sv_logecho 1|sv_logfile 0|sv_logbans 1)"/, // Catch split lines
+  /from ".*": command ".+"/, // General RCON from lines
+  /: rcon$/, // First line of split RCON
 
   // --- Engine & Resource Warnings (No user action possible) ---
   'sequence/animation name collision found',
@@ -112,6 +115,16 @@ export const NOISE_PATTERNS = [
   /Event System loaded .* events from file: .*/,
   'Server logging enabled.',
   /L \d{2}\/\d{2}\/\d{4} - \d{2}:\d{2}:\d{2}: server_cvar: .*/,
+  /JSON_BEGIN\{/,
+  /JSON_END/,
+  /".*": ".*",/, // JSON content lines
+  /".*": {/,
+  /MatchStatus: .*/,
+  /GC Connection established .*/,
+  /\[STARTUP\] .* activated session on GC/,
+  /OnPreResetRound => CTMDBG/,
+  /willSwitch \d+ \d+\.\d+/,
+  /Using spawn points configuration .*/,
 
   // --- Other System Noise ---
   /\[QuatrixSync\] API Error: NotFound/,
