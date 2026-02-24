@@ -102,11 +102,20 @@ export const NOISE_PATTERNS = [
   'CNavGenParams - Nav mesh requests project default generation parameters',
   'Failed loading resource "maps/prefabs/misc/terrorist_team_intro_variant2/world_visibility.vvis_c"',
 
-  // --- Sync Plugin Noise ---
-  /\[QuatrixSync\] API Error: NotFound/,
-  /\[QuatrixSync\] Connection Error:/,
+  // --- CS2-SimpleAdmin Plugin Specific Noise ---
+  /Registering command: .* with aliases: .*/,
+  /Registering custom command: .*/,
+  /Loaded server with ip .*/,
+  /Finished loading plugin .*/,
+  /Loading plugin .*/,
+  /\[Info\] - Trampoline - .*/,
+  /Event System loaded .* events from file: .*/,
+  'Server logging enabled.',
+  /L \d{2}\/\d{2}\/\d{4} - \d{2}:\d{2}:\d{2}: server_cvar: .*/,
 
   // --- Other System Noise ---
+  /\[QuatrixSync\] API Error: NotFound/,
+  /\[QuatrixSync\] Connection Error:/,
   'GameTypes: missing mapgroupsSP entry',
   'Entry player was not found in surfaceproperties_footsteps.txt',
 ];
