@@ -135,10 +135,10 @@ class ServerManager {
 
     const newInstallDir = this.getSetting('install_dir') || defaultInstallDir;
     const newSteamCmdPathFromSettings = this.getSetting('steamcmd_path');
-    
+
     // If settings has a path, use it. Otherwise use default.
     this.steamCmdExe = newSteamCmdPathFromSettings || defaultSteamCmdPath;
-    
+
     // If it's a directory, append the filename
     if (this.steamCmdExe && !this.steamCmdExe.toLowerCase().endsWith('.sh')) {
       this.steamCmdExe = path.join(this.steamCmdExe, 'steamcmd.sh');

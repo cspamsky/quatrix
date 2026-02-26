@@ -96,7 +96,9 @@ const Plugins = () => {
     data: remoteUpdates = {},
     isLoading: remoteLoading,
     refetch: refetchRemote,
-  } = useQuery<Record<string, { hasUpdate: boolean; latestVersion: string; currentVersion: string }>>({
+  } = useQuery<
+    Record<string, { hasUpdate: boolean; latestVersion: string; currentVersion: string }>
+  >({
     queryKey: ['plugins-remote-updates'],
     queryFn: () => apiFetch('/api/servers/plugins/updates/remote').then((res) => res.json()),
     enabled: !!registry,

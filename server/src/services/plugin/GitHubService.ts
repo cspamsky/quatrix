@@ -11,9 +11,11 @@ export class GitHubService {
   private getHeaders(url?: string) {
     const isGitHubApi = url?.startsWith('https://api.github.com');
     const isBinaryDownload = url?.includes('/releases/download/') || url?.includes('/assets/');
-    
-    const tokenRow = db.prepare("SELECT value FROM settings WHERE key = 'github_token'").get() as { value: string } | undefined;
-    
+
+    const tokenRow = db.prepare("SELECT value FROM settings WHERE key = 'github_token'").get() as
+      | { value: string }
+      | undefined;
+
     const headers: Record<string, string> = {
       'User-Agent': 'Quatrix-Panel-Updater',
     };
@@ -55,8 +57,7 @@ export class GitHubService {
       const assets: any[] = release.assets || [];
       const asset =
         assets.find(
-          (a: any) =>
-            a.name.toLowerCase().includes('with-runtime-linux') && a.name.endsWith('.zip')
+          (a: any) => a.name.toLowerCase().includes('with-runtime-linux') && a.name.endsWith('.zip')
         ) ||
         assets.find(
           (a: any) => a.name.toLowerCase().includes('linux') && a.name.endsWith('.zip')

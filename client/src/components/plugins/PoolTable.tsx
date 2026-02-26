@@ -15,12 +15,16 @@ interface PluginInfo {
   githubRepo?: string;
   category: 'core' | 'metamod' | 'cssharp';
   inPool: boolean;
-  currentVersion?: string;
+  version?: string; // Dynamic: from plugin_metadata_cache (updated on sync)
+  currentVersion?: string; // Static: from registry (never changes without code update)
 }
 
 interface PoolTableProps {
   plugins: PluginInfo[];
-  remoteUpdates: Record<string, { hasUpdate: boolean; latestVersion: string; currentVersion: string }>;
+  remoteUpdates: Record<
+    string,
+    { hasUpdate: boolean; latestVersion: string; currentVersion: string }
+  >;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   activeCategory: string;
@@ -129,13 +133,23 @@ const PoolTable: React.FC<PoolTableProps> = ({
                         <div className="text-sm font-bold text-white group-hover:text-primary transition-colors flex items-center gap-2">
                           {info.name}
                           {hasUpdateAvailable && (
-                            <span className="flex h-2 w-2 rounded-full bg-orange-500 animate-pulse" title="Update Available"></span>
+                            <span
+                              className="flex h-2 w-2 rounded-full bg-orange-500 animate-pulse"
+                              title="Update Available"
+                            ></span>
                           )}
                         </div>
                         <div className="text-[10px] text-gray-500 font-mono mt-0.5 flex items-center gap-2">
                           {info.id}
-                          {info.currentVersion && <span>• v{info.currentVersion}</span>}
-                          {remote && <span className="text-primary/60 italic">(GitHub: v{remote.latestVersion})</span>}
+                          {/* Use `version` (dynamic, from cache) not `currentVersion` (static registry) */}
+                          {(info.version || info.currentVersion) && (
+                            <span>• v{info.version || info.currentVersion}</span>
+                          )}
+                          {remote && (
+                            <span className="text-primary/60 italic">
+                              (GitHub: v{remote.latestVersion})
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

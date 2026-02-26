@@ -84,16 +84,27 @@ class RuntimeService {
 
           // Both 'always' and 'on_failure' restart: VDS reboot = unexpected termination
           if (policy === 'always' || policy === 'on_failure') {
-            console.log(`[Runtime] Scheduling auto-restart for instance ${id} after panel recovery (policy: ${policy})...`);
+            console.log(
+              `[Runtime] Scheduling auto-restart for instance ${id} after panel recovery (policy: ${policy})...`
+            );
             setTimeout(async () => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const serverConfig = db.prepare('SELECT * FROM servers WHERE id = ?').get(id) as any;
               if (serverConfig) {
                 try {
-                  await this.startInstance(id, serverConfig, onLogAdopted ? (data) => onLogAdopted(id, data) : undefined);
-                  console.log(`[Runtime] Auto-restart successful for instance ${id} after panel recovery.`);
+                  await this.startInstance(
+                    id,
+                    serverConfig,
+                    onLogAdopted ? (data) => onLogAdopted(id, data) : undefined
+                  );
+                  console.log(
+                    `[Runtime] Auto-restart successful for instance ${id} after panel recovery.`
+                  );
                 } catch (e) {
-                  console.error(`[Runtime] Auto-restart failed for instance ${id} after panel recovery:`, e);
+                  console.error(
+                    `[Runtime] Auto-restart failed for instance ${id} after panel recovery:`,
+                    e
+                  );
                 }
               }
             }, 10000); // 10s delay — let panel fully initialize before starting servers

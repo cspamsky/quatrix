@@ -71,7 +71,7 @@ console.log(`[DEBUG] has setSocketIO: ${typeof serverManager?.setSocketIO === 'f
 if (serverManager && typeof serverManager.setSocketIO === 'function') {
   serverManager.setSocketIO(io);
   // Initialize server manager after socket.io is ready
-  serverManager.init().catch(err => {
+  serverManager.init().catch((err) => {
     console.error('[SYSTEM] Failed to initialize ServerManager:', err);
   });
 }

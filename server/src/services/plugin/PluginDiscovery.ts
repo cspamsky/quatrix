@@ -36,13 +36,13 @@ export class PluginDiscovery {
     registry: Record<string, PluginRegistryItem>
   ): Promise<Record<string, PluginMetadata>> {
     const manifest: Record<string, PluginMetadata> = {};
-    
+
     // 1. Get directories from pool path, ignoring non-directories and README.txt
     const poolItems = await fs.readdir(POOL_DIR, { withFileTypes: true }).catch(() => []);
     const poolDirs = poolItems
       .filter((item) => item.isDirectory() && item.name.toLowerCase() !== 'readme.txt')
       .map((item) => item.name);
-    
+
     const poolDirsLower = poolDirs.map((i) => i.toLowerCase());
 
     // Load cache
@@ -65,7 +65,7 @@ export class PluginDiscovery {
       let version = info.currentVersion || 'latest';
       if (inPool) {
         // Find in cache by any candidate name
-        const cacheMatch = candidateNames.find(name => cache.has(name));
+        const cacheMatch = candidateNames.find((name) => cache.has(name));
         if (cacheMatch) {
           const cached = cache.get(cacheMatch);
           if (cached && cached.version) {
@@ -91,22 +91,22 @@ export class PluginDiscovery {
     // 3. Process local pool for custom/discovered plugins
     const folderNamesInManifest = new Set(
       Object.values(manifest)
-        .map(m => m.folderName?.toLowerCase())
+        .map((m) => m.folderName?.toLowerCase())
         .filter(Boolean) as string[]
     );
     const sanitizedNamesInManifest = new Set(
       Object.values(manifest)
-        .map(m => m.name?.toLowerCase().replace(/[^a-z0-9]/g, ''))
+        .map((m) => m.name?.toLowerCase().replace(/[^a-z0-9]/g, ''))
         .filter(Boolean) as string[]
     );
 
     for (const folderName of poolDirs) {
       const folderLower = folderName.toLowerCase();
-      
+
       // Skip if already in manifest (by static registry)
-      const isKnown = 
-        manifest[folderName] || 
-        folderNamesInManifest.has(folderLower) || 
+      const isKnown =
+        manifest[folderName] ||
+        folderNamesInManifest.has(folderLower) ||
         sanitizedNamesInManifest.has(folderLower);
 
       if (!isKnown) {
@@ -128,7 +128,7 @@ export class PluginDiscovery {
         // New discovered plugin (not in cache)
         const fullPath = path.join(POOL_DIR, folderName);
         const category = await this.detectCategory(fullPath);
-        
+
         manifest[folderName] = {
           name: folderName,
           version: 'latest',

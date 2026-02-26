@@ -507,13 +507,22 @@ export class PluginInstaller {
   /**
    * Uploads a plugin archive to the pool
    */
-  async uploadToPool(pluginId: string, filePath: string, originalName: string, version?: string): Promise<void> {
+  async uploadToPool(
+    pluginId: string,
+    filePath: string,
+    originalName: string,
+    version?: string
+  ): Promise<void> {
     // SECURITY: Validate file path using absolute PROJECT_ROOT to avoid CWD dependency
     const resolvedFilePath = path.resolve(filePath).toLowerCase();
-    const expectedUploadDir = path.resolve(path.join(PROJECT_ROOT, 'data', 'temp', 'uploads')).toLowerCase();
+    const expectedUploadDir = path
+      .resolve(path.join(PROJECT_ROOT, 'data', 'temp', 'uploads'))
+      .toLowerCase();
 
     if (!resolvedFilePath.startsWith(expectedUploadDir)) {
-      console.error(`[POOL] Security violation: ${resolvedFilePath} does not start with ${expectedUploadDir}`);
+      console.error(
+        `[POOL] Security violation: ${resolvedFilePath} does not start with ${expectedUploadDir}`
+      );
       throw new Error('Security Error: Invalid upload file path detected');
     }
 
@@ -564,7 +573,9 @@ export class PluginInstaller {
       // If pluginId is known, use registry folderName to guarantee correct destination
       // This prevents metadata auto-detection from picking up README.txt, DLL names, etc.
       if (pluginId && pluginId !== 'unknown') {
-        const registryItem = (pluginRegistry as Record<string, { folderName?: string; name?: string }>)[pluginId];
+        const registryItem = (
+          pluginRegistry as Record<string, { folderName?: string; name?: string }>
+        )[pluginId];
         if (registryItem) {
           finalFolderName = registryItem.folderName || registryItem.name || pluginId;
         } else {
@@ -603,10 +614,35 @@ export class PluginInstaller {
       }
 
       // Update Metadata Cache
+      // Write under finalFolderName (e.g. "CounterStrikeSharp")
+      // AND under pluginId (e.g. "cssharp") so scanPool can find the version via either key.
       try {
-        db.prepare(
+        const stmt = db.prepare(
           'INSERT OR REPLACE INTO plugin_metadata_cache (plugin_id, name, category, folder_name, is_custom, version) VALUES (?, ?, ?, ?, ?, ?)'
-        ).run(finalFolderName, metadata.name, metadata.category, finalFolderName, 1, version || 'latest');
+        );
+        stmt.run(
+          finalFolderName,
+          metadata.name,
+          metadata.category,
+          finalFolderName,
+          1,
+          version || 'latest'
+        );
+        // Also store under the canonical pluginId so scanPool lookup (by id/folderName) always hits
+        if (
+          pluginId &&
+          pluginId !== 'unknown' &&
+          pluginId.toLowerCase() !== finalFolderName.toLowerCase()
+        ) {
+          stmt.run(
+            pluginId,
+            metadata.name,
+            metadata.category,
+            finalFolderName,
+            1,
+            version || 'latest'
+          );
+        }
       } catch (err) {
         console.error('[POOL] Failed to update cache for uploaded plugin:', finalFolderName, err);
       }

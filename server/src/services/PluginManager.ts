@@ -409,9 +409,14 @@ export class PluginManager {
   /**
    * Checks for remote updates on GitHub for all plugins in registry
    */
-  async checkRemoteUpdates(): Promise<Record<string, { hasUpdate: boolean; latestVersion: string; currentVersion: string }>> {
+  async checkRemoteUpdates(): Promise<
+    Record<string, { hasUpdate: boolean; latestVersion: string; currentVersion: string }>
+  > {
     const registry = await this.getRegistry();
-    const results: Record<string, { hasUpdate: boolean; latestVersion: string; currentVersion: string }> = {};
+    const results: Record<
+      string,
+      { hasUpdate: boolean; latestVersion: string; currentVersion: string }
+    > = {};
     const reposToCheck = Object.entries(registry).filter(([, info]) => !!info.githubRepo);
 
     console.log(`[PLUGIN] Checking ${reposToCheck.length} remote repositories in parallel...`);
@@ -420,13 +425,13 @@ export class PluginManager {
       try {
         const repo = info.githubRepo!;
         const release = await githubService.getLatestRelease(repo);
-        
+
         if (release) {
           // Prioritize the version in our pool/cache over the hardcoded registry version
           const poolVersion = (info as any).version;
           const registryVersion = info.currentVersion;
-          
-          let currentVersion = (poolVersion || registryVersion || '0.0.0').replace(/^v/, '');
+
+          const currentVersion = (poolVersion || registryVersion || '0.0.0').replace(/^v/, '');
           const latestVersion = release.version.replace(/^v/, '');
 
           results[id] = {
@@ -442,7 +447,9 @@ export class PluginManager {
     });
 
     await Promise.all(updatePromises);
-    console.log(`[PLUGIN] Remote update check complete. Found ${Object.keys(results).length} results.`);
+    console.log(
+      `[PLUGIN] Remote update check complete. Found ${Object.keys(results).length} results.`
+    );
     return results;
   }
 
@@ -465,11 +472,11 @@ export class PluginManager {
     console.log(`[PLUGIN] Downloading ${pluginId} (${release.version}) from GitHub...`);
     const buffer = await githubService.downloadAsset(release.assetUrl);
     console.log(`[PLUGIN] Download complete (${buffer.length} bytes). Processing archive...`);
-    
+
     // Save to temp file and use existing uploadToPool logic
     const tempDir = path.join(PROJECT_ROOT, 'data', 'temp', 'uploads');
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-    
+
     const fileName = `${pluginId}_${release.version}.zip`;
     const tempPath = path.join(tempDir, fileName);
     await fs.promises.writeFile(tempPath, buffer);
