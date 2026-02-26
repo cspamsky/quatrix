@@ -11,6 +11,8 @@ interface GeneralTabProps {
   timezone: string;
   setTimezone: (val: string) => void;
   timezones: string[];
+  githubToken: string;
+  setGithubToken: (val: string) => void;
   systemInfo?: {
     runtime?: {
       node?: string;
@@ -30,6 +32,8 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
   timezone,
   setTimezone,
   timezones,
+  githubToken,
+  setGithubToken,
   systemInfo,
   isLoading,
   canEdit = true,
@@ -85,6 +89,25 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
                 {t(
                   'settingsGeneral.timezone_desc',
                   'The region used for server time and backup scheduling.'
+                )}
+              </p>
+            </div>
+            <div className="pt-4 border-t border-gray-800/50">
+              <label className="block text-sm font-medium text-gray-400 mb-2">
+                GitHub Personal Access Token
+              </label>
+              <input
+                className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600"
+                type="password"
+                value={githubToken}
+                onChange={(e) => setGithubToken(e.target.value)}
+                placeholder="ghp_xxxxxxxxxxxx"
+                disabled={!canEdit}
+              />
+              <p className="text-[10px] text-gray-500 mt-2 px-1">
+                {t(
+                  'settingsGeneral.github_token_desc',
+                  'Used to increase API rate limits for plugin updates. Recommended for large numbers of plugins.'
                 )}
               </p>
             </div>

@@ -16,7 +16,7 @@ import {
 import { apiFetch } from '../utils/api';
 import toast from 'react-hot-toast';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import ConfigEditor from '../components/plugins/ConfigEditor.js';
 import UploadModal from '../components/plugins/UploadModal.js';
@@ -89,6 +89,18 @@ const Plugins = () => {
   const { data: registry = {}, isLoading: registryLoading } = useQuery<Record<string, PluginInfo>>({
     queryKey: ['plugin-registry'],
     queryFn: () => apiFetch('/api/servers/plugins/registry').then((res) => res.json()),
+  });
+
+  // 1.5 Remote Updates (GitHub)
+  const {
+    data: remoteUpdates = {},
+    isLoading: remoteLoading,
+    refetch: refetchRemote,
+  } = useQuery<Record<string, { hasUpdate: boolean; latestVersion: string; currentVersion: string }>>({
+    queryKey: ['plugins-remote-updates'],
+    queryFn: () => apiFetch('/api/servers/plugins/updates/remote').then((res) => res.json()),
+    enabled: !!registry,
+    staleTime: 1000 * 60 * 60, // 1 hour
   });
 
   // 2. Fetch Server Instances (Dropdown)
@@ -219,6 +231,22 @@ const Plugins = () => {
       setIsUploading(false);
     }
   };
+
+  const syncPluginMutation = useMutation({
+    mutationFn: (pluginId: string) =>
+      apiFetch(`/api/servers/plugins/pool/${pluginId}/sync`, { method: 'POST' }).then((res) => {
+        if (!res.ok) throw new Error('Sync failed');
+        return res.json();
+      }),
+    onSuccess: () => {
+      toast.success(t('plugins.sync_success', 'Plugin updated from GitHub successfully'));
+      queryClient.invalidateQueries({ queryKey: ['plugin-registry'] });
+      queryClient.invalidateQueries({ queryKey: ['plugins-remote-updates'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || t('plugins.sync_error', 'Failed to sync from GitHub'));
+    },
+  });
 
   const handleDeletePool = async (pluginId: string) => {
     const confirmed = await showConfirm({
@@ -712,6 +740,7 @@ const Plugins = () => {
       ) : (
         <PoolTable
           plugins={poolPlugins}
+          remoteUpdates={remoteUpdates}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           activeCategory={activeCategory}
@@ -720,6 +749,10 @@ const Plugins = () => {
           }
           onDelete={handleDeletePool}
           onUpload={(id, name) => setUploadModalPlugin({ id, name })}
+          onSyncFromRemote={(id) => syncPluginMutation.mutate(id)}
+          onRefreshRemote={() => refetchRemote()}
+          isRemoteLoading={remoteLoading}
+          isSyncing={syncPluginMutation.isPending}
           tabSwitcher={<TabSwitcher />}
         />
       )}

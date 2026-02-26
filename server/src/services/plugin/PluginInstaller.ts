@@ -7,6 +7,7 @@ import type { PluginMetadata } from '../PluginManager.js';
 import { pluginDiscovery } from './PluginDiscovery.js';
 import { pluginConfigManager } from './PluginConfigManager.js';
 import db from '../../db.js';
+import { pluginRegistry } from '../../config/plugins.js';
 import { taskService } from '../TaskService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -506,12 +507,13 @@ export class PluginInstaller {
   /**
    * Uploads a plugin archive to the pool
    */
-  async uploadToPool(pluginId: string, filePath: string, originalName: string): Promise<void> {
-    // SECURITY: Validate file path
-    const resolvedFilePath = path.resolve(filePath);
-    const expectedUploadDir = path.resolve('data/temp/uploads');
+  async uploadToPool(pluginId: string, filePath: string, originalName: string, version?: string): Promise<void> {
+    // SECURITY: Validate file path using absolute PROJECT_ROOT to avoid CWD dependency
+    const resolvedFilePath = path.resolve(filePath).toLowerCase();
+    const expectedUploadDir = path.resolve(path.join(PROJECT_ROOT, 'data', 'temp', 'uploads')).toLowerCase();
 
     if (!resolvedFilePath.startsWith(expectedUploadDir)) {
+      console.error(`[POOL] Security violation: ${resolvedFilePath} does not start with ${expectedUploadDir}`);
       throw new Error('Security Error: Invalid upload file path detected');
     }
 
@@ -559,6 +561,17 @@ export class PluginInstaller {
       const metadata = await pluginDiscovery.extractMetadata(contentRoot, fallbackId);
       let finalFolderName = metadata.folderName;
 
+      // If pluginId is known, use registry folderName to guarantee correct destination
+      // This prevents metadata auto-detection from picking up README.txt, DLL names, etc.
+      if (pluginId && pluginId !== 'unknown') {
+        const registryItem = (pluginRegistry as Record<string, { folderName?: string; name?: string }>)[pluginId];
+        if (registryItem) {
+          finalFolderName = registryItem.folderName || registryItem.name || pluginId;
+        } else {
+          finalFolderName = pluginId;
+        }
+      }
+
       // Sanitize folder name
       finalFolderName = finalFolderName.replace(/[^a-zA-Z0-9.\-_]/g, '');
       if (!finalFolderName || finalFolderName === '.' || finalFolderName === '..') {
@@ -583,11 +596,17 @@ export class PluginInstaller {
 
       await fs.rename(contentRoot, targetPoolPath);
 
+      // Clean up any leftover files in tempExtractDir (e.g. README.txt alongside plugin dir)
+      // This prevents junk files from leaking into the pool root
+      if (contentRoot !== tempExtractDir) {
+        await fs.rm(tempExtractDir, { recursive: true, force: true }).catch(() => {});
+      }
+
       // Update Metadata Cache
       try {
         db.prepare(
-          'INSERT OR REPLACE INTO plugin_metadata_cache (plugin_id, name, category, folder_name, is_custom) VALUES (?, ?, ?, ?, ?)'
-        ).run(finalFolderName, metadata.name, metadata.category, finalFolderName, 1);
+          'INSERT OR REPLACE INTO plugin_metadata_cache (plugin_id, name, category, folder_name, is_custom, version) VALUES (?, ?, ?, ?, ?, ?)'
+        ).run(finalFolderName, metadata.name, metadata.category, finalFolderName, 1, version || 'latest');
       } catch (err) {
         console.error('[POOL] Failed to update cache for uploaded plugin:', finalFolderName, err);
       }

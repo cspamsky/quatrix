@@ -134,29 +134,23 @@ class ServerManager {
     const defaultSteamCmdPath = path.join(defaultDataDir, 'steamcmd', 'steamcmd.sh');
 
     const newInstallDir = this.getSetting('install_dir') || defaultInstallDir;
-    const newSteamCmdPath = this.getSetting('install_dir')
-      ? this.getSetting('steamcmd_path')
-      : defaultSteamCmdPath;
+    const newSteamCmdPathFromSettings = this.getSetting('steamcmd_path');
+    
+    // If settings has a path, use it. Otherwise use default.
+    this.steamCmdExe = newSteamCmdPathFromSettings || defaultSteamCmdPath;
+    
+    // If it's a directory, append the filename
+    if (this.steamCmdExe && !this.steamCmdExe.toLowerCase().endsWith('.sh')) {
+      this.steamCmdExe = path.join(this.steamCmdExe, 'steamcmd.sh');
+    }
 
     this.installDir = newInstallDir;
     this.lastInstallDir = newInstallDir;
-    this.lastSteamCmdPath = newSteamCmdPath;
+    this.lastSteamCmdPath = this.steamCmdExe;
 
     // Update FileSystem Service Base
     const baseDir = path.dirname(newInstallDir);
     fileSystemService.setBaseDir(baseDir);
-
-    if (newSteamCmdPath) {
-      if (newSteamCmdPath.endsWith('.sh')) {
-        this.steamCmdExe = newSteamCmdPath;
-      } else {
-        this.steamCmdExe = path.join(newSteamCmdPath, 'steamcmd.sh');
-      }
-    } else {
-      // Fallback
-      const steamCmdDir = path.join(projectRoot, 'data/steamcmd');
-      this.steamCmdExe = path.join(steamCmdDir, 'steamcmd.sh');
-    }
 
     try {
       await fs.promises.mkdir(this.installDir, { recursive: true });
@@ -1084,11 +1078,15 @@ class ServerManager {
   ) {
     return pluginManager.savePluginConfigFile(this.installDir, id, pid, filePath, content);
   }
+
+  async checkRemotePluginUpdates() {
+    return pluginManager.checkRemoteUpdates();
+  }
+
+  async syncPluginFromRemote(pluginId: string) {
+    return pluginManager.syncPluginFromRemote(pluginId);
+  }
 }
 
 export const serverManager = new ServerManager();
-// Async init
-(async () => {
-  await serverManager.init();
-})();
 export default serverManager;

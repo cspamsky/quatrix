@@ -42,6 +42,7 @@ export class SteamManager {
     await execFileAsync('tar', ['-xzf', archivePath, '-C', steamCmdDir]);
 
     await fs.promises.unlink(archivePath);
+    console.log('[STEAM] SteamCMD installation complete.');
   }
 
   async installOrUpdateServer(

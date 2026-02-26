@@ -10,10 +10,11 @@ export const pluginRegistry = {
   cssharp: {
     name: 'CounterStrikeSharp',
     currentVersion: '1.0.362',
-    folderName: 'counterstrikesharp',
+    folderName: 'CounterStrikeSharp',
     category: 'core' as const,
     tags: ['core', 'scripting'],
     description: 'C# scripting platform for CS2',
+    githubRepo: 'roflmuffin/CounterStrikeSharp',
   },
   // MetaMod Plugins
   cs2fixes: {
@@ -23,6 +24,7 @@ export const pluginRegistry = {
     tags: ['fix', 'utility', 'performance'],
     description: 'Essential fixes and performance improvements',
     folderName: 'cs2fixes',
+    githubRepo: 'p0iss0n/cs2fixes',
   },
   playerfix: {
     name: 'ServerListPlayersFix',
@@ -30,7 +32,7 @@ export const pluginRegistry = {
     category: 'metamod' as const,
     tags: ['fix', 'utility'],
     description: 'Fixes players count in server browser',
-    folderName: 'serverlistplayersfix_mm',
+    folderName: 'ServerListPlayersFix',
   },
   movelock: {
     name: 'MovementUnlocker',
@@ -64,6 +66,7 @@ export const pluginRegistry = {
     tags: ['gamemode', 'competitive', 'admin'],
     description: 'Comp/Match management plugin',
     folderName: 'MatchZy',
+    githubRepo: 'shaneis/MatchZy',
   },
   simpleadmin: {
     name: 'CS2-SimpleAdmin',
@@ -104,6 +107,7 @@ export const pluginRegistry = {
     tags: ['utility', 'map-voting'],
     description: 'Map voting and management system',
     folderName: 'RockTheVote',
+    githubRepo: 'abnerfs/cs2-rockthevote',
   },
   essentials: {
     name: 'CS2-Essentials',
@@ -343,7 +347,7 @@ export const pluginRegistry = {
     category: 'cssharp' as const,
     tags: ['utility', 'combat', 'weapons'],
     description: 'Advanced weapon attribute control',
-    folderName: 'cs2-advanced-weapon-system',
+    folderName: 'AdvancedWeaponSystem',
   },
   oneinthechamber: {
     name: 'CS2 One In The Chamber',

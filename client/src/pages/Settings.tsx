@@ -64,6 +64,7 @@ const Settings = () => {
   const [steamCmdPath, setSteamCmdPath] = useState('');
   const [installDir, setInstallDir] = useState('');
   const [timezone, setTimezone] = useState('UTC');
+  const [githubToken, setGithubToken] = useState('');
   const [engineMessage, setEngineMessage] = useState({ type: '', text: '' });
 
   // --- Queries ---
@@ -85,6 +86,7 @@ const Settings = () => {
       setInstallDir(settingsData.install_dir || '');
       setPanelName(settingsData.panel_name || 'Quatrix Panel');
       setDefaultPort(settingsData.default_port || '27015');
+      setGithubToken(settingsData.github_token || '');
     }
   }, [settingsData]);
 
@@ -272,6 +274,8 @@ const Settings = () => {
                 timezone={timezone}
                 setTimezone={setTimezone}
                 timezones={timezoneData?.timezones || ['UTC']}
+                githubToken={githubToken}
+                setGithubToken={setGithubToken}
                 systemInfo={healthData}
                 isLoading={healthLoading}
                 canEdit={canManage}
@@ -326,6 +330,7 @@ const Settings = () => {
                         updateSettingsMutation.mutate({
                           panel_name: panelName,
                           default_port: defaultPort,
+                          github_token: githubToken,
                         });
                         if (timezoneData?.current !== timezone) {
                           updateTimezoneMutation.mutate(timezone);

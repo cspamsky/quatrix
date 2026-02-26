@@ -55,6 +55,8 @@ router.get('/:id/plugins/status', async (req: Request, res: Response) => {
     res.json(status);
   } catch (error: unknown) {
     const err = error as Error;
+    console.error(`[API] Status failed for server ${id}:`, err.message);
+    if (process.env.NODE_ENV === 'development') console.error(err.stack);
     res.status(500).json({ message: err.message });
   }
 });
@@ -254,6 +256,35 @@ router.delete('/plugins/pool/:pluginId', async (req: Request, res: Response) => 
   } catch (error: unknown) {
     const err = error as Error;
     res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/plugins/updates/remote
+router.get('/plugins/updates/remote', async (_req: Request, res: Response) => {
+  try {
+    console.log('[API] Checking remote plugin updates...');
+    const updates = await serverManager.checkRemotePluginUpdates();
+    res.json(updates);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('[API] Remote plugin update check failed:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/plugins/pool/:pluginId/sync
+router.post('/plugins/pool/:pluginId/sync', async (req: Request, res: Response) => {
+  const pluginId = req.params.pluginId as string;
+  try {
+    console.log(`[API] Starting sync for plugin: ${pluginId}`);
+    await serverManager.syncPluginFromRemote(pluginId);
+    console.log(`[API] Sync successful for plugin: ${pluginId}`);
+    res.json({ message: `Plugin ${pluginId} synced from remote successfully` });
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error(`[API] Sync failed for ${pluginId}:`, err.message);
+    console.error(err.stack); // Log full stack for deep debugging
+    res.status(500).json({ message: err.message || 'Internal Server Error during sync' });
   }
 });
 

@@ -397,6 +397,7 @@ db.prepare("UPDATE settings SET value = ? WHERE key = 'install_dir'").run(defaul
 
 initializeSetting('steamcmd_path', steamCmdPath);
 initializeSetting('install_dir', defaultInstallDir);
+initializeSetting('github_token', '');
 initializeSetting('auto_plugin_updates', 'false');
 initializeSetting('backup_schedule_time', '03:00');
 initializeSetting('backup_retention_limit', '7');

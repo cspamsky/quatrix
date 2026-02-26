@@ -36,8 +36,14 @@ export class PluginDiscovery {
     registry: Record<string, PluginRegistryItem>
   ): Promise<Record<string, PluginMetadata>> {
     const manifest: Record<string, PluginMetadata> = {};
-    const poolItems = await fs.readdir(POOL_DIR).catch(() => []);
-    const poolItemsLower = poolItems.map((i) => i.toLowerCase());
+    
+    // 1. Get directories from pool path, ignoring non-directories and README.txt
+    const poolItems = await fs.readdir(POOL_DIR, { withFileTypes: true }).catch(() => []);
+    const poolDirs = poolItems
+      .filter((item) => item.isDirectory() && item.name.toLowerCase() !== 'readme.txt')
+      .map((item) => item.name);
+    
+    const poolDirsLower = poolDirs.map((i) => i.toLowerCase());
 
     // Load cache
     const cacheRows = db.prepare('SELECT * FROM plugin_metadata_cache').all() as PluginCacheRow[];
@@ -45,7 +51,7 @@ export class PluginDiscovery {
       cacheRows.map((r) => [r.plugin_id.toLowerCase(), r])
     );
 
-    // 1. Process static registry
+    // 2. Process static registry first
     for (const [id, info] of Object.entries(registry)) {
       const candidateNames = [
         id.toLowerCase(),
@@ -53,11 +59,24 @@ export class PluginDiscovery {
         (info.name || '').toLowerCase().replace(/[^a-z0-9]/g, ''),
       ].filter(Boolean);
 
-      const inPool = candidateNames.some((name) => poolItemsLower.includes(name));
+      const inPool = candidateNames.some((name) => poolDirsLower.includes(name));
+
+      // Check cache for updated version if in pool
+      let version = info.currentVersion || 'latest';
+      if (inPool) {
+        // Find in cache by any candidate name
+        const cacheMatch = candidateNames.find(name => cache.has(name));
+        if (cacheMatch) {
+          const cached = cache.get(cacheMatch);
+          if (cached && cached.version) {
+            version = cached.version;
+          }
+        }
+      }
 
       manifest[id] = {
         name: info.name,
-        version: info.currentVersion || 'latest',
+        version: version,
         currentVersion: info.currentVersion,
         downloadUrl: info.downloadUrl || '',
         category: info.category,
@@ -65,29 +84,41 @@ export class PluginDiscovery {
         folderName: info.folderName || undefined,
         inPool: inPool,
         isCustom: false,
+        githubRepo: info.githubRepo,
       };
     }
 
-    // 2. Process dynamic pool folders (custom uploads)
-    for (const item of poolItems) {
-      const itemLower = item.toLowerCase();
+    // 3. Process local pool for custom/discovered plugins
+    const folderNamesInManifest = new Set(
+      Object.values(manifest)
+        .map(m => m.folderName?.toLowerCase())
+        .filter(Boolean) as string[]
+    );
+    const sanitizedNamesInManifest = new Set(
+      Object.values(manifest)
+        .map(m => m.name?.toLowerCase().replace(/[^a-z0-9]/g, ''))
+        .filter(Boolean) as string[]
+    );
+
+    for (const folderName of poolDirs) {
+      const folderLower = folderName.toLowerCase();
+      
       // Skip if already in manifest (by static registry)
-      const isKnown = Object.values(manifest).some(
-        (m: PluginMetadata) =>
-          (m.folderName && m.folderName.toLowerCase() === itemLower) ||
-          (m.name && m.name.toLowerCase().replace(/[^a-z0-9]/g, '') === itemLower)
-      );
+      const isKnown = 
+        manifest[folderName] || 
+        folderNamesInManifest.has(folderLower) || 
+        sanitizedNamesInManifest.has(folderLower);
 
       if (!isKnown) {
         // Check cache first
-        const cached = cache.get(itemLower);
+        const cached = cache.get(folderLower);
         if (cached) {
-          manifest[item] = {
+          manifest[folderName] = {
             name: cached.name,
             version: cached.version || 'latest',
             category: cached.category as 'cssharp' | 'metamod' | 'core',
             description: cached.description || 'Custom plugin',
-            folderName: cached.folder_name,
+            folderName: cached.folder_name || folderName,
             inPool: true,
             isCustom: true,
           };
@@ -95,28 +126,26 @@ export class PluginDiscovery {
         }
 
         // New discovered plugin (not in cache)
-        const fullPath = path.join(POOL_DIR, item);
-        const stats = await fs.stat(fullPath).catch(() => null);
-        if (stats && stats.isDirectory()) {
-          const category = await this.detectCategory(fullPath);
-          manifest[item] = {
-            name: item,
-            version: 'latest',
-            category: category,
-            description: 'Manually added or discovered plugin',
-            folderName: item,
-            inPool: true,
-            isCustom: true,
-          };
+        const fullPath = path.join(POOL_DIR, folderName);
+        const category = await this.detectCategory(fullPath);
+        
+        manifest[folderName] = {
+          name: folderName,
+          version: 'latest',
+          category: category,
+          description: 'Discovered plugin in pool',
+          folderName: folderName,
+          inPool: true,
+          isCustom: true,
+        };
 
-          // Update cache
-          try {
-            db.prepare(
-              'INSERT OR REPLACE INTO plugin_metadata_cache (plugin_id, name, category, folder_name, is_custom, version) VALUES (?, ?, ?, ?, ?, ?)'
-            ).run(item, item, category, item, 1, 'latest');
-          } catch (err) {
-            console.error('[Discovery] Failed to update cache for', item, err);
-          }
+        // Update cache
+        try {
+          db.prepare(
+            'INSERT OR REPLACE INTO plugin_metadata_cache (plugin_id, name, category, folder_name, is_custom, version) VALUES (?, ?, ?, ?, ?, ?)'
+          ).run(folderName, folderName, category, folderName, 1, 'latest');
+        } catch (err) {
+          console.error('[Discovery] Failed to update cache for', folderName, err);
         }
       }
     }

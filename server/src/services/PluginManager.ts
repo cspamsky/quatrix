@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import { pluginDiscovery } from './plugin/PluginDiscovery.js';
 import { pluginConfigManager } from './plugin/PluginConfigManager.js';
 import { pluginInstaller } from './plugin/PluginInstaller.js';
+import { githubService } from './plugin/GitHubService.js';
 import { taskService } from './TaskService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -26,6 +27,7 @@ export interface PluginMetadata {
   description: string;
   inPool: boolean;
   isCustom: boolean;
+  githubRepo?: string | undefined;
 }
 
 export interface PluginRegistryItem {
@@ -36,6 +38,7 @@ export interface PluginRegistryItem {
   tags?: readonly string[];
   description?: string;
   downloadUrl?: string;
+  githubRepo?: string | undefined;
 }
 
 /**
@@ -158,13 +161,13 @@ export class PluginManager {
     };
 
     const registry = await this.getRegistry(instanceId);
-    const checks = Object.keys(registry).map(async (pid) => {
+    for (const pid of Object.keys(registry)) {
       const info = registry[pid];
-      if (!info) return;
+      if (!info) continue;
 
       if (info.category === 'core') {
         if (!status[pid]) status[pid] = { installed: false, hasConfigs: false };
-        return;
+        continue;
       }
 
       let installed = false;
@@ -202,9 +205,8 @@ export class PluginManager {
       }
 
       status[pid] = { installed, hasConfigs };
-    });
+    }
 
-    await Promise.all(checks);
     return status;
   }
 
@@ -402,6 +404,83 @@ export class PluginManager {
   ): Promise<void> {
     await this.uninstallPlugin(installDir, instanceId, pluginId, taskId);
     await this.installPlugin(installDir, instanceId, pluginId, taskId);
+  }
+
+  /**
+   * Checks for remote updates on GitHub for all plugins in registry
+   */
+  async checkRemoteUpdates(): Promise<Record<string, { hasUpdate: boolean; latestVersion: string; currentVersion: string }>> {
+    const registry = await this.getRegistry();
+    const results: Record<string, { hasUpdate: boolean; latestVersion: string; currentVersion: string }> = {};
+    const reposToCheck = Object.entries(registry).filter(([, info]) => !!info.githubRepo);
+
+    console.log(`[PLUGIN] Checking ${reposToCheck.length} remote repositories in parallel...`);
+
+    const updatePromises = reposToCheck.map(async ([id, info]) => {
+      try {
+        const repo = info.githubRepo!;
+        const release = await githubService.getLatestRelease(repo);
+        
+        if (release) {
+          // Prioritize the version in our pool/cache over the hardcoded registry version
+          const poolVersion = (info as any).version;
+          const registryVersion = info.currentVersion;
+          
+          let currentVersion = (poolVersion || registryVersion || '0.0.0').replace(/^v/, '');
+          const latestVersion = release.version.replace(/^v/, '');
+
+          results[id] = {
+            hasUpdate: currentVersion !== latestVersion && latestVersion !== 'latest',
+            latestVersion,
+            currentVersion,
+          };
+        }
+      } catch (err: unknown) {
+        const error = err as Error;
+        console.error(`[PLUGIN] Failed to check remote update for ${id}:`, error.message);
+      }
+    });
+
+    await Promise.all(updatePromises);
+    console.log(`[PLUGIN] Remote update check complete. Found ${Object.keys(results).length} results.`);
+    return results;
+  }
+
+  /**
+   * Syncs a plugin from GitHub to the local pool
+   */
+  async syncPluginFromRemote(pluginId: string): Promise<void> {
+    const registry = await this.getRegistry();
+    const info = registry[pluginId];
+
+    if (!info || !info.githubRepo) {
+      throw new Error(`Plugin ${pluginId} has no remote repository configured.`);
+    }
+
+    const release = await githubService.getLatestRelease(info.githubRepo);
+    if (!release) {
+      throw new Error(`Could not find latest release for ${info.githubRepo}`);
+    }
+
+    console.log(`[PLUGIN] Downloading ${pluginId} (${release.version}) from GitHub...`);
+    const buffer = await githubService.downloadAsset(release.assetUrl);
+    console.log(`[PLUGIN] Download complete (${buffer.length} bytes). Processing archive...`);
+    
+    // Save to temp file and use existing uploadToPool logic
+    const tempDir = path.join(PROJECT_ROOT, 'data', 'temp', 'uploads');
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+    
+    const fileName = `${pluginId}_${release.version}.zip`;
+    const tempPath = path.join(tempDir, fileName);
+    await fs.promises.writeFile(tempPath, buffer);
+
+    try {
+      console.log(`[PLUGIN] Extracting and installing ${pluginId} to pool...`);
+      await pluginInstaller.uploadToPool(pluginId, tempPath, fileName, release.version);
+      console.log(`[PLUGIN] ${pluginId} sync complete.`);
+    } finally {
+      if (fs.existsSync(tempPath)) await fs.promises.unlink(tempPath).catch(() => {});
+    }
   }
 
   /**

@@ -73,6 +73,34 @@ class RuntimeService {
         console.log('[Runtime] Server is dead or no PID. Marking OFFLINE.', id);
         db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id = ?").run(id);
         await lockService.releaseInstanceLock(id);
+
+        // Auto-restart on panel recovery (VDS reboot, panel crash, etc.)
+        // Servers that were ONLINE when panel died = unexpected termination
+        try {
+          const server = db.prepare('SELECT restart_policy FROM servers WHERE id = ?').get(id) as
+            | { restart_policy: string }
+            | undefined;
+          const policy = server?.restart_policy || 'on_failure';
+
+          // Both 'always' and 'on_failure' restart: VDS reboot = unexpected termination
+          if (policy === 'always' || policy === 'on_failure') {
+            console.log(`[Runtime] Scheduling auto-restart for instance ${id} after panel recovery (policy: ${policy})...`);
+            setTimeout(async () => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const serverConfig = db.prepare('SELECT * FROM servers WHERE id = ?').get(id) as any;
+              if (serverConfig) {
+                try {
+                  await this.startInstance(id, serverConfig, onLogAdopted ? (data) => onLogAdopted(id, data) : undefined);
+                  console.log(`[Runtime] Auto-restart successful for instance ${id} after panel recovery.`);
+                } catch (e) {
+                  console.error(`[Runtime] Auto-restart failed for instance ${id} after panel recovery:`, e);
+                }
+              }
+            }, 10000); // 10s delay — let panel fully initialize before starting servers
+          }
+        } catch (e) {
+          console.error(`[Runtime] Error in recovery restart logic for instance ${id}:`, e);
+        }
       }
     }
   }
@@ -172,7 +200,7 @@ class RuntimeService {
     lockService.releaseInstanceLock(id);
     this.instances.delete(id);
 
-    const isCrash = code !== 0 && code !== null && code !== 137 && code !== 143;
+    const isCrash = code !== 0 && code !== null && code !== 137;
     const status = isCrash ? 'CRASHED' : 'OFFLINE';
 
     if (isCrash) console.warn(`[Runtime] CRASH DETECTED for instance ${id}`);
