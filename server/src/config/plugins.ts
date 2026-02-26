@@ -6,6 +6,8 @@ export const pluginRegistry = {
     category: 'core' as const,
     tags: ['core', 'framework'],
     description: 'Base framework for all server mods',
+    // AlliedModders listing page — scraped at runtime to find the latest linux build
+    downloadUrl: 'https://mms.alliedmods.net/mmsdrop/2.0/',
   },
   cssharp: {
     name: 'CounterStrikeSharp',

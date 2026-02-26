@@ -7,7 +7,12 @@ interface GitHubRelease {
   publishedAt: string;
 }
 
-export class GitHubService {
+interface RemoteRelease {
+  version: string;
+  assetUrl: string;
+}
+
+export class UpdateService {
   private getHeaders(url?: string) {
     const isGitHubApi = url?.startsWith('https://api.github.com');
     const isBinaryDownload = url?.includes('/releases/download/') || url?.includes('/assets/');
@@ -104,6 +109,58 @@ export class GitHubService {
       throw new Error(`Failed to download plugin asset: ${message}`);
     }
   }
+  /**
+   * Scrapes AlliedModders directory listing to find the latest release
+   * Equivalent to: curl -sL <listingUrl> | grep -o 'href="mmsource-[^"]*-linux\.tar\.gz' | tail -1
+   *
+   * @param listingUrl Base directory URL (e.g. https://mms.alliedmods.net/mmsdrop/2.0/)
+   * @param filePattern Regex pattern to match the desired filename (default: linux tar.gz)
+   * @returns Latest release info, or null if not found
+   */
+  async getLatestAlliedModsRelease(
+    listingUrl: string,
+    filePattern: RegExp = /mmsource-[^"]*-linux\.tar\.gz/
+  ): Promise<RemoteRelease | null> {
+    try {
+      const response = await axios.get(listingUrl, {
+        headers: { 'User-Agent': 'Quatrix-Panel-Updater' },
+        timeout: 10000,
+        responseType: 'text',
+      });
+
+      const html: string = response.data;
+
+      // Find all href matches (e.g. href="mmsource-2.0.0-git1387-linux.tar.gz")
+      const regex = new RegExp(`href="(${filePattern.source})"`, 'g');
+      const matches = [...html.matchAll(regex)];
+
+      if (!matches.length) {
+        console.warn(`[AlliedMods] No matching files found at ${listingUrl}`);
+        return null;
+      }
+
+      // Take the last (latest) match — tail -1 equivalent
+      const lastMatch = matches[matches.length - 1];
+      if (!lastMatch) return null;
+      const fileName = lastMatch[1];
+      if (!fileName) return null;
+
+      const assetUrl = listingUrl.endsWith('/')
+        ? `${listingUrl}${fileName}`
+        : `${listingUrl}/${fileName}`;
+
+      // Extract version from filename: mmsource-2.0.0-git1387-linux.tar.gz → 2.0.0-git1387
+      const versionMatch = fileName.match(/[\d]+\.[\d]+\.[\d]+-git[\d]+/);
+      const version: string = versionMatch ? versionMatch[0] : fileName;
+
+      console.log(`[AlliedMods] Latest version found: ${version} at ${assetUrl}`);
+      return { version, assetUrl };
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error(`[AlliedMods] Failed to fetch listing from ${listingUrl}:`, err.message);
+      return null;
+    }
+  }
 }
 
-export const githubService = new GitHubService();
+export const updateService = new UpdateService();

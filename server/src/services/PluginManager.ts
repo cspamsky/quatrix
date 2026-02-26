@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 import { pluginDiscovery } from './plugin/PluginDiscovery.js';
 import { pluginConfigManager } from './plugin/PluginConfigManager.js';
 import { pluginInstaller } from './plugin/PluginInstaller.js';
-import { githubService } from './plugin/GitHubService.js';
+import { updateService } from './plugin/UpdateService.js';
 import { taskService } from './TaskService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -417,29 +417,42 @@ export class PluginManager {
       string,
       { hasUpdate: boolean; latestVersion: string; currentVersion: string }
     > = {};
-    const reposToCheck = Object.entries(registry).filter(([, info]) => !!info.githubRepo);
+
+    // Check all plugins that have either a GitHub repo or a direct downloadUrl (e.g. AlliedModders)
+    const reposToCheck = Object.entries(registry).filter(
+      ([, info]) => !!info.githubRepo || !!info.downloadUrl
+    );
 
     console.log(`[PLUGIN] Checking ${reposToCheck.length} remote repositories in parallel...`);
 
     const updatePromises = reposToCheck.map(async ([id, info]) => {
       try {
-        const repo = info.githubRepo!;
-        const release = await githubService.getLatestRelease(repo);
+        // Prioritize the version in our pool/cache over the hardcoded registry version
+        const currentVersion = (info.version || info.currentVersion || '0.0.0').replace(/^v/, '');
+        let latestVersion: string;
 
-        if (release) {
-          // Prioritize the version in our pool/cache over the hardcoded registry version
-          const poolVersion = (info as any).version;
-          const registryVersion = info.currentVersion;
-
-          const currentVersion = (poolVersion || registryVersion || '0.0.0').replace(/^v/, '');
-          const latestVersion = release.version.replace(/^v/, '');
-
-          results[id] = {
-            hasUpdate: currentVersion !== latestVersion && latestVersion !== 'latest',
-            latestVersion,
-            currentVersion,
-          };
+        if (info.githubRepo) {
+          // --- GitHub source ---
+          const release = await updateService.getLatestRelease(info.githubRepo);
+          if (!release) return;
+          latestVersion = release.version.replace(/^v/, '');
+        } else if (info.downloadUrl) {
+          // --- AlliedModders (or other direct-URL) source ---
+          // directory listing URL (ends with '/') → scrape for latest file
+          const isListing = info.downloadUrl.endsWith('/');
+          if (!isListing) return; // direct file URL, can't compare version without downloading
+          const release = await updateService.getLatestAlliedModsRelease(info.downloadUrl);
+          if (!release) return;
+          latestVersion = release.version.replace(/^v/, '');
+        } else {
+          return;
         }
+
+        results[id] = {
+          hasUpdate: currentVersion !== latestVersion && latestVersion !== 'latest',
+          latestVersion,
+          currentVersion,
+        };
       } catch (err: unknown) {
         const error = err as Error;
         console.error(`[PLUGIN] Failed to check remote update for ${id}:`, error.message);
@@ -454,37 +467,73 @@ export class PluginManager {
   }
 
   /**
-   * Syncs a plugin from GitHub to the local pool
+   * Syncs a plugin from remote source (GitHub or AlliedModders) to the local pool
    */
   async syncPluginFromRemote(pluginId: string): Promise<void> {
     const registry = await this.getRegistry();
     const info = registry[pluginId];
 
-    if (!info || !info.githubRepo) {
-      throw new Error(`Plugin ${pluginId} has no remote repository configured.`);
+    if (!info) {
+      throw new Error(`Plugin ${pluginId} not found in registry.`);
     }
 
-    const release = await githubService.getLatestRelease(info.githubRepo);
-    if (!release) {
-      throw new Error(`Could not find latest release for ${info.githubRepo}`);
+    if (!info.githubRepo && !info.downloadUrl) {
+      throw new Error(
+        `Plugin ${pluginId} has no remote source configured (no githubRepo or downloadUrl).`
+      );
     }
 
-    console.log(`[PLUGIN] Downloading ${pluginId} (${release.version}) from GitHub...`);
-    const buffer = await githubService.downloadAsset(release.assetUrl);
+    let assetUrl: string;
+    let version: string;
+    let fileName: string;
+
+    if (info.githubRepo) {
+      // --- GitHub flow ---
+      const release = await updateService.getLatestRelease(info.githubRepo);
+      if (!release) {
+        throw new Error(`Could not find latest release for ${info.githubRepo}`);
+      }
+      assetUrl = release.assetUrl;
+      version = release.version;
+      fileName = `${pluginId}_${release.version}.zip`;
+      console.log(`[PLUGIN] Downloading ${pluginId} (${version}) from GitHub...`);
+    } else {
+      // --- AlliedModders / direct URL flow ---
+      const isListing = info.downloadUrl!.endsWith('/');
+      if (isListing) {
+        // Scrape directory listing for latest file (shell: curl | grep ... | tail -1)
+        const release = await updateService.getLatestAlliedModsRelease(info.downloadUrl!);
+        if (!release) {
+          throw new Error(`Could not find latest release at ${info.downloadUrl}`);
+        }
+        assetUrl = release.assetUrl;
+        version = release.version;
+        fileName = release.assetUrl.split('/').pop() || `${pluginId}.tar.gz`;
+        console.log(`[PLUGIN] Downloading ${pluginId} (${version}) from AlliedModders...`);
+      } else {
+        // Direct file URL — download as-is
+        assetUrl = info.downloadUrl!;
+        fileName = info.downloadUrl!.split('/').pop() || `${pluginId}.tar.gz`;
+        const urlVersionMatch = fileName.match(/[\d]+\.[\d]+\.[\d]+-git[\d]+/);
+        version = urlVersionMatch ? urlVersionMatch[0] : (info.currentVersion || 'latest');
+        console.log(`[PLUGIN] Downloading ${pluginId} from direct URL...`);
+      }
+    }
+
+    const buffer = await updateService.downloadAsset(assetUrl);
     console.log(`[PLUGIN] Download complete (${buffer.length} bytes). Processing archive...`);
 
     // Save to temp file and use existing uploadToPool logic
     const tempDir = path.join(PROJECT_ROOT, 'data', 'temp', 'uploads');
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
-    const fileName = `${pluginId}_${release.version}.zip`;
     const tempPath = path.join(tempDir, fileName);
     await fs.promises.writeFile(tempPath, buffer);
 
     try {
       console.log(`[PLUGIN] Extracting and installing ${pluginId} to pool...`);
-      await pluginInstaller.uploadToPool(pluginId, tempPath, fileName, release.version);
-      console.log(`[PLUGIN] ${pluginId} sync complete.`);
+      await pluginInstaller.uploadToPool(pluginId, tempPath, fileName, version);
+      console.log(`[PLUGIN] ${pluginId} sync complete (${version}).`);
     } finally {
       if (fs.existsSync(tempPath)) await fs.promises.unlink(tempPath).catch(() => {});
     }
