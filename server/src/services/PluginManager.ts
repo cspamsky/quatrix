@@ -352,7 +352,7 @@ export class PluginManager {
       if (!info) continue;
 
       const currentVersion = row.version;
-      const latestVersion = info.currentVersion || info.version;
+      const latestVersion = info.version || info.currentVersion || 'latest';
       const hasUpdate = currentVersion !== latestVersion && latestVersion !== 'latest';
 
       updates[pid] = {
@@ -386,7 +386,7 @@ export class PluginManager {
 
     const row = this.checkOneStmt.get(instanceId, pluginId) as { version: string } | undefined;
     const currentVersion = row?.version;
-    const latestVersion = info.currentVersion || info.version;
+    const latestVersion = info.version || info.currentVersion || 'latest';
     const hasUpdate =
       !!currentVersion && currentVersion !== latestVersion && latestVersion !== 'latest';
 
