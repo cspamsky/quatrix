@@ -34,7 +34,7 @@
     "http-proxy-middleware": "^3.0.3",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
-    "mysql2": "^3.17.4",
+    "mysql2": "^3.18.2",
     "node-fetch": "^3.3.2",
     "otplib": "^13.3.0",
     "qrcode": "^1.5.4",
