@@ -33,7 +33,7 @@
     "gamedig": "^5.3.2",
     "http-proxy-middleware": "^3.0.3",
     "jsonwebtoken": "^9.0.3",
-    "multer": "^2.0.2",
+    "multer": "^2.1.0",
     "mysql2": "^3.17.4",
     "node-fetch": "^3.3.2",
     "otplib": "^13.3.0",
