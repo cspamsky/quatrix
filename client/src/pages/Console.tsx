@@ -86,24 +86,28 @@ const Console = () => {
           const safeLogs = Array.isArray(rawLogs) ? rawLogs : [];
 
           const processedLogs = safeLogs.map((log: string) => {
-            const match = log.match(/^\[(.*?)\] (.*)/);
+            // Support both [...] and L MM/DD/YYYY - HH:mm:ss: formats
+            const match = log.match(/^(?:\[(.*?)\]|L\s+\d{1,2}\/\d{1,2}\/\d{2,4}\s+-\s+(\d{1,2}:\d{1,2}:\d{1,2}):)\s*(.*)/);
 
             if (match) {
-              const possibleDate = new Date(match[1]);
+              const timestampPart = match[1] || match[2];
+              const messagePart = match[3];
+              
+              const possibleDate = new Date(timestampPart);
               const isValidDate = !isNaN(possibleDate.getTime());
 
               return {
                 id: generateUUID(),
-                timestamp: isValidDate ? possibleDate.toLocaleTimeString() : '',
+                timestamp: isValidDate ? possibleDate.toLocaleTimeString() : (match[2] || timestampPart || ''),
                 type: 'RAW' as const,
-                message: isValidDate ? match[2] : log,
+                message: messagePart.trim(),
               };
             }
             return {
               id: generateUUID(),
               timestamp: '',
               type: 'RAW' as const,
-              message: log,
+              message: log.trim(),
             };
           });
           setLogs((prev) => [...prev, ...processedLogs]);
@@ -117,23 +121,26 @@ const Console = () => {
 
     const eventName = `console:${id}`;
     socket.on(eventName, (log: string) => {
+      // Support both [...] and L MM/DD/YYYY - HH:mm:ss: formats in real-time logs
+      const match = log.match(/^(?:\[(.*?)\]|L\s+\d{1,2}\/\d{1,2}\/\d{2,4}\s+-\s+(\d{1,2}:\d{1,2}:\d{1,2}):)\s*(.*)/);
+      
       const now = new Date();
-      const timestamp = now.toLocaleTimeString();
+      let timestamp = match ? (match[1] || match[2]) : now.toLocaleTimeString();
 
       // Determine message type based on prefixes
       let type: LogEntry['type'] = 'RAW';
-      let message = log;
+      let message = match ? match[3].trim() : log.trim();
 
-      if (log.startsWith('[ERROR]')) {
+      if (message.startsWith('[ERROR]')) {
         type = 'ERROR';
-        message = log.replace('[ERROR]', '').trim();
-      } else if (log.startsWith('[SUCCESS]')) {
+        message = message.replace('[ERROR]', '').trim();
+      } else if (message.startsWith('[SUCCESS]')) {
         type = 'SUCCESS';
-        message = log.replace('[SUCCESS]', '').trim();
-      } else if (log.startsWith('[WARN]')) {
+        message = message.replace('[SUCCESS]', '').trim();
+      } else if (message.startsWith('[WARN]')) {
         type = 'WARN';
-        message = log.replace('[WARN]', '').trim();
-      } else if (log.startsWith('> ')) {
+        message = message.replace('[WARN]', '').trim();
+      } else if (message.startsWith('> ')) {
         type = 'INFO'; // User commands
       }
 
