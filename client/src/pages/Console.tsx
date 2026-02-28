@@ -87,18 +87,22 @@ const Console = () => {
 
           const processedLogs = safeLogs.map((log: string) => {
             // Support both [...] and L MM/DD/YYYY - HH:mm:ss: formats
-            const match = log.match(/^(?:\[(.*?)\]|L\s+\d{1,2}\/\d{1,2}\/\d{2,4}\s+-\s+(\d{1,2}:\d{1,2}:\d{1,2}):)\s*(.*)/);
+            const match = log.match(
+              /^(?:\[(.*?)\]|L\s+\d{1,2}\/\d{1,2}\/\d{2,4}\s+-\s+(\d{1,2}:\d{1,2}:\d{1,2}):)\s*(.*)/
+            );
 
             if (match) {
               const timestampPart = match[1] || match[2];
               const messagePart = match[3];
-              
+
               const possibleDate = new Date(timestampPart);
               const isValidDate = !isNaN(possibleDate.getTime());
 
               return {
                 id: generateUUID(),
-                timestamp: isValidDate ? possibleDate.toLocaleTimeString() : (match[2] || timestampPart || ''),
+                timestamp: isValidDate
+                  ? possibleDate.toLocaleTimeString()
+                  : match[2] || timestampPart || '',
                 type: 'RAW' as const,
                 message: messagePart.trim(),
               };
@@ -122,10 +126,12 @@ const Console = () => {
     const eventName = `console:${id}`;
     socket.on(eventName, (log: string) => {
       // Support both [...] and L MM/DD/YYYY - HH:mm:ss: formats in real-time logs
-      const match = log.match(/^(?:\[(.*?)\]|L\s+\d{1,2}\/\d{1,2}\/\d{2,4}\s+-\s+(\d{1,2}:\d{1,2}:\d{1,2}):)\s*(.*)/);
-      
+      const match = log.match(
+        /^(?:\[(.*?)\]|L\s+\d{1,2}\/\d{1,2}\/\d{2,4}\s+-\s+(\d{1,2}:\d{1,2}:\d{1,2}):)\s*(.*)/
+      );
+
       const now = new Date();
-      let timestamp = match ? (match[1] || match[2]) : now.toLocaleTimeString();
+      const timestamp = match ? match[1] || match[2] : now.toLocaleTimeString();
 
       // Determine message type based on prefixes
       let type: LogEntry['type'] = 'RAW';

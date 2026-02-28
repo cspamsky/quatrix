@@ -515,7 +515,7 @@ export class PluginManager {
         assetUrl = info.downloadUrl!;
         fileName = info.downloadUrl!.split('/').pop() || `${pluginId}.tar.gz`;
         const urlVersionMatch = fileName.match(/[\d]+\.[\d]+\.[\d]+-git[\d]+/);
-        version = urlVersionMatch ? urlVersionMatch[0] : (info.currentVersion || 'latest');
+        version = urlVersionMatch ? urlVersionMatch[0] : info.currentVersion || 'latest';
         console.log(`[PLUGIN] Downloading ${pluginId} from direct URL...`);
       }
     }

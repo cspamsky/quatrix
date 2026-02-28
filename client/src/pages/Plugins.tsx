@@ -171,27 +171,19 @@ const Plugins = () => {
 
     setActionLoading(plugin);
     try {
-      const response = await apiFetch(
-        `/api/servers/${selectedServer}/plugins/${plugin}/${action}`,
-        { method: 'POST' }
-      );
-      const data = await response.json();
+      await apiFetch(`/api/servers/${selectedServer}/plugins/${plugin}/${action}`, {
+        method: 'POST',
+      });
 
-      if (response.ok) {
-        // Redundant toast removed: taskService handles visual feedback in bottom-right overlay
-        // toast.success(`${pluginName} ${t('plugins.action_success')}`);
-
-        queryClient.invalidateQueries({ queryKey: ['plugin-status', selectedServer] });
-        queryClient.invalidateQueries({ queryKey: ['plugin-updates', selectedServer] });
+      // Invalidate queries after successful action
+      queryClient.invalidateQueries({ queryKey: ['plugin-status', selectedServer] });
+      queryClient.invalidateQueries({ queryKey: ['plugin-updates', selectedServer] });
+    } catch (error: any) {
+      if (error.message === 'ERR_SERVER_RUNNING') {
+        toast.error(t('plugins.server_running_error'));
       } else {
-        if (data.message === 'ERR_SERVER_RUNNING') {
-          toast.error(t('plugins.server_running_error'));
-        } else {
-          toast.error(data.message || t('plugins.action_failed'));
-        }
+        toast.error(error.message || t('plugins.action_failed'));
       }
-    } catch {
-      toast.error(t('plugins.network_error'));
     } finally {
       setActionLoading(null);
     }
@@ -327,25 +319,20 @@ const Plugins = () => {
 
     setIsSaving(true);
     try {
-      const res = await apiFetch(
-        `/api/servers/${selectedServer}/plugins/${configModalPlugin.id}/configs`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            filePath: selectedFilePath,
-            content: editingContent,
-          }),
-        }
-      );
-
-      if (res.ok) {
-        toast.success(t('plugins.config_saved'));
+      await apiFetch(`/api/servers/${selectedServer}/plugins/${configModalPlugin.id}/configs`, {
+        method: 'POST',
+        body: JSON.stringify({
+          filePath: selectedFilePath,
+          content: editingContent,
+        }),
+      });
+      toast.success(t('plugins.config_saved'));
+    } catch (error: any) {
+      if (error.message === 'ERR_SERVER_RUNNING') {
+        toast.error(t('plugins.server_running_error'));
       } else {
-        const data = await res.json();
-        toast.error(data.message || t('plugins.config_save_failed'));
+        toast.error(error.message || t('plugins.config_save_failed'));
       }
-    } catch {
-      toast.error(t('plugins.network_error'));
     } finally {
       setIsSaving(false);
     }

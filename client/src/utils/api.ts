@@ -27,11 +27,19 @@ export const apiFetch = async (url: string, options: RequestInit = {}) => {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `API_ERROR_${response.status}`);
+      const error = new Error(errorData.message || `API_ERROR_${response.status}`);
+      // Attach a flag to distinguish between API errors and network failures
+      (error as any).isApiError = true;
+      throw error;
     }
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
+    if (error.isApiError) {
+      // Don't log "Connection failed" for valid API responses that just have error status codes
+      throw error;
+    }
+
     const isLocalhost =
       window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
@@ -44,8 +52,8 @@ export const apiFetch = async (url: string, options: RequestInit = {}) => {
       throw error;
     }
 
-    // Since demo mode is removed, we just rethrow the error
-    console.error('❌ Connection failed for', targetUrl);
+    // This is a real network failure (CORS, DNS, Timeout, etc.)
+    console.error('❌ Network failure for', targetUrl, error);
     throw error;
   }
 };
