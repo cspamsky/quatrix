@@ -18,9 +18,10 @@ export interface PterodactylEgg {
   docker_images: Record<string, string> | string[];
   startup: string;
   config: {
-    files: Record<string, unknown>;
-    startup: Record<string, unknown>;
+    files: Record<string, unknown> | string;
+    startup: Record<string, unknown> | string;
     stop: string;
+    logs?: Record<string, unknown> | string;
   };
   variables: EggVariable[];
 }
@@ -55,9 +56,27 @@ class EggRunnerService {
 
     const content = fs.readFileSync(eggPath, 'utf8');
     try {
-      return JSON.parse(content) as PterodactylEgg;
+      const egg = JSON.parse(content) as PterodactylEgg;
+      this.ensureParsedConfig(egg);
+      return egg;
     } catch (error) {
       throw new Error(`Failed to parse egg ${eggId}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Pterodactyl v2 exports often have JSON strings inside the config object.
+   * This ensures they are parsed into objects if needed.
+   */
+  private ensureParsedConfig(egg: PterodactylEgg): void {
+    if (typeof egg.config.files === 'string') {
+      try { egg.config.files = JSON.parse(egg.config.files); } catch { egg.config.files = {}; }
+    }
+    if (typeof egg.config.startup === 'string') {
+      try { egg.config.startup = JSON.parse(egg.config.startup); } catch { egg.config.startup = {}; }
+    }
+    if (egg.config.logs && typeof egg.config.logs === 'string') {
+      try { egg.config.logs = JSON.parse(egg.config.logs); } catch { egg.config.logs = {}; }
     }
   }
 
@@ -109,6 +128,7 @@ class EggRunnerService {
       throw new Error('Invalid egg data: name and startup are required');
     }
 
+    this.ensureParsedConfig(egg);
     const eggId = egg.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
     const targetPath = path.join(this.eggsDir, `${eggId}.json`);
 

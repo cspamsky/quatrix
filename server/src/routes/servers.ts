@@ -20,6 +20,9 @@ import type {
 
 const router = Router();
 
+// Middleware for this router
+router.use(authenticateToken);
+
 // GET /api/servers/database/status (Global MariaDB Status)
 router.get(
   '/database/status',
@@ -37,10 +40,11 @@ router.get('/available-eggs', authorize('servers.create'), async (_req: Request,
     // Return objects with id and name for the UI
     const eggDetails = eggs.map(id => {
        const egg = eggRunnerService.loadEgg(id);
-       return { id, name: egg.name, description: egg.description, variables: egg.variables };
+       return { id, name: egg?.name || id, description: egg?.description, variables: egg?.variables || [] };
     });
     res.json(eggDetails);
   } catch (error) {
+    console.error('[API] Available eggs error:', error);
     res.status(500).json({ message: 'Failed to list available eggs' });
   }
 });
@@ -54,95 +58,6 @@ router.post('/import-egg', authorize('servers.create'), async (req: Request, res
     res.status(400).json({ message: error instanceof Error ? error.message : 'Failed to import egg' });
   }
 });
-
-// GET /api/servers/:id/database
-router.get('/:id/database', authorize('servers.database'), async (req: Request, res: Response) => {
-  try {
-    const creds = await databaseManager.getDatabaseCredentials(req.params.id as string);
-    if (!creds) {
-      return res.json({ message: 'No database provisioned yet.', credentials: null });
-    }
-    const stats = await databaseManager.getDatabaseStats(req.params.id as string);
-    res.json({ credentials: creds, stats });
-  } catch {
-    res.status(500).json({ message: 'Failed to fetch database credentials' });
-  }
-});
-
-// POST /api/servers/:id/database/provision
-router.post(
-  '/:id/database/provision',
-  authorize('servers.database'),
-  async (req: Request, res: Response) => {
-    try {
-      const creds = await databaseManager.provisionDatabase(req.params.id as string);
-      res.json({ message: 'Database provisioned successfully', credentials: creds });
-    } catch (error: unknown) {
-      const err = error as Error;
-      res.status(500).json({ message: 'Failed to provision database', error: err.message });
-    }
-  }
-);
-
-// POST /api/servers/:id/database
-router.post('/:id/database', authorize('servers.database'), async (req: Request, res: Response) => {
-  try {
-    const { host, port, user, password, database } = req.body as {
-      host: string;
-      port: string | number;
-      user: string;
-      password?: string;
-      database: string;
-    };
-    if (!host || !port || !user || !database) {
-      return res.status(400).json({ message: 'Missing required database fields' });
-    }
-
-    const creds = { host, port: Number(port), user, password: password || '', database };
-    await databaseManager.saveCredentials(req.params.id as string, creds);
-
-    res.json({ message: 'Database credentials saved successfully', credentials: creds });
-  } catch (error) {
-    // Safe error logging: Do not log the full error object if it contains sensitive data
-    const err = error as Error;
-    console.error('[API] Save credentials error:', err.message);
-    res.status(500).json({ message: 'Failed to save database credentials' });
-  }
-});
-
-// Schema for validation
-export const createServerSchema = z.object({
-  name: z
-    .string()
-    .min(3, 'Name must be at least 3 characters')
-    .max(50, 'Name must be less than 50 characters'),
-  port: z.number().int().min(1024, 'Port must be >= 1024').max(65535, 'Port must be <= 65535'),
-  rcon_password: z.string().min(6, 'RCON Password must be at least 6 characters'),
-  map: z.string().default('de_dust2'),
-  max_players: z.number().int().min(1).max(64).default(10),
-  password: z.string().nullable().optional(),
-  gslt_token: z.string().nullable().optional(),
-  steam_api_key: z.string().nullable().optional(),
-  vac_enabled: z.number().min(0).max(1).default(1),
-  game_type: z.number().int().min(0).default(0),
-  game_mode: z.number().int().min(0).default(0),
-  game_alias: z.string().nullable().optional(),
-  hibernate: z.number().int().min(0).max(1).default(1),
-  validate_files: z.number().int().min(0).max(1).default(0),
-  additional_args: z.string().nullable().optional(),
-  tickrate: z.number().int().min(1).max(128).default(128),
-  auto_start: z.boolean().optional().default(false),
-  cpu_priority: z.number().int().min(-20).max(19).optional().default(0),
-  ram_limit: z.number().int().min(0).optional().default(0),
-  restart_policy: z.string().optional().default('on_failure'),
-  auto_db_injection: z.number().int().min(0).max(1).optional().default(0),
-  ip: z.string().optional(),
-  egg_id: z.string().nullable().optional(),
-  egg_variables: z.string().nullable().optional(),
-});
-
-// Middleware for this router
-router.use(authenticateToken);
 
 // GET /api/servers
 router.get('/', authorize('servers.view'), (req: Request, res: Response) => {
@@ -361,6 +276,37 @@ router.put('/:id', authorize('servers.update'), (req: Request, res: Response) =>
     console.error('Update server error:', error);
     res.status(500).json({ message: 'Failed to update server settings' });
   }
+});
+
+// Schema for validation
+export const createServerSchema = z.object({
+  name: z
+    .string()
+    .min(3, 'Name must be at least 3 characters')
+    .max(50, 'Name must be less than 50 characters'),
+  port: z.number().int().min(1024, 'Port must be >= 1024').max(65535, 'Port must be <= 65535'),
+  rcon_password: z.string().min(6, 'RCON Password must be at least 6 characters'),
+  map: z.string().default('de_dust2'),
+  max_players: z.number().int().min(1).max(64).default(10),
+  password: z.string().nullable().optional(),
+  gslt_token: z.string().nullable().optional(),
+  steam_api_key: z.string().nullable().optional(),
+  vac_enabled: z.number().min(0).max(1).default(1),
+  game_type: z.number().int().min(0).default(0),
+  game_mode: z.number().int().min(0).default(0),
+  game_alias: z.string().nullable().optional(),
+  hibernate: z.number().int().min(0).max(1).default(1),
+  validate_files: z.number().int().min(0).max(1).default(0),
+  additional_args: z.string().nullable().optional(),
+  tickrate: z.number().int().min(1).max(128).default(128),
+  auto_start: z.boolean().optional().default(false),
+  cpu_priority: z.number().int().min(-20).max(19).optional().default(0),
+  ram_limit: z.number().int().min(0).optional().default(0),
+  restart_policy: z.string().optional().default('on_failure'),
+  auto_db_injection: z.number().int().min(0).max(1).optional().default(0),
+  ip: z.string().optional(),
+  egg_id: z.string().nullable().optional(),
+  egg_variables: z.string().nullable().optional(),
 });
 
 router.post(
