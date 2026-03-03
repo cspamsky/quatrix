@@ -67,6 +67,8 @@ export interface Server {
   updated_at?: string;
   remote_id?: string | null;
   remote_panel_id?: string | null;
+  egg_id?: string | null;
+  egg_variables?: string | null;
 }
 
 export interface DashboardStats {
@@ -99,4 +101,6 @@ export interface UpdateServerBody {
   restart_policy?: string;
   auto_db_injection: number;
   ip?: string;
+  egg_id?: string | null;
+  egg_variables?: string | null;
 }

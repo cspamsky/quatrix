@@ -12,6 +12,7 @@ import {
   Shield,
   Globe,
   Network,
+  Package,
 } from 'lucide-react';
 import { SERVER_REGIONS } from '../config/regions';
 import toast from 'react-hot-toast';
@@ -43,6 +44,25 @@ interface ServerData {
   restart_policy?: string;
   ip?: string;
   interfaces?: { name: string; ip: string }[];
+  egg_id?: string | null;
+  egg_variables?: string | null;
+}
+
+interface EggVariable {
+  name: string;
+  description: string;
+  env_variable: string;
+  default_value: string;
+  user_viewable: boolean;
+  user_editable: boolean;
+  rules: string;
+}
+
+interface Egg {
+  id: string;
+  name: string;
+  description: string;
+  variables: EggVariable[];
 }
 
 const ServerSettings = () => {
@@ -52,6 +72,7 @@ const ServerSettings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [server, setServer] = useState<ServerData | null>(null);
+  const [availableEggs, setAvailableEggs] = useState<Egg[]>([]);
   const [user] = useState(() => {
     try {
       const stored = localStorage.getItem('user');
@@ -65,7 +86,20 @@ const ServerSettings = () => {
 
   useEffect(() => {
     fetchServerData();
+    fetchEggs();
   }, [id]);
+
+  const fetchEggs = async () => {
+    try {
+      const response = await apiFetch('/api/servers/available-eggs');
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableEggs(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch eggs:', err);
+    }
+  };
 
   const fetchServerData = async () => {
     try {
@@ -591,6 +625,52 @@ const ServerSettings = () => {
               </div>
             </div>
           </div>
+
+          {/* Egg Runner Settings (Generic Pterodactyl Egg) */}
+          {server.egg_id && (
+            <div className="bg-[#111827] rounded-2xl border border-gray-800 p-8 xl:col-span-2">
+              <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-3">
+                <Package className="w-5 h-5 text-primary" />
+                {t('pterodactyl.variables')}
+              </h3>
+              <p className="text-sm text-gray-500 mb-8">
+                {availableEggs.find((e) => e.id === server.egg_id)?.name} -{' '}
+                {t('pterodactyl.variables')}
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {availableEggs
+                  .find((e) => e.id === server.egg_id)
+                  ?.variables.map((v) => {
+                    const vars = server.egg_variables ? JSON.parse(server.egg_variables) : {};
+                    return (
+                      <div key={v.env_variable} className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-400 flex items-center gap-2">
+                          {v.name}
+                          {v.rules.includes('required') && (
+                            <span className="text-red-500 font-black">*</span>
+                          )}
+                        </label>
+                        <input
+                          type="text"
+                          value={vars[v.env_variable] || ''}
+                          onChange={(e) => {
+                            const newVars = { ...vars, [v.env_variable]: e.target.value };
+                            setServer({ ...server, egg_variables: JSON.stringify(newVars) });
+                          }}
+                          className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all placeholder:text-gray-700 disabled:opacity-50"
+                          placeholder={v.default_value}
+                          disabled={!canEdit}
+                        />
+                        <p className="text-[10px] text-gray-600 italic leading-tight">
+                          {v.description}
+                        </p>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Global Action Footer */}

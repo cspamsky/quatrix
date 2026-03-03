@@ -16,6 +16,24 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { Network } from 'lucide-react';
 import CustomSelect from '../components/ui/CustomSelect';
+import { Package } from 'lucide-react';
+
+interface EggVariable {
+  name: string;
+  description: string;
+  env_variable: string;
+  default_value: string;
+  user_viewable: boolean;
+  user_editable: boolean;
+  rules: string;
+}
+
+interface Egg {
+  id: string;
+  name: string;
+  description: string;
+  variables: EggVariable[];
+}
 
 const CreateInstance = () => {
   const { t } = useTranslation();
@@ -23,6 +41,8 @@ const CreateInstance = () => {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [availableEggs, setAvailableEggs] = useState<Egg[]>([]);
+  const [useEgg, setUseEgg] = useState(false);
 
   useEffect(() => {
     const fetchInterfaces = async () => {
@@ -39,6 +59,21 @@ const CreateInstance = () => {
       }
     };
     fetchInterfaces();
+  }, []);
+
+  useEffect(() => {
+    const fetchEggs = async () => {
+      try {
+        const response = await apiFetch('/api/servers/available-eggs');
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableEggs(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch eggs:', err);
+      }
+    };
+    fetchEggs();
   }, []);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
@@ -63,6 +98,8 @@ const CreateInstance = () => {
     ramLimit: 0,
     ip: '',
     interfaces: [] as { name: string; ip: string }[],
+    egg_id: '',
+    egg_variables: {} as Record<string, string>,
   });
 
   const nextStep = () => setStep((s) => Math.min(s + 1, 3));
@@ -104,6 +141,8 @@ const CreateInstance = () => {
           cpu_priority: formData.cpuPriority,
           ram_limit: formData.ramLimit,
           ip: formData.ip,
+          egg_id: useEgg ? formData.egg_id : null,
+          egg_variables: useEgg ? JSON.stringify(formData.egg_variables) : null,
         }),
       });
 
@@ -199,6 +238,109 @@ const CreateInstance = () => {
                     {t('createInstance.basic_info_subtitle')}
                   </p>
                 </div>
+
+                <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl mb-6">
+                  <label className="flex items-center gap-4 cursor-pointer group">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        checked={useEgg}
+                        onChange={(e) => {
+                          setUseEgg(e.target.checked);
+                          if (!e.target.checked) setFormData((prev) => ({ ...prev, egg_id: '' }));
+                        }}
+                        className="sr-only peer"
+                      />
+                      <div className="w-12 h-6 bg-gray-800 rounded-full peer peer-checked:bg-primary transition-all duration-300"></div>
+                      <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full peer-checked:translate-x-6 transition-all duration-300"></div>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-white group-hover:text-primary transition-colors">
+                        Native Egg Runner (Pterodactyl Egg)
+                      </span>
+                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                        Use this to run non-CS2 servers or custom setups
+                      </span>
+                    </div>
+                  </label>
+                </div>
+
+                {useEgg && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-gray-400">
+                        {t('pterodactyl.select_egg')}
+                      </label>
+                      <CustomSelect
+                        options={availableEggs.map((egg) => ({
+                          value: egg.id,
+                          label: egg.name,
+                        }))}
+                        value={formData.egg_id}
+                        onChange={(val: string | number) => {
+                          const eggId = String(val);
+                          const egg = availableEggs.find((e) => e.id === eggId);
+                          const initialVars: Record<string, string> = {};
+                          egg?.variables.forEach((v) => {
+                            initialVars[v.env_variable] = v.default_value;
+                          });
+                          setFormData((prev) => ({
+                            ...prev,
+                            egg_id: eggId,
+                            egg_variables: initialVars,
+                          }));
+                        }}
+                        icon={<Package className="w-4 h-4" />}
+                      />
+                      {formData.egg_id && (
+                        <p className="text-xs text-gray-500 italic mt-1">
+                          {availableEggs.find((e) => e.id === formData.egg_id)?.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {formData.egg_id &&
+                    availableEggs.find((e) => e.id === formData.egg_id)?.variables.length ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-black/20 rounded-xl border border-gray-800">
+                        <div className="col-span-1 md:col-span-2 pb-2">
+                          <h4 className="text-xs font-black text-primary uppercase tracking-widest">
+                            Egg Variables
+                          </h4>
+                        </div>
+                        {availableEggs
+                          .find((e) => e.id === formData.egg_id)
+                          ?.variables.map((v) => (
+                            <div key={v.env_variable} className="space-y-2">
+                              <label className="block text-xs font-bold text-gray-500 uppercase">
+                                {v.name}{' '}
+                                {v.rules.includes('required') && (
+                                  <span className="text-red-500">*</span>
+                                )}
+                              </label>
+                              <input
+                                type="text"
+                                value={formData.egg_variables[v.env_variable] || ''}
+                                onChange={(e) =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    egg_variables: {
+                                      ...prev.egg_variables,
+                                      [v.env_variable]: e.target.value,
+                                    },
+                                  }))
+                                }
+                                className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:ring-1 focus:ring-primary outline-none transition-all"
+                                placeholder={v.default_value}
+                              />
+                              <p className="text-[10px] text-gray-600 italic leading-tight">
+                                {v.description}
+                              </p>
+                            </div>
+                          ))}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">

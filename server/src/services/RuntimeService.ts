@@ -39,6 +39,8 @@ export interface InstanceOptions {
   game_mode?: number;
   game_alias?: string | null;
   ip?: string;
+  egg_id?: string | null;
+  egg_variables?: string | null;
 }
 
 class RuntimeService {
@@ -139,7 +141,7 @@ class RuntimeService {
     }
 
     const instancePath = fileSystemService.getInstancePath(id);
-    await this.ensureInstancePrepared(id, instancePath);
+    await this.ensureInstancePrepared(id, instancePath, !!options.egg_id);
 
     const logFilePath = path.join(instancePath, 'console.log');
     const logFd = fs.openSync(logFilePath, 'a');
@@ -252,7 +254,9 @@ class RuntimeService {
     }
   }
 
-  private async ensureInstancePrepared(id: string, instancePath: string) {
+  private async ensureInstancePrepared(id: string, instancePath: string, isEgg: boolean) {
+    if (isEgg) return; // Skip standard CS2 preparations for Egg-based instances
+    
     try {
       const gameDir = path.join(instancePath, 'game');
       const gameBinDir = path.join(gameDir, 'bin');

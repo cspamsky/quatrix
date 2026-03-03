@@ -9,6 +9,7 @@ import { createServerLimiter } from '../middleware/rateLimiter.js';
 import { runtimeService } from '../services/RuntimeService.js';
 import { fileSystemService } from '../services/FileSystemService.js';
 import { databaseManager } from '../services/DatabaseManager.js';
+import { eggRunnerService } from '../services/EggRunnerService.js';
 import { logActivity, emitDashboardStats } from '../index.js';
 import type {
   AuthenticatedRequest,
@@ -28,6 +29,21 @@ router.get(
     res.json({ status: available ? 'ONLINE' : 'OFFLINE' });
   }
 );
+
+// GET /api/servers/available-eggs
+router.get('/available-eggs', authorize('servers.create'), async (_req: Request, res: Response) => {
+  try {
+    const eggs = eggRunnerService.listAvailableEggs();
+    // Return objects with id and name for the UI
+    const eggDetails = eggs.map(id => {
+       const egg = eggRunnerService.loadEgg(id);
+       return { id, name: egg.name, description: egg.description, variables: egg.variables };
+    });
+    res.json(eggDetails);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to list available eggs' });
+  }
+});
 
 // GET /api/servers/:id/database
 router.get('/:id/database', authorize('servers.database'), async (req: Request, res: Response) => {
@@ -111,6 +127,8 @@ export const createServerSchema = z.object({
   restart_policy: z.string().optional().default('on_failure'),
   auto_db_injection: z.number().int().min(0).max(1).optional().default(0),
   ip: z.string().optional(),
+  egg_id: z.string().nullable().optional(),
+  egg_variables: z.string().nullable().optional(),
 });
 
 // Middleware for this router
@@ -277,6 +295,8 @@ router.put('/:id', authorize('servers.update'), (req: Request, res: Response) =>
     restart_policy,
     auto_db_injection,
     ip,
+    egg_id,
+    egg_variables,
   } = req.body as UpdateServerBody;
 
   try {
@@ -291,7 +311,8 @@ router.put('/:id', authorize('servers.update'), (req: Request, res: Response) =>
           rcon_password = ?, vac_enabled = ?, gslt_token = ?, steam_api_key = ?,
           game_type = ?, game_mode = ?, tickrate = ?, game_alias = ?,
           hibernate = ?, validate_files = ?, additional_args = ?,
-          cpu_priority = ?, ram_limit = ?, restart_policy = ?, auto_db_injection = ?, ip = ?
+          cpu_priority = ?, ram_limit = ?, restart_policy = ?, auto_db_injection = ?, ip = ?,
+          egg_id = ?, egg_variables = ?
       WHERE id = ?
     `
     ).run(
@@ -316,6 +337,8 @@ router.put('/:id', authorize('servers.update'), (req: Request, res: Response) =>
       restart_policy || 'on_failure',
       auto_db_injection || 0,
       ip || '0.0.0.0',
+      egg_id || null,
+      egg_variables || null,
       id as string
     );
 
@@ -370,6 +393,8 @@ router.post(
         restart_policy,
         auto_db_injection,
         ip,
+        egg_id,
+        egg_variables,
       } = result.data;
 
       const result_count = db
@@ -386,10 +411,11 @@ router.post(
         name, port, rcon_password, status, is_installed, user_id, 
         map, max_players, password, gslt_token, steam_api_key, 
         vac_enabled, game_type, game_mode, tickrate, auto_start,
-        game_alias, hibernate, validate_files, additional_args,
-        cpu_priority, ram_limit, restart_policy, auto_db_injection, ip
+        hibernate, validate_files, additional_args,
+        cpu_priority, ram_limit, restart_policy, auto_db_injection, ip,
+        egg_id, egg_variables
       )
-      VALUES (?, ?, ?, 'OFFLINE', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, 'OFFLINE', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
         )
         .run(
@@ -415,7 +441,9 @@ router.post(
           ram_limit || 0,
           restart_policy || 'on_failure',
           auto_db_injection || 0,
-          ip || '0.0.0.0'
+          ip || '0.0.0.0',
+          egg_id || null,
+          egg_variables || null
         );
 
       const serverId = info.lastInsertRowid as number;

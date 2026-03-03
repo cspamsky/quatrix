@@ -9,7 +9,7 @@
 
 ![Quatrix Demo](.github/assets/quatrix.gif)
 
-A web-based management panel for Counter-Strike 2 dedicated servers. Quatrix provides real-time monitoring, RCON console, player management, and multi-instance support through a modern web interface.
+A web-based management panel for Counter-Strike 2 dedicated servers. Quatrix provides real-time monitoring, RCON console, player management, and **hybrid orchestration** (Local VDS + Pterodactyl) support through a modern web interface.
 
 **Target users:** CS2 server administrators running Linux dedicated servers  
 **Scope:** Server-side management only (no client modifications or exploits)
@@ -32,19 +32,19 @@ Quatrix addresses common pain points in CS2 server management:
 ### Core Functionality
 
 - **Dashboard**: Real-time CPU, RAM, and network usage monitoring
-- **RCON Console**: Interactive command execution with color-coded output and command history
-- **Player Management**: Live player list with Steam profiles, connection times, and kick/ban controls _(Requires [SimpleAdmin](https://github.com/daffyyyy/CS2-SimpleAdmin) for admin management)_
-- **Chat Monitor**: Real-time in-game chat with player avatars and filtering
+- **RCON Console (v3)**: Interactive command execution with time-stamp stripping, advanced noise filtering, and persistent history
+- **Player Management**: Live player list with Steam profiles, connection times, and kick/ban controls _(Requires [SimpleAdmin](https://github.com/daffyyyy/CS2-SimpleAdmin))_
+- **Chat Monitor**: Real-time in-game chat with player avatars and historical infinite-scroll support
 - **File Manager**: Web-based config editor (supports `.cfg`, `.json`, `.txt`, `.toml`)
 - **Analytics Dashboard**: Historical system performance metrics with customizable time ranges (24h, 7d, 30d)
 
 ### Instance Management
 
-- **Multi-instance support**: Manage multiple CS2 servers from one panel
-- **Granular symlinking**: Shares game files (`.vpk` assets) while isolating configs and plugins
-- **Plugin pool**: Deploy plugins to multiple instances from a central repository
-- **Auto-repair**: Validates and fixes file structure issues on server start
-- **Automated backups**: Scheduled database and configuration backups with retention policies
+- **Hybrid Orchestration**: Manage both local VDS instances and remote Pterodactyl panels from a single dashboard
+- **Granular symlinking**: Shares game files while isolating configs/plugins using the "Isolation Performance Engine"
+- **Plugin Management**: Smart Sync engine that intelligently distributes files to standard CSS directories
+- **Auto-repair**: Proactive maintenance that excludes vital framework configs (like `core.json`)
+- **Automated backups**: External portability via direct file streaming (Download/Upload)
 
 ### Administration
 
@@ -178,9 +178,12 @@ Quatrix uses a granular ACL (Access Control List) system. Available permissions:
 - `servers.update` - Modify server settings
 - `servers.console` - Access RCON console
 - `servers.files` - Manage server files
+- `servers.maps` - Change maps and workshop settings
+- `servers.players` - Manage live players (kick/ban)
+- `servers.backups` - Create and restore backups
 - `servers.database` - Access database management
 - `plugins.manage` - Install and configure plugins
-- `analytics.view` - View system analytics
+- `analytics.view` - View historical system metrics
 - `users.manage` - Manage users and permissions
 
 Users without specific permissions can view pages in read-only mode (Transparent Observer).
@@ -219,25 +222,24 @@ quatrix/
 
 **Completed:**
 
-- ✅ Multi-instance management with symlink optimization
-- ✅ Real-time RCON console and chat monitoring
-- ✅ Steam profile integration (avatars, SteamID conversion)
-- ✅ Plugin pool and deployment system
-- ✅ Web-based file editor
-- ✅ Admin permission management
-- ✅ 2FA authentication
-- ✅ ACL-based permission system (granular access control)
-- ✅ Transparent Observer mode (read-only access for unauthorized users)
-- ✅ System analytics dashboard with historical metrics
-- ✅ Automated backup system for configs and database
+- ✅ Multi-instance management with "Isolation Performance Engine"
+- ✅ Hybrid Orchestration (Local VDS + Pterodactyl Adapter)
+- ✅ Real-time Console v3 (Filter/Clean View) and Chat Monitor
+- ✅ Infinite Scroll & Historical Chat Archives
+- ✅ Workshop Map Downloader & Configuration Manager
+- ✅ External Database (MariaDB/MySQL) Orchestrator
+- ✅ Steam profile integration & Avatar proxy
+- ✅ Standardized "Pool-Only" Plugin Smart Sync
+- ✅ 2FA authentication & Granular ACL system
+- ✅ System analytics with historical resource trends
+- ✅ Portable Backup System (Direct Stream Up/Down)
 
 **Planned:**
 
-- [ ] Workshop map downloader integration
-- [ ] External database support (MySQL/MariaDB) for shared stats
-- [ ] REST API documentation for third-party integrations
-- [ ] Advanced server performance analytics and alerting
-- [ ] Multi-server cluster management
+- [ ] Native Egg Runner (Run Pterodactyl eggs locally)
+- [ ] Multi-server cluster wide commands
+- [ ] Discord Webhook Rich Notifications (Bans/Crashes)
+- [ ] Advanced server performance alerting
 
 ---
 

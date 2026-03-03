@@ -324,7 +324,13 @@
     "subtitle": "Kurulum sihirbazımızı kullanarak yeni bir Counter-Strike 2 sunucusu yapılandırın ve dağıtın.",
     "title": "Yeni CS2 Örneği Oluştur",
     "validate_desc": "Steamcmd doğrulamasını çalıştır",
-    "validate_files": "Dosyaları Doğrula"
+    "validate_files": "Dosyaları Doğrula",
+    "use_egg": "Native Egg Koşturucu (Pterodactyl Egg)",
+    "use_egg_desc": "CS2 dışı sunucular veya özel kurulumlar için bunu kullanın"
+  },
+  "pterodactyl": {
+    "select_egg": "Pterodactyl Egg Seç",
+    "variables": "Egg Değişkenleri"
   },
   "dashboard": {
     "action_console": "Konsolu Aç",

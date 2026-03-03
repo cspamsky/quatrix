@@ -329,6 +329,18 @@ try {
   /* ignore */
 }
 
+try {
+  db.exec(`ALTER TABLE servers ADD COLUMN egg_id TEXT`);
+} catch {
+  /* ignore */
+}
+
+try {
+  db.exec(`ALTER TABLE servers ADD COLUMN egg_variables TEXT`);
+} catch {
+  /* ignore */
+}
+
 // Create settings table
 db.exec(`
   CREATE TABLE IF NOT EXISTS settings (

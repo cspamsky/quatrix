@@ -324,7 +324,13 @@
     "subtitle": "Configure and deploy a new Counter-Strike 2 dedicated server using our setup wizard.",
     "title": "Create New CS2 Instance",
     "validate_desc": "Run steamcmd validation",
-    "validate_files": "Validate Files"
+    "validate_files": "Validate Files",
+    "use_egg": "Native Egg Runner (Pterodactyl Egg)",
+    "use_egg_desc": "Use this to run non-CS2 servers or custom setups"
+  },
+  "pterodactyl": {
+    "select_egg": "Select Pterodactyl Egg",
+    "variables": "Egg Variables"
   },
   "dashboard": {
     "action_console": "Open Console",

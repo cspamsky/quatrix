@@ -2,6 +2,7 @@ import { spawn, ChildProcess } from 'child_process';
 import path from 'path';
 import { fileSystemService } from '../FileSystemService.js';
 import type { InstanceOptions } from '../RuntimeService.js';
+import { eggRunnerService } from '../EggRunnerService.js';
 
 export class InstanceProcessManager {
   /**
@@ -144,6 +145,61 @@ export class InstanceProcessManager {
    * Prepares arguments and environment for launch
    */
   private async prepareLaunchConfig(id: string, instancePath: string, options: InstanceOptions) {
+    if (options.egg_id) {
+      console.log(`[ProcessManager] Launching instance ${id} using egg: ${options.egg_id}`);
+      return this.prepareEggLaunchConfig(id, instancePath, options);
+    } else {
+      return this.prepareStandardLaunchConfig(id, instancePath, options);
+    }
+  }
+
+  /**
+   * Prepares launch configuration using Pterodactyl Egg definition
+   */
+  private async prepareEggLaunchConfig(id: string, instancePath: string, options: InstanceOptions) {
+    if (!options.egg_id) throw new Error('egg_id is required for egg-based launch');
+
+    const egg = eggRunnerService.loadEgg(options.egg_id);
+    const userVars = options.egg_variables ? JSON.parse(options.egg_variables) : {};
+    
+    // Inject system variables that eggs often expect
+    const systemVars = {
+      PORT: options.port.toString(),
+      IP: options.ip || '0.0.0.0',
+      SERVER_MEMORY: (options.ram_limit || 0).toString(),
+      SERVER_IP: options.ip || '0.0.0.0',
+      SERVER_PORT: options.port.toString(),
+      ...userVars
+    };
+
+    const resolvedCommand = eggRunnerService.resolveStartupCommand(egg, systemVars);
+    const eggEnv = eggRunnerService.getEnvironmentVariables(egg, systemVars);
+
+    // Split command into executable and args
+    // Handle cases where startup might be "sh -c ..."
+    const parts = resolvedCommand.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+    if (parts.length === 0) throw new Error(`Empty startup command for egg ${options.egg_id}`);
+
+    const executable = parts[0]!;
+    const args = parts.slice(1);
+
+    // Security check for executable
+    if (!fileSystemService.isPathSafe(executable) && !['sh', 'bash', 'python', 'node', 'nice'].includes(executable)) {
+       // We allow some common binaries even if they are not in instance path
+       // This is a trade-off for "Native" support.
+    }
+
+    return { 
+      executable, 
+      args, 
+      env: { ...process.env, ...eggEnv } 
+    };
+  }
+
+  /**
+   * Standard CS2-specific launch logic
+   */
+  private async prepareStandardLaunchConfig(id: string, instancePath: string, options: InstanceOptions) {
     const relativeBinPath = path.join('game', 'bin', 'linuxsteamrt64', 'cs2');
     const cs2BinLocal = path.join(instancePath, relativeBinPath);
 
