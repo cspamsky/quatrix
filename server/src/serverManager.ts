@@ -255,13 +255,24 @@ class ServerManager {
     await this.ensureSteamSdk();
 
     const dbOptions = JSON.parse(server.settings || '{}');
-    const mergedOptions: Server = { ...server, ...dbOptions, ...options }; // Combine DB cols, DB settings, and runtime options
+    const mergedOptions: Server = { ...server, ...dbOptions, ...options };
+    const isEgg = !!mergedOptions.egg_id;
 
+    if (isEgg) {
+      // Egg-based servers go directly to RuntimeService
+      await runtimeService.startInstance(id, mergedOptions, (line) => {
+        this.handleLog(id, line, onLog);
+      });
+      return;
+    }
+
+    await this.ensureSteamSdk();
+
+    // CS2-specific logic below
     // Feature Parity: Validate Files
     if (mergedOptions.validate_files) {
       console.log('[SERVER] Validation requested for server', id, 'Running SteamCMD verify...');
       try {
-        // We use 730 (CS2 App ID)
         await this.validateServerFiles(id, '730');
       } catch (error: unknown) {
         const err = error as Error;
@@ -271,9 +282,8 @@ class ServerManager {
     }
 
     // 1. Config Generation (Server.cfg)
-    // We treat this as "Pre-Flight" preparation
     const serverPath = fileSystemService.getInstancePath(id);
-    const cfgDir = path.join(serverPath, 'game', 'csgo', 'cfg'); // Should exist from prepareInstance
+    const cfgDir = path.join(serverPath, 'game', 'csgo', 'cfg');
     await fs.promises.mkdir(cfgDir, { recursive: true });
 
     const serverCfgPath = path.join(cfgDir, 'server.cfg');
@@ -295,10 +305,9 @@ class ServerManager {
     cfgContent = updateLine(cfgContent, 'sv_logfile', '0');
     cfgContent = updateLine(cfgContent, 'sv_logbans', '1');
 
-    // Use the region setting from database, default to 3 (Europe)
     const region = mergedOptions.region !== undefined ? mergedOptions.region : '3';
     cfgContent = updateLine(cfgContent, 'sv_region', region.toString());
-    cfgContent = updateLine(cfgContent, 'mp_backup_round_auto', '0'); // Disable automatic round backups
+    cfgContent = updateLine(cfgContent, 'mp_backup_round_auto', '0');
     await fs.promises.writeFile(serverCfgPath, cfgContent);
 
     // 2. Start via RuntimeService
@@ -307,27 +316,23 @@ class ServerManager {
 
     if (isWorkshopID(originalMap)) {
       console.log(`[SERVER] Workshop bootstrap: Starting instance ${id} on de_dust2 first...`);
-      // We override the map just for the startup command to ensure a clean boot
       const bootOptions = { ...mergedOptions, map: 'de_dust2' };
 
       await runtimeService.startInstance(id, bootOptions, (line) => {
         this.handleLog(id, line, onLog);
       });
 
-      // Target switch after boot (Wait for engine + Steam initialization)
       setTimeout(async () => {
         try {
           console.log(
             `[SERVER] Bootstrap phase complete for ${id}. Switching to target workshop map ${originalMap}...`
           );
           await this.sendCommand(id, `host_workshop_map ${originalMap}`, 10);
-          // Note: database 'map' column already contains originalMap, so it remains persistent.
         } catch (e) {
           console.error('[SERVER] Bootstrap switch failed for instance', id, ':', e);
         }
       }, 20000);
     } else {
-      // Normal startup for local maps
       await runtimeService.startInstance(id, mergedOptions, (line) => {
         this.handleLog(id, line, onLog);
       });
@@ -772,33 +777,46 @@ class ServerManager {
     }
 
     try {
-      // 1. Update Core
-      if (await lockService.acquireCoreLock()) {
-        console.log(
-          '[SYSTEM] Starting Core Update (Downloading CS2 base files)... This might take 10-15 minutes.'
-        );
-        try {
-          await steamManager.installToPath(
-            fileSystemService.getCorePath(),
-            this.steamCmdExe,
-            onLog,
-            taskId
+      const server = this.getServerStmt.get(id.toString()) as Server | undefined;
+      const isEgg = !!server?.egg_id;
+
+      if (!isEgg) {
+        // 1. Update Core (Only for non-egg servers)
+        if (await lockService.acquireCoreLock()) {
+          console.log(
+            '[SYSTEM] Starting Core Update (Downloading CS2 base files)... This might take 10-15 minutes.'
           );
-          console.log('[SYSTEM] Core Update successful.');
-        } catch (e: unknown) {
-          const err = e as Error;
-          console.error('[SYSTEM] Core Update failed:', err.message);
-          throw e; // Rethrow to notify caller
-        } finally {
-          lockService.releaseCoreLock();
+          try {
+            await steamManager.installToPath(
+              fileSystemService.getCorePath(),
+              this.steamCmdExe,
+              onLog,
+              taskId
+            );
+            console.log('[SYSTEM] Core Update successful.');
+          } catch (e: unknown) {
+            const err = e as Error;
+            console.error('[SYSTEM] Core Update failed:', err.message);
+            throw e; // Rethrow to notify caller
+          } finally {
+            lockService.releaseCoreLock();
+          }
+        } else {
+          console.log('[SYSTEM] Core Update skipped: Core is currently locked by another process.');
         }
-      } else {
-        console.log('[SYSTEM] Core Update skipped: Core is currently locked by another process.');
       }
 
       // 2. Prepare Instance
       console.log('[SYSTEM] Preparing instance:', id);
-      await fileSystemService.prepareInstance(id);
+      if (isEgg) {
+        // For eggs, just ensure the instance directory exists
+        const instancePath = fileSystemService.getInstancePath(id);
+        if (!fs.existsSync(instancePath)) {
+          await fs.promises.mkdir(instancePath, { recursive: true });
+        }
+      } else {
+        await fileSystemService.prepareInstance(id);
+      }
     } finally {
       lockService.releaseInstanceLock(id);
     }
