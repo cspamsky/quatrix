@@ -40,6 +40,7 @@ export interface InstanceOptions {
   game_alias?: string | null;
   ip?: string;
   egg_id?: string | null;
+  egg_image?: string | null;
   egg_variables?: string | null;
 }
 

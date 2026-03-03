@@ -68,6 +68,7 @@ export interface Server {
   remote_id?: string | null;
   remote_panel_id?: string | null;
   egg_id?: string | null;
+  egg_image?: string | null;
   egg_variables?: string | null;
 }
 
@@ -102,5 +103,6 @@ export interface UpdateServerBody {
   auto_db_injection: number;
   ip?: string;
   egg_id?: string | null;
+  egg_image?: string | null;
   egg_variables?: string | null;
 }

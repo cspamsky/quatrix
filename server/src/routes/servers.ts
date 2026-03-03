@@ -40,7 +40,13 @@ router.get('/available-eggs', authorize('servers.create'), async (_req: Request,
     // Return objects with id and name for the UI
     const eggDetails = eggs.map(id => {
        const egg = eggRunnerService.loadEgg(id);
-       return { id, name: egg?.name || id, description: egg?.description, variables: egg?.variables || [] };
+       return { 
+         id, 
+         name: egg?.name || id, 
+         description: egg?.description, 
+         variables: egg?.variables || [],
+         docker_images: egg?.docker_images || {}
+       };
     });
     res.json(eggDetails);
   } catch (error) {
@@ -221,6 +227,7 @@ router.put('/:id', authorize('servers.update'), (req: Request, res: Response) =>
     auto_db_injection,
     ip,
     egg_id,
+    egg_image,
     egg_variables,
   } = req.body as UpdateServerBody;
 
@@ -237,7 +244,7 @@ router.put('/:id', authorize('servers.update'), (req: Request, res: Response) =>
           game_type = ?, game_mode = ?, tickrate = ?, game_alias = ?,
           hibernate = ?, validate_files = ?, additional_args = ?,
           cpu_priority = ?, ram_limit = ?, restart_policy = ?, auto_db_injection = ?, ip = ?,
-          egg_id = ?, egg_variables = ?
+          egg_id = ?, egg_image = ?, egg_variables = ?
       WHERE id = ?
     `
     ).run(
@@ -263,6 +270,7 @@ router.put('/:id', authorize('servers.update'), (req: Request, res: Response) =>
       auto_db_injection || 0,
       ip || '0.0.0.0',
       egg_id || null,
+      egg_image || null,
       egg_variables || null,
       id as string
     );
@@ -306,6 +314,7 @@ export const createServerSchema = z.object({
   auto_db_injection: z.number().int().min(0).max(1).optional().default(0),
   ip: z.string().optional(),
   egg_id: z.string().nullable().optional(),
+  egg_image: z.string().nullable().optional(),
   egg_variables: z.string().nullable().optional(),
 });
 
@@ -355,6 +364,7 @@ router.post(
         auto_db_injection,
         ip,
         egg_id,
+        egg_image,
         egg_variables,
       } = validatedData;
 
@@ -374,9 +384,9 @@ router.post(
         vac_enabled, game_type, game_mode, tickrate, auto_start, game_alias,
         hibernate, validate_files, additional_args,
         cpu_priority, ram_limit, restart_policy, auto_db_injection, ip,
-        egg_id, egg_variables
+        egg_id, egg_image, egg_variables
       )
-      VALUES (?, ?, ?, 'OFFLINE', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, 'OFFLINE', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
         )
         .run(
@@ -404,6 +414,7 @@ router.post(
           auto_db_injection || 0,
           ip || '0.0.0.0',
           egg_id || null,
+          egg_image || null,
           egg_variables || null
         );
 

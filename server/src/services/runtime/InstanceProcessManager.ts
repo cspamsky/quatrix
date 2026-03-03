@@ -221,9 +221,10 @@ export class InstanceProcessManager {
     const egg = eggRunnerService.loadEgg(options.egg_id);
     const userVars = options.egg_variables ? JSON.parse(options.egg_variables) : {};
     
-    // Auto-detect Docker image from egg
-    let dockerImage = '';
-    if (egg.docker_images) {
+    // Use user-selected image if available, otherwise auto-detect from egg
+    let dockerImage = options.egg_image || '';
+    
+    if (!dockerImage && egg.docker_images) {
       if (typeof egg.docker_images === 'string') {
         dockerImage = egg.docker_images;
       } else if (Array.isArray(egg.docker_images)) {

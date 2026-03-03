@@ -13,6 +13,7 @@ import {
   Globe,
   Network,
   Package,
+  Settings2,
 } from 'lucide-react';
 import { SERVER_REGIONS } from '../config/regions';
 import toast from 'react-hot-toast';
@@ -45,6 +46,7 @@ interface ServerData {
   ip?: string;
   interfaces?: { name: string; ip: string }[];
   egg_id?: string | null;
+  egg_image?: string | null;
   egg_variables?: string | null;
 }
 
@@ -63,6 +65,7 @@ interface Egg {
   name: string;
   description: string;
   variables: EggVariable[];
+  docker_images: Record<string, string>;
 }
 
 const ServerSettings = () => {
@@ -73,6 +76,7 @@ const ServerSettings = () => {
   const [saving, setSaving] = useState(false);
   const [server, setServer] = useState<ServerData | null>(null);
   const [availableEggs, setAvailableEggs] = useState<Egg[]>([]);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [user] = useState(() => {
     try {
       const stored = localStorage.getItem('user');
@@ -638,36 +642,76 @@ const ServerSettings = () => {
                 {t('pterodactyl.variables')}
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {availableEggs
-                  .find((e) => e.id === server.egg_id)
-                  ?.variables.map((v) => {
-                    const vars = server.egg_variables ? JSON.parse(server.egg_variables) : {};
-                    return (
-                      <div key={v.env_variable} className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-400 flex items-center gap-2">
-                          {v.name}
-                          {v.rules.includes('required') && (
-                            <span className="text-red-500 font-black">*</span>
-                          )}
-                        </label>
-                        <input
-                          type="text"
-                          value={vars[v.env_variable] || ''}
-                          onChange={(e) => {
-                            const newVars = { ...vars, [v.env_variable]: e.target.value };
-                            setServer({ ...server, egg_variables: JSON.stringify(newVars) });
-                          }}
-                          className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all placeholder:text-gray-700 disabled:opacity-50"
-                          placeholder={v.default_value}
-                          disabled={!canEdit}
-                        />
-                        <p className="text-[10px] text-gray-600 italic leading-tight">
-                          {v.description}
-                        </p>
-                      </div>
-                    );
-                  })}
+              <div className="space-y-6">
+                {/* Docker Image Selection */}
+                {Object.keys(availableEggs.find((e) => e.id === server.egg_id)?.docker_images || {}).length > 1 && (
+                  <div className="p-6 bg-black/20 rounded-xl border border-gray-800 space-y-3">
+                    <label className="block text-xs font-black text-primary uppercase tracking-widest">
+                      {t('pterodactyl.docker_image') || 'Docker Image'}
+                    </label>
+                    <CustomSelect
+                      options={Object.entries(availableEggs.find((e) => e.id === server.egg_id)?.docker_images || {}).map(([name, image]) => ({
+                        value: image,
+                        label: name,
+                      }))}
+                      value={server.egg_image || ''}
+                      onChange={(val: string | number) =>
+                        setServer({ ...server, egg_image: String(val) })
+                      }
+                      icon={<Globe className="w-4 h-4" />}
+                      disabled={!canEdit}
+                    />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6 bg-black/20 rounded-xl border border-gray-800">
+                  <div className="col-span-full flex items-center justify-between pb-2 border-b border-gray-800/50 mb-2">
+                    <h4 className="text-xs font-black text-primary uppercase tracking-widest">
+                      {t('pterodactyl.egg_variables') || 'Egg Variables'}
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvanced(!showAdvanced)}
+                      className="text-[10px] font-bold text-gray-500 hover:text-white transition-colors uppercase tracking-tighter flex items-center gap-1.5"
+                    >
+                      <Settings2 size={12} />
+                      {showAdvanced ? 'Hide Advanced' : 'Show Advanced'}
+                    </button>
+                  </div>
+                  {availableEggs
+                    .find((e) => e.id === server.egg_id)
+                    ?.variables
+                    .filter(v => v.user_viewable || showAdvanced)
+                    .map((v) => {
+                      const vars = server.egg_variables ? JSON.parse(server.egg_variables) : {};
+                      return (
+                        <div key={v.env_variable} className="space-y-2">
+                          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center justify-between">
+                            <span>{v.name}</span>
+                            {!v.user_viewable && (
+                              <span className="text-yellow-500/50" title="Hidden from normal view">
+                                <Settings2 size={10} />
+                              </span>
+                            )}
+                          </label>
+                          <input
+                            type="text"
+                            value={vars[v.env_variable] || ''}
+                            onChange={(e) => {
+                              const newVars = { ...vars, [v.env_variable]: e.target.value };
+                              setServer({ ...server, egg_variables: JSON.stringify(newVars) });
+                            }}
+                            className="w-full px-4 py-2 bg-[#0F172A]/80 border border-gray-800 rounded-lg text-white text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all placeholder:text-gray-700 disabled:opacity-50"
+                            placeholder={v.default_value}
+                            disabled={!canEdit}
+                          />
+                          <p className="text-[10px] text-gray-600 italic leading-tight">
+                            {v.description}
+                          </p>
+                        </div>
+                      );
+                    })}
+                </div>
               </div>
             </div>
           )}

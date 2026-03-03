@@ -34,6 +34,7 @@ interface Egg {
   name: string;
   description: string;
   variables: EggVariable[];
+  docker_images: Record<string, string>;
 }
 
 const CreateInstance = () => {
@@ -68,6 +69,7 @@ const CreateInstance = () => {
     ip: '',
     interfaces: [] as { name: string; ip: string }[],
     egg_id: '',
+    egg_image: '',
     egg_variables: {} as Record<string, string>,
   });
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -185,6 +187,7 @@ const CreateInstance = () => {
           ram_limit: formData.ramLimit,
           ip: formData.ip,
           egg_id: useEgg ? formData.egg_id : null,
+          egg_image: useEgg ? formData.egg_image : null,
           egg_variables: useEgg ? JSON.stringify(formData.egg_variables) : null,
         }),
       });
@@ -333,10 +336,15 @@ const CreateInstance = () => {
                               egg?.variables.forEach((v) => {
                                 initialVars[v.env_variable] = v.default_value;
                               });
+                              
+                              // Get first docker image if available
+                              const firstImage = egg?.docker_images ? Object.values(egg.docker_images)[0] : '';
+
                               setFormData((prev) => ({
                                 ...prev,
                                 serverName: egg?.name || '',
                                 egg_id: eggId,
+                                egg_image: firstImage,
                                 egg_variables: initialVars,
                               }));
                             }}
@@ -361,46 +369,75 @@ const CreateInstance = () => {
                       )}
                     </div>
 
-                    {formData.egg_id &&
-                    availableEggs.find((e) => e.id === formData.egg_id)?.variables.length ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-black/20 rounded-xl border border-gray-800">
-                        <div className="col-span-1 md:col-span-2 pb-2">
-                          <h4 className="text-xs font-black text-primary uppercase tracking-widest">
-                            Egg Variables
-                          </h4>
-                        </div>
-                        {availableEggs
-                          .find((e) => e.id === formData.egg_id)
-                          ?.variables.map((v) => (
-                            <div key={v.env_variable} className="space-y-2">
-                              <label className="block text-xs font-bold text-gray-500 uppercase">
-                                {v.name}{' '}
-                                {v.rules.includes('required') && (
-                                  <span className="text-red-500">*</span>
-                                )}
+                      {formData.egg_id &&
+                      availableEggs.find((e) => e.id === formData.egg_id)?.variables.length ? (
+                        <div className="space-y-6">
+                          {/* Docker Image Selection */}
+                          {Object.keys(availableEggs.find((e) => e.id === formData.egg_id)?.docker_images || {}).length > 1 && (
+                            <div className="space-y-2 p-6 bg-black/20 rounded-xl border border-gray-800">
+                              <label className="block text-xs font-bold text-primary uppercase tracking-widest">
+                                {t('pterodactyl.docker_image') || 'Docker Image'}
                               </label>
-                              <input
-                                type="text"
-                                value={formData.egg_variables[v.env_variable] || ''}
-                                onChange={(e) =>
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    egg_variables: {
-                                      ...prev.egg_variables,
-                                      [v.env_variable]: e.target.value,
-                                    },
-                                  }))
+                              <CustomSelect
+                                options={Object.entries(availableEggs.find((e) => e.id === formData.egg_id)?.docker_images || {}).map(([name, image]) => ({
+                                  value: image,
+                                  label: name,
+                                }))}
+                                value={formData.egg_image}
+                                onChange={(val: string | number) =>
+                                  setFormData((prev) => ({ ...prev, egg_image: String(val) }))
                                 }
-                                className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:ring-1 focus:ring-primary outline-none transition-all"
-                                placeholder={v.default_value}
+                                icon={<Globe className="w-4 h-4" />}
                               />
-                              <p className="text-[10px] text-gray-600 italic leading-tight">
-                                {v.description}
-                              </p>
                             </div>
-                          ))}
-                      </div>
-                    ) : null}
+                          )}
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-black/20 rounded-xl border border-gray-800">
+                            <div className="col-span-1 md:col-span-2 pb-2">
+                              <h4 className="text-xs font-black text-primary uppercase tracking-widest">
+                                {t('pterodactyl.egg_variables') || 'Egg Variables'}
+                              </h4>
+                            </div>
+                            {availableEggs
+                              .find((e) => e.id === formData.egg_id)
+                              ?.variables
+                              .filter(v => v.user_viewable || showAdvanced)
+                              .map((v) => (
+                                <div key={v.env_variable} className="space-y-2">
+                                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center justify-between">
+                                    <span>{v.name}</span>
+                                    {v.rules.includes('required') && (
+                                      <span className="text-red-500 text-[10px]">REQUIRED</span>
+                                    )}
+                                    {!v.user_viewable && (
+                                      <span className="text-xs text-yellow-500/50" title="Hidden from normal view">
+                                        <Settings2 size={10} />
+                                      </span>
+                                    )}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={formData.egg_variables[v.env_variable] || ''}
+                                    onChange={(e) =>
+                                      setFormData((prev) => ({
+                                        ...prev,
+                                        egg_variables: {
+                                          ...prev.egg_variables,
+                                          [v.env_variable]: e.target.value,
+                                        },
+                                      }))
+                                    }
+                                    className="w-full bg-[#0F172A]/80 border border-gray-800 rounded-lg px-4 py-2 text-sm text-white focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-gray-700"
+                                    placeholder={v.default_value}
+                                  />
+                                  <p className="text-[10px] text-gray-600 italic leading-tight">
+                                    {v.description}
+                                  </p>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      ) : null}
                   </div>
                 )}
 
