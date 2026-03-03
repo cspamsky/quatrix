@@ -24,6 +24,13 @@ export interface PterodactylEgg {
     logs?: Record<string, unknown> | string;
   };
   variables: EggVariable[];
+  scripts?: {
+    installation: {
+      script: string;
+      container: string;
+      entrypoint: string;
+    };
+  };
 }
 
 class EggRunnerService {
@@ -77,6 +84,10 @@ class EggRunnerService {
     }
     if (egg.config.logs && typeof egg.config.logs === 'string') {
       try { egg.config.logs = JSON.parse(egg.config.logs); } catch { egg.config.logs = {}; }
+    }
+    // Also parse scripts if they are strings (Pterodactyl JSON exports)
+    if (egg.scripts && typeof egg.scripts === 'string') {
+      try { (egg as any).scripts = JSON.parse(egg.scripts); } catch { (egg as any).scripts = undefined; }
     }
   }
 

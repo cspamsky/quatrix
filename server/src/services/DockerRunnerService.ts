@@ -124,6 +124,65 @@ class DockerRunnerService {
   }
 
   /**
+   * Runs an installation container for an egg-based server.
+   * This is a temporary container that runs the installation script.
+   */
+  async runInstallContainer(options: {
+    image: string;
+    cwd: string;
+    script: string;
+    entrypoint: string;
+    env: Record<string, string>;
+  }, logFd: number): Promise<void> {
+    const { image, cwd, script, entrypoint, env } = options;
+    const name = `quatrix-install-${Math.random().toString(36).slice(-8)}`;
+
+    await this.ensureImage(image, logFd);
+
+    console.log(`[Docker] Starting install container ${name} from ${image}`);
+
+    // Prepare docker run arguments
+    const args = [
+      'run',
+      '--rm',
+      '--name', name,
+      '--workdir', '/home/container',
+      '--user', '0:0', // Installation usually needs root
+    ];
+
+    // Environment variables
+    Object.entries(env).forEach(([key, val]) => {
+      args.push('-e', `${key}=${val}`);
+    });
+
+    // Volume mapping
+    args.push('-v', `${cwd}:/home/container`);
+
+    // The image and script execution
+    args.push('--entrypoint', entrypoint);
+    args.push(image);
+    args.push('-c', script);
+
+    console.log(`[Docker] Launching install: docker ${args.join(' ')}`);
+
+    const proc = spawn('docker', args, {
+      stdio: ['ignore', logFd, logFd]
+    });
+
+    return new Promise((resolve, reject) => {
+      proc.on('close', (code) => {
+        if (code === 0) {
+          console.log(`[Docker] Install container ${name} completed successfully.`);
+          resolve();
+        } else {
+          console.error(`[Docker] Install container ${name} failed with code ${code}.`);
+          reject(new Error(`Installation failed (exit code ${code})`));
+        }
+      });
+    });
+  }
+
+  /**
    * Forces removal of a container
    */
   async killContainer(name: string): Promise<void> {

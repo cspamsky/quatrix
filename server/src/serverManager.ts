@@ -13,6 +13,7 @@ import type { PluginId } from './config/plugins.js';
 import { emitDashboardStats } from './index.js';
 import type { Server } from './types/index.js';
 import { pterodactylAdapter } from './services/adapters/PterodactylAdapter.js';
+import { eggRunnerService } from './services/EggRunnerService.js';
 import packageJson from '../package.json' with { type: 'json' };
 
 import { promisify } from 'util';
@@ -813,6 +814,42 @@ class ServerManager {
         const instancePath = fileSystemService.getInstancePath(id);
         if (!fs.existsSync(instancePath)) {
           await fs.promises.mkdir(instancePath, { recursive: true });
+        }
+
+        const eggId = server!.egg_id!;
+        const egg = eggRunnerService.loadEgg(eggId);
+
+        if (egg.scripts?.installation) {
+          console.log(`[SYSTEM] Found installation script for egg ${eggId}. Launching installer...`);
+          
+          const userVars = server!.egg_variables ? JSON.parse(server!.egg_variables) : {};
+          const systemVars = {
+            PORT: server!.port.toString(),
+            IP: server!.ip || '0.0.0.0',
+            SERVER_MEMORY: (server!.ram_limit || 0).toString(),
+            SERVER_IP: server!.ip || '0.0.0.0',
+            SERVER_PORT: server!.port.toString(),
+            ...userVars
+          };
+
+          const env = eggRunnerService.getEnvironmentVariables(egg, systemVars);
+          const logFilePath = path.join(instancePath, 'console.log');
+          const logFd = fs.openSync(logFilePath, 'a');
+
+          try {
+            const { dockerRunnerService } = await import('./services/DockerRunnerService.js');
+            await dockerRunnerService.runInstallContainer({
+              image: egg.scripts.installation.container,
+              cwd: instancePath,
+              script: egg.scripts.installation.script,
+              entrypoint: egg.scripts.installation.entrypoint,
+              env
+            }, logFd);
+          } finally {
+            fs.closeSync(logFd);
+          }
+        } else {
+          console.log(`[SYSTEM] No installation script found for egg ${eggId}. Skipping.`);
         }
       } else {
         await fileSystemService.prepareInstance(id);
