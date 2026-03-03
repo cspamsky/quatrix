@@ -285,7 +285,7 @@ export const createServerSchema = z.object({
     .min(3, 'Name must be at least 3 characters')
     .max(50, 'Name must be less than 50 characters'),
   port: z.number().int().min(1024, 'Port must be >= 1024').max(65535, 'Port must be <= 65535'),
-  rcon_password: z.string().min(6, 'RCON Password must be at least 6 characters'),
+  rcon_password: z.string().min(6, 'RCON Password must be at least 6 characters').nullable().optional(),
   map: z.string().default('de_dust2'),
   max_players: z.number().int().min(1).max(64).default(10),
   password: z.string().nullable().optional(),
@@ -326,10 +326,15 @@ router.post(
           .json({ message: result.error.issues[0]?.message || 'Validation failed' });
       }
 
+      const validatedData = result.data;
+      
+      // Auto-generate RCON password if missing
+      const rcon_password = validatedData.rcon_password || 
+                          Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
+
       const {
         name,
         port,
-        rcon_password,
         map,
         max_players,
         password,
@@ -351,7 +356,7 @@ router.post(
         ip,
         egg_id,
         egg_variables,
-      } = result.data;
+      } = validatedData;
 
       const result_count = db
         .prepare('SELECT count(*) as count FROM servers WHERE port = ?')
