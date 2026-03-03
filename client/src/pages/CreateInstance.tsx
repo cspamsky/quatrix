@@ -131,8 +131,21 @@ const CreateInstance = () => {
     }
   };
 
-  const nextStep = () => setStep((s) => Math.min(s + 1, 3));
-  const prevStep = () => setStep((s) => Math.max(s - 1, 1));
+  const nextStep = () => {
+    if (useEgg && step === 1) {
+      setStep(3);
+    } else {
+      setStep((s) => Math.min(s + 1, 3));
+    }
+  };
+
+  const prevStep = () => {
+    if (useEgg && step === 3) {
+      setStep(1);
+    } else {
+      setStep((s) => Math.max(s - 1, 1));
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -219,25 +232,29 @@ const CreateInstance = () => {
                 {t('createInstance.step_details')}
               </span>
             </div>
-            <div className={`h-px flex-1 mx-4 ${step > 1 ? 'bg-primary' : 'bg-gray-800'}`}></div>
-            <div className="flex items-center gap-3">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step >= 2 ? 'bg-primary text-white' : 'bg-gray-800 text-gray-500'}`}
-              >
-                2
-              </div>
-              <span
-                className={`font-semibold hidden sm:block ${step >= 2 ? 'text-primary' : 'text-gray-500'}`}
-              >
-                {t('createInstance.step_map')}
-              </span>
-            </div>
-            <div className={`h-px flex-1 mx-4 ${step > 2 ? 'bg-primary' : 'bg-gray-800'}`}></div>
+            {!useEgg && (
+              <>
+                <div className={`h-px flex-1 mx-4 ${step > 1 ? 'bg-primary' : 'bg-gray-800'}`}></div>
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step >= 2 ? 'bg-primary text-white' : 'bg-gray-800 text-gray-500'}`}
+                  >
+                    2
+                  </div>
+                  <span
+                    className={`font-semibold hidden sm:block ${step >= 2 ? 'text-primary' : 'text-gray-500'}`}
+                  >
+                    {t('createInstance.step_map')}
+                  </span>
+                </div>
+              </>
+            )}
+            <div className={`h-px flex-1 mx-4 ${step > (useEgg ? 1 : 2) ? 'bg-primary' : 'bg-gray-800'}`}></div>
             <div className="flex items-center gap-3">
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step >= 3 ? 'bg-primary text-white' : 'bg-gray-800 text-gray-500'}`}
               >
-                3
+                {useEgg ? '2' : '3'}
               </div>
               <span
                 className={`font-semibold hidden sm:block ${step >= 3 ? 'text-primary' : 'text-gray-500'}`}
@@ -317,6 +334,7 @@ const CreateInstance = () => {
                               });
                               setFormData((prev) => ({
                                 ...prev,
+                                serverName: egg?.name || '',
                                 egg_id: eggId,
                                 egg_variables: initialVars,
                               }));
@@ -385,73 +403,101 @@ const CreateInstance = () => {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-2">
-                    <label htmlFor="serverName" className="block text-sm font-bold text-gray-400">
-                      {t('createInstance.server_name')}
-                    </label>
-                    <input
-                      id="serverName"
-                      type="text"
-                      name="serverName"
-                      value={formData.serverName}
-                      onChange={handleInputChange}
-                      className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600"
-                      placeholder={t('createInstance.server_name_placeholder')}
-                    />
-                  </div>
+                {!useEgg && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-2">
+                      <label htmlFor="serverName" className="block text-sm font-bold text-gray-400">
+                        {t('createInstance.server_name')}
+                      </label>
+                      <input
+                        id="serverName"
+                        type="text"
+                        name="serverName"
+                        value={formData.serverName}
+                        onChange={handleInputChange}
+                        className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600"
+                        placeholder={t('createInstance.server_name_placeholder')}
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <label htmlFor="maxPlayers" className="block text-sm font-bold text-gray-400">
-                      {t('createInstance.max_players')}
-                    </label>
-                    <input
-                      id="maxPlayers"
-                      type="number"
-                      name="maxPlayers"
-                      value={formData.maxPlayers}
-                      onChange={handleInputChange}
-                      className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <label htmlFor="maxPlayers" className="block text-sm font-bold text-gray-400">
+                        {t('createInstance.max_players')}
+                      </label>
+                      <input
+                        id="maxPlayers"
+                        type="number"
+                        name="maxPlayers"
+                        value={formData.maxPlayers}
+                        onChange={handleInputChange}
+                        className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <label htmlFor="port" className="block text-sm font-bold text-gray-400">
-                      {t('createInstance.server_port')}
-                    </label>
-                    <input
-                      id="port"
-                      type="text"
-                      name="port"
-                      value={formData.port}
-                      onChange={handleInputChange}
-                      className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <label htmlFor="port" className="block text-sm font-bold text-gray-400">
+                        {t('createInstance.server_port')}
+                      </label>
+                      <input
+                        id="port"
+                        type="text"
+                        name="port"
+                        value={formData.port}
+                        onChange={handleInputChange}
+                        className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <label htmlFor="region" className="block text-sm font-bold text-gray-400">
-                      {t('createInstance.server_region')}
-                    </label>
-                    <CustomSelect
-                      options={SERVER_REGIONS.map((r) => ({
-                        value: r.id,
-                        label: t(`regions.${r.code}`),
-                      }))}
-                      value={formData.region}
-                      onChange={(val: string | number) =>
-                        setFormData((prev) => ({ ...prev, region: Number(val) }))
-                      }
-                      icon={<Globe className="w-4 h-4" />}
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <label htmlFor="region" className="block text-sm font-bold text-gray-400">
+                        {t('createInstance.server_region')}
+                      </label>
+                      <CustomSelect
+                        options={SERVER_REGIONS.map((r) => ({
+                          value: r.id,
+                          label: t(`regions.${r.code}`),
+                        }))}
+                        value={formData.region}
+                        onChange={(val: string | number) =>
+                          setFormData((prev) => ({ ...prev, region: Number(val) }))
+                        }
+                        icon={<Globe className="w-4 h-4" />}
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <label htmlFor="ip" className="block text-sm font-bold text-gray-400">
-                      {t('createInstance.bind_ip')}
-                    </label>
-                    {formData.interfaces && formData.interfaces.length > 0 ? (
-                      <div className="relative group/ip">
+                    <div className="space-y-2">
+                      <label htmlFor="ip" className="block text-sm font-bold text-gray-400">
+                        {t('createInstance.bind_ip')}
+                      </label>
+                      {formData.interfaces && formData.interfaces.length > 0 ? (
+                        <div className="relative group/ip">
+                          <input
+                            id="ip"
+                            type="text"
+                            name="ip"
+                            value={formData.ip}
+                            onChange={handleInputChange}
+                            onFocus={(e) => e.target.select()}
+                            className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 pr-44 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600 font-mono"
+                            placeholder={t('createInstance.bind_ip_placeholder')}
+                          />
+                          <div className="absolute right-1.5 top-1.5 bottom-1.5 w-40">
+                            <CustomSelect
+                              options={formData.interfaces.map((iface) => ({
+                                value: iface.ip,
+                                label: `${iface.name}: ${iface.ip}`,
+                              }))}
+                              value={formData.ip}
+                              onChange={(val: string | number) =>
+                                setFormData((prev) => ({ ...prev, ip: String(val) }))
+                              }
+                              placeholder={t('common.select') || 'Select'}
+                              icon={<Network className="w-4 h-4" />}
+                              size="sm"
+                            />
+                          </div>
+                        </div>
+                      ) : (
                         <input
                           id="ip"
                           type="text"
@@ -459,39 +505,13 @@ const CreateInstance = () => {
                           value={formData.ip}
                           onChange={handleInputChange}
                           onFocus={(e) => e.target.select()}
-                          className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 pr-44 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600 font-mono"
+                          className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600 font-mono"
                           placeholder={t('createInstance.bind_ip_placeholder')}
                         />
-                        <div className="absolute right-1.5 top-1.5 bottom-1.5 w-40">
-                          <CustomSelect
-                            options={formData.interfaces.map((iface) => ({
-                              value: iface.ip,
-                              label: `${iface.name}: ${iface.ip}`,
-                            }))}
-                            value={formData.ip}
-                            onChange={(val: string | number) =>
-                              setFormData((prev) => ({ ...prev, ip: String(val) }))
-                            }
-                            placeholder={t('common.select') || 'Select'}
-                            icon={<Network className="w-4 h-4" />}
-                            size="sm"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <input
-                        id="ip"
-                        type="text"
-                        name="ip"
-                        value={formData.ip}
-                        onChange={handleInputChange}
-                        onFocus={(e) => e.target.select()}
-                        className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600 font-mono"
-                        placeholder={t('createInstance.bind_ip_placeholder')}
-                      />
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
@@ -545,227 +565,268 @@ const CreateInstance = () => {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-2">
-                    <label htmlFor="glstToken" className="block text-sm font-bold text-gray-400">
-                      {t('createInstance.gslt_token')} <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      id="glstToken"
-                      type="text"
-                      name="glstToken"
-                      value={formData.glstToken}
-                      onChange={handleInputChange}
-                      className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600"
-                      placeholder={t('createInstance.gslt_placeholder')}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="steamApiKey" className="block text-sm font-bold text-gray-400">
-                      {t('createInstance.steam_api_key')} <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      id="steamApiKey"
-                      type="text"
-                      name="steamApiKey"
-                      value={formData.steamApiKey}
-                      onChange={handleInputChange}
-                      className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600"
-                      placeholder={t('createInstance.steam_api_placeholder')}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="serverPassword"
-                      className="block text-sm font-bold text-gray-400"
-                    >
-                      {t('createInstance.server_password')}
-                    </label>
-                    <input
-                      id="serverPassword"
-                      type="password"
-                      name="serverPassword"
-                      value={formData.serverPassword}
-                      onChange={handleInputChange}
-                      className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600"
-                      placeholder={t('createInstance.server_password_placeholder')}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="rconPassword" className="block text-sm font-bold text-gray-400">
-                      {t('createInstance.rcon_password')} <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      id="rconPassword"
-                      type="password"
-                      name="rconPassword"
-                      value={formData.rconPassword}
-                      onChange={handleInputChange}
-                      className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600"
-                      placeholder={t('createInstance.rcon_placeholder')}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="gameAlias" className="block text-sm font-bold text-gray-400">
-                      {t('createInstance.game_alias')}
-                    </label>
-                    <CustomSelect
-                      options={[
-                        { value: '', label: t('createInstance.game_alias_default') },
-                        { value: 'competitive', label: t('createInstance.game_alias_competitive') },
-                        { value: 'casual', label: t('createInstance.game_alias_casual') },
-                        { value: 'deathmatch', label: t('createInstance.game_alias_deathmatch') },
-                        { value: 'wingman', label: t('createInstance.game_alias_wingman') },
-                        { value: 'armsrace', label: t('createInstance.game_alias_armsrace') },
-                        { value: 'demolition', label: t('createInstance.game_alias_demolition') },
-                        { value: 'training', label: t('createInstance.game_alias_training') },
-                        { value: 'custom', label: t('createInstance.game_alias_custom') },
-                      ]}
-                      value={formData.gameAlias}
-                      onChange={(val: string | number) =>
-                        setFormData((prev) => ({ ...prev, gameAlias: String(val) }))
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="additionalArgs"
-                      className="block text-sm font-bold text-gray-400"
-                    >
-                      {t('createInstance.additional_args')}
-                    </label>
-                    <input
-                      id="additionalArgs"
-                      type="text"
-                      name="additionalArgs"
-                      value={formData.additionalArgs}
-                      onChange={handleInputChange}
-                      className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600"
-                      placeholder={t('createInstance.additional_args_placeholder')}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                  <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all">
-                    <button
-                      aria-label="Toggle Server Hibernation"
-                      type="button"
-                      onClick={() =>
-                        setFormData((prev) => ({ ...prev, hibernate: !prev.hibernate }))
-                      }
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.hibernate ? 'bg-primary' : 'bg-gray-700'}`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.hibernate ? 'translate-x-6' : 'translate-x-1'}`}
+                {!useEgg && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-2">
+                      <label htmlFor="glstToken" className="block text-sm font-bold text-gray-400">
+                        {t('createInstance.gslt_token')} <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="glstToken"
+                        type="text"
+                        name="glstToken"
+                        value={formData.glstToken}
+                        onChange={handleInputChange}
+                        className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600"
+                        placeholder={t('createInstance.gslt_placeholder')}
                       />
-                    </button>
-                    <div className="flex flex-col">
-                      <span className="text-sm text-gray-300 font-semibold">
-                        {t('createInstance.enable_hibernation')}
-                      </span>
-                      <span className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">
-                        {t('createInstance.hibernation_desc')}
-                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="steamApiKey" className="block text-sm font-bold text-gray-400">
+                        {t('createInstance.steam_api_key')} <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="steamApiKey"
+                        type="text"
+                        name="steamApiKey"
+                        value={formData.steamApiKey}
+                        onChange={handleInputChange}
+                        className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600"
+                        placeholder={t('createInstance.steam_api_placeholder')}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="serverPassword"
+                        className="block text-sm font-bold text-gray-400"
+                      >
+                        {t('createInstance.server_password')}
+                      </label>
+                      <input
+                        id="serverPassword"
+                        type="password"
+                        name="serverPassword"
+                        value={formData.serverPassword}
+                        onChange={handleInputChange}
+                        className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600"
+                        placeholder={t('createInstance.server_password_placeholder')}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="rconPassword" className="block text-sm font-bold text-gray-400">
+                        {t('createInstance.rcon_password')} <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="rconPassword"
+                        type="password"
+                        name="rconPassword"
+                        value={formData.rconPassword}
+                        onChange={handleInputChange}
+                        className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600"
+                        placeholder={t('createInstance.rcon_placeholder')}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="gameAlias" className="block text-sm font-bold text-gray-400">
+                        {t('createInstance.game_alias')}
+                      </label>
+                      <CustomSelect
+                        options={[
+                          { value: '', label: t('createInstance.game_alias_default') },
+                          { value: 'competitive', label: t('createInstance.game_alias_competitive') },
+                          { value: 'casual', label: t('createInstance.game_alias_casual') },
+                          { value: 'deathmatch', label: t('createInstance.game_alias_deathmatch') },
+                          { value: 'wingman', label: t('createInstance.game_alias_wingman') },
+                          { value: 'armsrace', label: t('createInstance.game_alias_armsrace') },
+                          { value: 'demolition', label: t('createInstance.game_alias_demolition') },
+                          { value: 'training', label: t('createInstance.game_alias_training') },
+                          { value: 'custom', label: t('createInstance.game_alias_custom') },
+                        ]}
+                        value={formData.gameAlias}
+                        onChange={(val: string | number) =>
+                          setFormData((prev) => ({ ...prev, gameAlias: String(val) }))
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="additionalArgs"
+                        className="block text-sm font-bold text-gray-400"
+                      >
+                        {t('createInstance.additional_args')}
+                      </label>
+                      <input
+                        id="additionalArgs"
+                        type="text"
+                        name="additionalArgs"
+                        value={formData.additionalArgs}
+                        onChange={handleInputChange}
+                        className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600"
+                        placeholder={t('createInstance.additional_args_placeholder')}
+                      />
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all">
-                    <button
-                      aria-label="Toggle Force File Validation"
-                      type="button"
-                      onClick={() =>
-                        setFormData((prev) => ({ ...prev, validateFiles: !prev.validateFiles }))
-                      }
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.validateFiles ? 'bg-primary' : 'bg-gray-700'}`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.validateFiles ? 'translate-x-6' : 'translate-x-1'}`}
+                )}
+                {useEgg && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-2">
+                      <label htmlFor="rconPassword" className="block text-sm font-bold text-gray-400">
+                        {t('createInstance.rcon_password')} <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="rconPassword"
+                        type="password"
+                        name="rconPassword"
+                        value={formData.rconPassword}
+                        onChange={handleInputChange}
+                        className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600"
+                        placeholder={t('createInstance.rcon_placeholder')}
                       />
-                    </button>
-                    <div className="flex flex-col">
-                      <span className="text-sm text-gray-300 font-semibold">
-                        {t('createInstance.validate_files')}
-                      </span>
-                      <span className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">
-                        {t('createInstance.validate_desc')}
-                      </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all">
-                    <button
-                      aria-label="Toggle Auto-start server after creation"
-                      type="button"
-                      onClick={() =>
-                        setFormData((prev) => ({ ...prev, autoStart: !prev.autoStart }))
-                      }
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.autoStart ? 'bg-primary' : 'bg-gray-700'}`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.autoStart ? 'translate-x-6' : 'translate-x-1'}`}
-                      />
-                    </button>
-                    <span className="text-sm text-gray-300">{t('createInstance.auto_start')}</span>
-                  </div>
+                )}
 
-                  <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all">
-                    <button
-                      aria-label="Toggle Enable SourceTV"
-                      type="button"
-                      onClick={() => setFormData((prev) => ({ ...prev, sourceTV: !prev.sourceTV }))}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.sourceTV ? 'bg-primary' : 'bg-gray-700'}`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.sourceTV ? 'translate-x-6' : 'translate-x-1'}`}
-                      />
-                    </button>
-                    <span className="text-sm text-gray-300">
-                      {t('createInstance.enable_sourcetv')}
-                    </span>
-                  </div>
+                {!useEgg && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                    <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all">
+                      <button
+                        aria-label="Toggle Server Hibernation"
+                        type="button"
+                        onClick={() =>
+                          setFormData((prev) => ({ ...prev, hibernate: !prev.hibernate }))
+                        }
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.hibernate ? 'bg-primary' : 'bg-gray-700'}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.hibernate ? 'translate-x-6' : 'translate-x-1'}`}
+                        />
+                      </button>
+                      <div className="flex flex-col">
+                        <span className="text-sm text-gray-300 font-semibold">
+                          {t('createInstance.enable_hibernation')}
+                        </span>
+                        <span className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">
+                          {t('createInstance.hibernation_desc')}
+                        </span>
+                      </div>
+                    </div>
 
-                  <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all">
-                    <button
-                      aria-label="Toggle Enable VAC"
-                      type="button"
-                      onClick={() => setFormData((prev) => ({ ...prev, vac: !prev.vac }))}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.vac ? 'bg-primary' : 'bg-gray-700'}`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.vac ? 'translate-x-6' : 'translate-x-1'}`}
-                      />
-                    </button>
-                    <span className="text-sm text-gray-300">{t('createInstance.enable_vac')}</span>
-                  </div>
+                    <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all">
+                      <button
+                        aria-label="Toggle Force File Validation"
+                        type="button"
+                        onClick={() =>
+                          setFormData((prev) => ({ ...prev, validateFiles: !prev.validateFiles }))
+                        }
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.validateFiles ? 'bg-primary' : 'bg-gray-700'}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.validateFiles ? 'translate-x-6' : 'translate-x-1'}`}
+                        />
+                      </button>
+                      <div className="flex flex-col">
+                        <span className="text-sm text-gray-300 font-semibold">
+                          {t('createInstance.validate_files')}
+                        </span>
+                        <span className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">
+                          {t('createInstance.validate_desc')}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all">
+                      <button
+                        aria-label="Toggle Auto-start server after creation"
+                        type="button"
+                        onClick={() =>
+                          setFormData((prev) => ({ ...prev, autoStart: !prev.autoStart }))
+                        }
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.autoStart ? 'bg-primary' : 'bg-gray-700'}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.autoStart ? 'translate-x-6' : 'translate-x-1'}`}
+                        />
+                      </button>
+                      <span className="text-sm text-gray-300">{t('createInstance.auto_start')}</span>
+                    </div>
 
-                  <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-amber-900/30 rounded-xl hover:border-amber-700/50 transition-all group">
-                    <button
-                      aria-label="Toggle Auto-Update"
-                      type="button"
-                      onClick={() =>
-                        setFormData((prev) => ({ ...prev, autoUpdate: !prev.autoUpdate }))
-                      }
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.autoUpdate ? 'bg-amber-600' : 'bg-gray-700'}`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.autoUpdate ? 'translate-x-6' : 'translate-x-1'}`}
-                      />
-                    </button>
-                    <div className="flex flex-col">
-                      <span className="text-sm text-gray-300 font-semibold group-hover:text-amber-200 transition-colors">
-                        {t('createInstance.auto_update')}
-                      </span>
-                      <span className="text-[10px] text-amber-500/70 uppercase font-bold tracking-tight">
-                        {t('createInstance.auto_update_desc')}
+                    <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all">
+                      <button
+                        aria-label="Toggle Enable SourceTV"
+                        type="button"
+                        onClick={() => setFormData((prev) => ({ ...prev, sourceTV: !prev.sourceTV }))}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.sourceTV ? 'bg-primary' : 'bg-gray-700'}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.sourceTV ? 'translate-x-6' : 'translate-x-1'}`}
+                        />
+                      </button>
+                      <span className="text-sm text-gray-300">
+                        {t('createInstance.enable_sourcetv')}
                       </span>
                     </div>
+
+                    <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all">
+                      <button
+                        aria-label="Toggle Enable VAC"
+                        type="button"
+                        onClick={() => setFormData((prev) => ({ ...prev, vac: !prev.vac }))}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.vac ? 'bg-primary' : 'bg-gray-700'}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.vac ? 'translate-x-6' : 'translate-x-1'}`}
+                        />
+                      </button>
+                      <span className="text-sm text-gray-300">{t('createInstance.enable_vac')}</span>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-amber-900/30 rounded-xl hover:border-amber-700/50 transition-all group">
+                      <button
+                        aria-label="Toggle Auto-Update"
+                        type="button"
+                        onClick={() =>
+                          setFormData((prev) => ({ ...prev, autoUpdate: !prev.autoUpdate }))
+                        }
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.autoUpdate ? 'bg-amber-600' : 'bg-gray-700'}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.autoUpdate ? 'translate-x-6' : 'translate-x-1'}`}
+                        />
+                      </button>
+                      <div className="flex flex-col">
+                        <span className="text-sm text-gray-300 font-semibold group-hover:text-amber-200 transition-colors">
+                          {t('createInstance.auto_update')}
+                        </span>
+                        <span className="text-[10px] text-amber-500/70 uppercase font-bold tracking-tight">
+                          {t('createInstance.auto_update_desc')}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
+                {useEgg && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                    <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all">
+                      <button
+                        aria-label="Toggle Auto-start server after creation"
+                        type="button"
+                        onClick={() =>
+                          setFormData((prev) => ({ ...prev, autoStart: !prev.autoStart }))
+                        }
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.autoStart ? 'bg-primary' : 'bg-gray-700'}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.autoStart ? 'translate-x-6' : 'translate-x-1'}`}
+                        />
+                      </button>
+                      <span className="text-sm text-gray-300">{t('createInstance.auto_start')}</span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Performance Orchestration */}
                 <div className="pt-6 border-t border-gray-800">
