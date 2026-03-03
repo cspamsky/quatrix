@@ -86,17 +86,17 @@ class EggRunnerService {
   public resolveStartupCommand(egg: PterodactylEgg, userVariables: Record<string, string>): string {
     let command = egg.startup;
 
-    // First, map all variables to their env names
-    const variablesMap: Record<string, string> = {};
+    // Use all provided variables (system + user + egg defaults)
+    const variablesMap: Record<string, string> = { ...userVariables };
+    
+    // Ensure egg defaults are present if not overridden
     egg.variables.forEach(v => {
-      // Use user provided value, or default value
-      const val = userVariables[v.env_variable] ?? v.default_value;
-      variablesMap[v.env_variable] = val;
+      if (variablesMap[v.env_variable] === undefined) {
+        variablesMap[v.env_variable] = v.default_value;
+      }
     });
 
     // Replace {{VARIABLE_NAME}} in the startup string
-    // Pterodactyl usually uses {{ENV_VARIABLE}} or sometimes just the variable name
-    // We'll support the standard {{VAR}} pattern
     command = command.replace(/\{\{([^}]+)\}\}/g, (match, varName) => {
       const trimmedVar = varName.trim();
       return variablesMap[trimmedVar] !== undefined ? variablesMap[trimmedVar] : match;
@@ -109,11 +109,12 @@ class EggRunnerService {
    * Maps egg variables to environment variables for the process
    */
   public getEnvironmentVariables(egg: PterodactylEgg, userVariables: Record<string, string>): Record<string, string> {
-    const env: Record<string, string> = {};
+    const env: Record<string, string> = { ...userVariables };
     
     egg.variables.forEach(v => {
-      const val = userVariables[v.env_variable] ?? v.default_value;
-      env[v.env_variable] = val;
+      if (env[v.env_variable] === undefined) {
+        env[v.env_variable] = v.default_value;
+      }
     });
 
     return env;

@@ -181,7 +181,7 @@ class RuntimeService {
     state.isStopping = true;
     console.log(`[Runtime] Stopping instance ${id} (PID: ${state.pid})`);
 
-    await instanceProcessManager.killProcess(state.pid, state.process);
+    await instanceProcessManager.killProcess(state.pid, state.process, id);
 
     // Cleanup
     runtimeLogWatcher.stopWatching(id);

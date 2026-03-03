@@ -1,8 +1,18 @@
-import { spawn, ChildProcess } from 'child_process';
+import fs from 'fs';
 import path from 'path';
+import { spawn, ChildProcess } from 'child_process';
 import { fileSystemService } from '../FileSystemService.js';
 import type { InstanceOptions } from '../RuntimeService.js';
 import { eggRunnerService } from '../EggRunnerService.js';
+import { dockerRunnerService } from '../DockerRunnerService.js';
+
+interface LaunchConfig {
+  executable: string;
+  args: string[];
+  env: Record<string, string>;
+  cwd: string;
+  dockerImage?: string;
+}
 
 export class InstanceProcessManager {
   /**
@@ -14,7 +24,34 @@ export class InstanceProcessManager {
     options: InstanceOptions,
     logFd: number
   ): Promise<ChildProcess> {
-    const { executable, args, env } = await this.prepareLaunchConfig(id, instancePath, options);
+    const { executable, args, env, cwd, dockerImage } = (await this.prepareLaunchConfig(
+      id,
+      instancePath,
+      options
+    )) as LaunchConfig;
+
+    if (options.egg_id) {
+      console.log(`[ProcessManager] Launching egg-based instance ${id} in Docker container`);
+      
+      // If no dockerImage was resolved from egg, use a fallback Pterodactyl core image
+      const finalImage = dockerImage || 'quay.io/pterodactyl/core:glibc';
+      if (!dockerImage) {
+        console.warn(`[ProcessManager] No Docker image defined in egg ${options.egg_id}. Using fallback: ${finalImage}`);
+      }
+
+      // Resolve startup command into a single string for Docker
+      const startupCommand = [executable, ...args].join(' ');
+      
+      return dockerRunnerService.runContainer({
+        image: finalImage,
+        name: `quatrix-${id}`,
+        cwd: instancePath,
+        env,
+        ports: { [options.port]: options.port },
+        command: startupCommand,
+        memory: typeof options.ram_limit === 'number' ? options.ram_limit : parseInt(String(options.ram_limit || 0))
+      }, logFd);
+    }
 
     // Prepare Environment Variables (Crucial for host-launch without wrapper)
     const homeDir = process.env.HOME || '/home/quatrix';
@@ -22,18 +59,35 @@ export class InstanceProcessManager {
     const binDir = path.join(instancePath, 'game', 'bin', 'linuxsteamrt64');
     const gameBinDir = path.join(instancePath, 'game', 'csgo', 'bin', 'linuxsteamrt64');
 
+    const filteredEnv: Record<string, string> = {};
+    Object.entries(env).forEach(([k, v]) => {
+      if (v !== undefined) filteredEnv[k] = v;
+    });
+
     const spawnEnv = {
-      ...env,
+      ...filteredEnv,
       LD_LIBRARY_PATH: `${binDir}:${gameBinDir}:${steamSdk64}:${env.LD_LIBRARY_PATH || ''}`,
       HOME: homeDir,
       DOTNET_ROOT: '/usr/share/dotnet', // Standard path, can be adjusted
     };
 
+    // Ensure executable has execution permissions if it's a script
+    if (executable.startsWith('./') || executable.includes('/')) {
+       try {
+         const fullExecPath = path.isAbsolute(executable) ? executable : path.join(cwd, executable);
+         if (fs.existsSync(fullExecPath)) {
+            fs.chmodSync(fullExecPath, 0o755);
+         }
+       } catch (e) {
+         console.warn(`[ProcessManager] Failed to set permissions for ${executable}:`, e);
+       }
+    }
+
     const proc = spawn(executable, args, {
-      cwd: path.join(instancePath, 'game'),
+      cwd,
       env: spawnEnv,
       detached: true,
-      shell: false,
+      shell: executable.endsWith('.sh'), // Use shell for .sh files for better compatibility
       stdio: ['ignore', logFd, logFd],
     });
 
@@ -48,8 +102,13 @@ export class InstanceProcessManager {
   /**
    * Terminates an instance process and all its children
    */
-  async killProcess(pid: number, processHandle?: ChildProcess): Promise<void> {
+  async killProcess(pid: number, processHandle?: ChildProcess, id?: string): Promise<void> {
     try {
+      if (id) {
+        console.log(`[ProcessManager] Terminating container for instance ${id}`);
+        await dockerRunnerService.stopContainer(`quatrix-${id}`);
+      }
+
       console.log(`[ProcessManager] Attempting to kill process ${pid} and its children`);
 
       // First, try graceful shutdown with SIGTERM
@@ -162,6 +221,19 @@ export class InstanceProcessManager {
     const egg = eggRunnerService.loadEgg(options.egg_id);
     const userVars = options.egg_variables ? JSON.parse(options.egg_variables) : {};
     
+    // Auto-detect Docker image from egg
+    let dockerImage = '';
+    if (egg.docker_images) {
+      if (typeof egg.docker_images === 'string') {
+        dockerImage = egg.docker_images;
+      } else if (Array.isArray(egg.docker_images)) {
+        dockerImage = egg.docker_images[0] || '';
+      } else if (typeof egg.docker_images === 'object') {
+        // Take the first key's value
+        dockerImage = Object.values(egg.docker_images)[0] || '';
+      }
+    }
+
     // Inject system variables that eggs often expect
     const systemVars = {
       PORT: options.port.toString(),
@@ -174,26 +246,26 @@ export class InstanceProcessManager {
 
     const resolvedCommand = eggRunnerService.resolveStartupCommand(egg, systemVars);
     const eggEnv = eggRunnerService.getEnvironmentVariables(egg, systemVars);
+    
+    const filteredProcessEnv: Record<string, string> = {};
+    Object.entries(process.env).forEach(([k, v]) => {
+      if (v !== undefined) filteredProcessEnv[k] = v;
+    });
 
     // Split command into executable and args
-    // Handle cases where startup might be "sh -c ..."
     const parts = resolvedCommand.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
     if (parts.length === 0) throw new Error(`Empty startup command for egg ${options.egg_id}`);
 
     const executable = parts[0]!;
     const args = parts.slice(1);
 
-    // Security check for executable
-    if (!fileSystemService.isPathSafe(executable) && !['sh', 'bash', 'python', 'node', 'nice'].includes(executable)) {
-       // We allow some common binaries even if they are not in instance path
-       // This is a trade-off for "Native" support.
-    }
-
     return { 
       executable, 
       args, 
-      env: { ...process.env, ...eggEnv } 
-    };
+      env: { ...filteredProcessEnv, ...eggEnv },
+      cwd: instancePath,
+      dockerImage: dockerImage || undefined
+    } as LaunchConfig;
   }
 
   /**
@@ -318,6 +390,11 @@ export class InstanceProcessManager {
 
     let combinedArgs = [...finalArgs, ...args];
 
+    const filteredProcessEnv: Record<string, string> = {};
+    Object.entries(process.env).forEach(([k, v]) => {
+      if (v !== undefined) filteredProcessEnv[k] = v;
+    });
+
     if (ramLimitMb > 0) {
       const limitKb = ramLimitMb * 1024;
       const originalExecutable = executable;
@@ -333,7 +410,12 @@ export class InstanceProcessManager {
       ];
     }
 
-    return { executable, args: combinedArgs, env: process.env };
+    return { 
+      executable, 
+      args: combinedArgs, 
+      env: filteredProcessEnv,
+      cwd: path.join(instancePath, 'game') // Standard CS2 behavior: cwd is /game
+    } as LaunchConfig;
   }
 
   /**

@@ -70,6 +70,7 @@ const CreateInstance = () => {
     egg_id: '',
     egg_variables: {} as Record<string, string>,
   });
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     const fetchInterfaces = async () => {
@@ -302,10 +303,10 @@ const CreateInstance = () => {
                     </div>
                     <div className="flex flex-col">
                       <span className="text-sm font-bold text-white group-hover:text-primary transition-colors">
-                        Native Egg Runner (Pterodactyl Egg)
+                        Docker Egg Runner (Pterodactyl)
                       </span>
                       <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                        Use this to run non-CS2 servers or custom setups
+                        Use this to run non-CS2 servers or custom setups in isolated containers
                       </span>
                     </div>
                   </label>
@@ -403,8 +404,21 @@ const CreateInstance = () => {
                   </div>
                 )}
 
-                {!useEgg && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {useEgg && formData.egg_id && (
+                  <div className="pt-4 border-t border-gray-800">
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvanced(!showAdvanced)}
+                      className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-primary transition-colors uppercase tracking-widest"
+                    >
+                      <Settings2 size={14} />
+                      {showAdvanced ? t('common.hide_advanced') || 'Hide Advanced' : t('common.show_advanced') || 'Show Advanced Instance Settings'}
+                    </button>
+                  </div>
+                )}
+
+                {(!useEgg || (useEgg && showAdvanced)) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in slide-in-from-top-1 duration-200">
                     <div className="space-y-2">
                       <label htmlFor="serverName" className="block text-sm font-bold text-gray-400">
                         {t('createInstance.server_name')}
@@ -673,20 +687,56 @@ const CreateInstance = () => {
                   </div>
                 )}
                 {useEgg && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-2">
-                      <label htmlFor="rconPassword" className="block text-sm font-bold text-gray-400">
-                        {t('createInstance.rcon_password')} <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        id="rconPassword"
-                        type="password"
-                        name="rconPassword"
-                        value={formData.rconPassword}
-                        onChange={handleInputChange}
-                        className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600"
-                        placeholder={t('createInstance.rcon_placeholder')}
-                      />
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-2">
+                        <label htmlFor="rconPassword" className="block text-sm font-bold text-gray-400">
+                          {t('createInstance.rcon_password')} <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          id="rconPassword"
+                          type="password"
+                          name="rconPassword"
+                          value={formData.rconPassword}
+                          onChange={handleInputChange}
+                          className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600"
+                          placeholder={t('createInstance.rcon_placeholder')}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label htmlFor="ramLimit" className="block text-sm font-bold text-gray-400">
+                          {t('createInstance.ram_limit')} (MB) <span className="text-xs text-gray-600 font-normal ml-1">0 = {t('createInstance.unlimited')}</span>
+                        </label>
+                        <input
+                          id="ramLimit"
+                          type="number"
+                          name="ramLimit"
+                          value={formData.ramLimit}
+                          onChange={handleInputChange}
+                          className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all">
+                      <button
+                        aria-label="Toggle Auto-start server after creation"
+                        type="button"
+                        onClick={() =>
+                          setFormData((prev) => ({ ...prev, autoStart: !prev.autoStart }))
+                        }
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.autoStart ? 'bg-primary' : 'bg-gray-700'}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.autoStart ? 'translate-x-6' : 'translate-x-1'}`}
+                        />
+                      </button>
+                      <div className="flex flex-col">
+                        <span className="text-sm text-gray-300 font-semibold">{t('createInstance.auto_start')}</span>
+                        <span className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">Konteyner oluşturulduktan sonra başlar</span>
+                      </div>
                     </div>
                   </div>
                 )}
