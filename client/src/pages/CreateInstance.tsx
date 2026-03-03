@@ -247,21 +247,21 @@ const CreateInstance = () => {
                     {t('createInstance.step_map')}
                   </span>
                 </div>
+                <div className={`h-px flex-1 mx-4 ${step > 2 ? 'bg-primary' : 'bg-gray-800'}`}></div>
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step >= 3 ? 'bg-primary text-white' : 'bg-gray-800 text-gray-500'}`}
+                  >
+                    3
+                  </div>
+                  <span
+                    className={`font-semibold hidden sm:block ${step >= 3 ? 'text-primary' : 'text-gray-500'}`}
+                  >
+                    {t('createInstance.step_advanced')}
+                  </span>
+                </div>
               </>
             )}
-            <div className={`h-px flex-1 mx-4 ${step > (useEgg ? 1 : 2) ? 'bg-primary' : 'bg-gray-800'}`}></div>
-            <div className="flex items-center gap-3">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step >= 3 ? 'bg-primary text-white' : 'bg-gray-800 text-gray-500'}`}
-              >
-                {useEgg ? '2' : '3'}
-              </div>
-              <span
-                className={`font-semibold hidden sm:block ${step >= 3 ? 'text-primary' : 'text-gray-500'}`}
-              >
-                {t('createInstance.step_advanced')}
-              </span>
-            </div>
           </div>
         </div>
 
@@ -888,15 +888,7 @@ const CreateInstance = () => {
           </button>
 
           <div className="flex gap-4">
-            {step < 3 ? (
-              <button
-                onClick={nextStep}
-                className="px-10 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold text-sm transition-all flex items-center gap-2 active:scale-95"
-              >
-                {t('createInstance.next_step')}
-                <ChevronRight size={18} />
-              </button>
-            ) : (
+            {(useEgg && step === 1) || step === 3 ? (
               <button
                 onClick={handleSubmit}
                 disabled={loading || !formData.serverName}
@@ -904,6 +896,14 @@ const CreateInstance = () => {
               >
                 <Rocket size={18} />
                 {loading ? t('createInstance.creating') : t('createInstance.launch_instance')}
+              </button>
+            ) : (
+              <button
+                onClick={nextStep}
+                className="px-10 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold text-sm transition-all flex items-center gap-2 active:scale-95"
+              >
+                {t('createInstance.next_step')}
+                <ChevronRight size={18} />
               </button>
             )}
           </div>
