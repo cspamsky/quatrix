@@ -371,7 +371,7 @@ router.post(
       INSERT INTO servers (
         name, port, rcon_password, status, is_installed, user_id, 
         map, max_players, password, gslt_token, steam_api_key, 
-        vac_enabled, game_type, game_mode, tickrate, auto_start,
+        vac_enabled, game_type, game_mode, tickrate, auto_start, game_alias,
         hibernate, validate_files, additional_args,
         cpu_priority, ram_limit, restart_policy, auto_db_injection, ip,
         egg_id, egg_variables
