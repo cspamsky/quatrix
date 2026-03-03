@@ -234,9 +234,8 @@ quatrix/
 - ✅ System analytics with historical resource trends
 - ✅ Portable Backup System (Direct Stream Up/Down)
 
-**Planned:**
-
-- [ ] Native Egg Runner (Run Pterodactyl eggs locally)
+- ✅ Native Egg Runner (Run Pterodactyl eggs locally with dynamic variable support)
+- ✅ Custom Egg Import System (Import Pterodactyl .json egg files directly from UI)
 - [ ] Multi-server cluster wide commands
 - [ ] Discord Webhook Rich Notifications (Bans/Crashes)
 - [ ] Advanced server performance alerting

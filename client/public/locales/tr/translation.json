@@ -330,7 +330,11 @@
   },
   "pterodactyl": {
     "select_egg": "Pterodactyl Egg Seç",
-    "variables": "Egg Değişkenleri"
+    "variables": "Egg Değişkenleri",
+    "import_egg": "Egg İçe Aktar",
+    "import_success": "Egg başarıyla içe aktarıldı",
+    "import_error": "Egg içe aktarılamadı",
+    "invalid_egg_json": "Geçersiz egg JSON dosyası"
   },
   "dashboard": {
     "action_console": "Konsolu Aç",

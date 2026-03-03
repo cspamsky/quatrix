@@ -45,6 +45,16 @@ router.get('/available-eggs', authorize('servers.create'), async (_req: Request,
   }
 });
 
+// POST /api/servers/import-egg
+router.post('/import-egg', authorize('servers.create'), async (req: Request, res: Response) => {
+  try {
+    const eggId = eggRunnerService.importEgg(req.body);
+    res.json({ message: 'Egg imported successfully', id: eggId });
+  } catch (error) {
+    res.status(400).json({ message: error instanceof Error ? error.message : 'Failed to import egg' });
+  }
+});
+
 // GET /api/servers/:id/database
 router.get('/:id/database', authorize('servers.database'), async (req: Request, res: Response) => {
   try {

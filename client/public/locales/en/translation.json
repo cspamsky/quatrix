@@ -330,7 +330,11 @@
   },
   "pterodactyl": {
     "select_egg": "Select Pterodactyl Egg",
-    "variables": "Egg Variables"
+    "variables": "Egg Variables",
+    "import_egg": "Import Egg",
+    "import_success": "Egg imported successfully",
+    "import_error": "Failed to import egg",
+    "invalid_egg_json": "Invalid egg JSON file"
   },
   "dashboard": {
     "action_console": "Open Console",

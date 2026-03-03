@@ -99,6 +99,22 @@ class EggRunnerService {
 
     return env;
   }
+
+  /**
+   * Imports a new egg and saves it to the eggs directory
+   * @returns The generated egg ID
+   */
+  public importEgg(egg: PterodactylEgg): string {
+    if (!egg.name || !egg.startup) {
+      throw new Error('Invalid egg data: name and startup are required');
+    }
+
+    const eggId = egg.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const targetPath = path.join(this.eggsDir, `${eggId}.json`);
+
+    fs.writeFileSync(targetPath, JSON.stringify(egg, null, 2));
+    return eggId;
+  }
 }
 
 export const eggRunnerService = new EggRunnerService();

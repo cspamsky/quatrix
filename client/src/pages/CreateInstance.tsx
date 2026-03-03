@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../utils/api';
 import {
@@ -9,14 +9,15 @@ import {
   ChevronLeft,
   Rocket,
   Globe,
+  Network,
+  Package,
+  Upload,
 } from 'lucide-react';
 import { SERVER_REGIONS } from '../config/regions';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
-import { Network } from 'lucide-react';
 import CustomSelect from '../components/ui/CustomSelect';
-import { Package } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface EggVariable {
   name: string;
@@ -43,6 +44,32 @@ const CreateInstance = () => {
   const [loading, setLoading] = useState(false);
   const [availableEggs, setAvailableEggs] = useState<Egg[]>([]);
   const [useEgg, setUseEgg] = useState(false);
+  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({
+    serverName: '',
+    maxPlayers: 10,
+    port: '27015',
+    initialMap: 'de_dust2',
+    glstToken: '',
+    steamApiKey: '',
+    serverPassword: '',
+    rconPassword: '',
+    autoStart: true,
+    sourceTV: false,
+    vac: true,
+    gameAlias: 'competitive',
+    hibernate: true,
+    validateFiles: false,
+    autoUpdate: false,
+    additionalArgs: '',
+    region: 3,
+    cpuPriority: 0,
+    ramLimit: 0,
+    ip: '',
+    interfaces: [] as { name: string; ip: string }[],
+    egg_id: '',
+    egg_variables: {} as Record<string, string>,
+  });
 
   useEffect(() => {
     const fetchInterfaces = async () => {
@@ -61,46 +88,48 @@ const CreateInstance = () => {
     fetchInterfaces();
   }, []);
 
-  useEffect(() => {
-    const fetchEggs = async () => {
-      try {
-        const response = await apiFetch('/api/servers/available-eggs');
-        if (response.ok) {
-          const data = await response.json();
-          setAvailableEggs(data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch eggs:', err);
+  const fetchEggs = async () => {
+    try {
+      const response = await apiFetch('/api/servers/available-eggs');
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableEggs(data);
       }
-    };
+    } catch (err) {
+      console.error('Failed to fetch eggs:', err);
+    }
+  };
+
+  useEffect(() => {
     fetchEggs();
   }, []);
-  const [error, setError] = useState('');
-  const [formData, setFormData] = useState({
-    serverName: '',
-    maxPlayers: 10,
-    port: '27015',
-    initialMap: 'de_dust2',
-    glstToken: '',
-    steamApiKey: '',
-    serverPassword: '',
-    rconPassword: '',
-    autoStart: true,
-    sourceTV: false,
-    vac: true,
-    gameAlias: 'competitive', // Default to Competitive alias
-    hibernate: true,
-    validateFiles: false,
-    autoUpdate: false,
-    additionalArgs: '',
-    region: 3, // Default to Europe
-    cpuPriority: 0,
-    ramLimit: 0,
-    ip: '',
-    interfaces: [] as { name: string; ip: string }[],
-    egg_id: '',
-    egg_variables: {} as Record<string, string>,
-  });
+
+  const handleImportEgg = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const content = await file.text();
+      const eggData = JSON.parse(content);
+      
+      const response = await apiFetch('/api/servers/import-egg', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eggData),
+      });
+
+      if (response.ok) {
+        toast.success(t('pterodactyl.import_success'));
+        await fetchEggs();
+        e.target.value = '';
+      } else {
+        const data = await response.json();
+        setError(data.message || t('pterodactyl.import_error'));
+      }
+    } catch (err) {
+      setError(t('pterodactyl.invalid_egg_json'));
+    }
+  };
 
   const nextStep = () => setStep((s) => Math.min(s + 1, 3));
   const prevStep = () => setStep((s) => Math.max(s - 1, 1));
@@ -271,27 +300,41 @@ const CreateInstance = () => {
                       <label className="block text-sm font-bold text-gray-400">
                         {t('pterodactyl.select_egg')}
                       </label>
-                      <CustomSelect
-                        options={availableEggs.map((egg) => ({
-                          value: egg.id,
-                          label: egg.name,
-                        }))}
-                        value={formData.egg_id}
-                        onChange={(val: string | number) => {
-                          const eggId = String(val);
-                          const egg = availableEggs.find((e) => e.id === eggId);
-                          const initialVars: Record<string, string> = {};
-                          egg?.variables.forEach((v) => {
-                            initialVars[v.env_variable] = v.default_value;
-                          });
-                          setFormData((prev) => ({
-                            ...prev,
-                            egg_id: eggId,
-                            egg_variables: initialVars,
-                          }));
-                        }}
-                        icon={<Package className="w-4 h-4" />}
-                      />
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1">
+                          <CustomSelect
+                            options={availableEggs.map((egg) => ({
+                              value: egg.id,
+                              label: egg.name,
+                            }))}
+                            value={formData.egg_id}
+                            onChange={(val: string | number) => {
+                              const eggId = String(val);
+                              const egg = availableEggs.find((e) => e.id === eggId);
+                              const initialVars: Record<string, string> = {};
+                              egg?.variables.forEach((v) => {
+                                initialVars[v.env_variable] = v.default_value;
+                              });
+                              setFormData((prev) => ({
+                                ...prev,
+                                egg_id: eggId,
+                                egg_variables: initialVars,
+                              }));
+                            }}
+                            icon={<Package className="w-4 h-4" />}
+                          />
+                        </div>
+                        <label className="flex items-center gap-2 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold text-xs cursor-pointer transition-all border border-gray-700 active:scale-95">
+                          <Upload size={14} className="text-primary" />
+                          <span className="hidden sm:inline">{t('pterodactyl.import_egg')}</span>
+                          <input
+                            type="file"
+                            accept=".json"
+                            className="hidden"
+                            onChange={handleImportEgg}
+                          />
+                        </label>
+                      </div>
                       {formData.egg_id && (
                         <p className="text-xs text-gray-500 italic mt-1">
                           {availableEggs.find((e) => e.id === formData.egg_id)?.description}
